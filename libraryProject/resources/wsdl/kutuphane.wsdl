@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="Belediye"
+    targetNamespace="http://belediye.turkiye.gov.tr/v3"
+    xmlns="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:tns="http://belediye.turkiye.gov.tr/v3"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:ns="http://belediye.turkiye.gov.tr/v3">
+
+    <types>
+        <xsd:schema
+            targetNamespace="http://belediye.turkiye.gov.tr/v3"
+            elementFormDefault="unqualified"
+            xmlns:tns="http://belediye.turkiye.gov.tr/v3">
+
+            <xsd:complexType name="islemSonucType">
+                <xsd:sequence>
+                    <xsd:element name="belediyeKodu"    type="xsd:string"/>
+                    <xsd:element name="sonucKodu"       nillable="false" type="xsd:string"/>
+                    <xsd:element name="sonucAciklamasi" nillable="false" type="xsd:string"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="sorguParametreType">
+                <xsd:sequence>
+                    <xsd:element name="belediyeKodu" type="xsd:string"/>
+                    <xsd:element name="kullaniciAdi" type="xsd:string"/>
+                    <xsd:element name="sifre"        type="xsd:string"/>
+                    <xsd:element name="ipAdresi"     type="xsd:string"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="detailType">
+                <xsd:sequence>
+                    <xsd:element name="group" type="xsd:string"/>
+                    <xsd:element name="key"   type="xsd:string"/>
+                    <xsd:element name="value" type="xsd:string"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="arrayOfDetailType">
+                <xsd:sequence>
+                    <xsd:element name="detay" type="tns:detailType" minOccurs="0" maxOccurs="unbounded"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="kutuphaneBilgileriType">
+                <xsd:sequence>
+                    <xsd:element name="kutuphaneKodu"                     type="xsd:string"/>
+                    <xsd:element name="kutuphaneAdi"                      type="xsd:string"/>
+                    <xsd:element name="kutuphanePOIId"                    type="xsd:string"/>
+                    <xsd:element name="uyelikBasvurusundaBulunulabilirMi" type="xsd:boolean"/>
+                    <xsd:element name="detayListesi"                      type="tns:arrayOfDetailType"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="arrayOfKutuphaneBilgileri">
+                <xsd:sequence>
+                    <xsd:element name="kutuphaneBilgileri" type="tns:kutuphaneBilgileriType" minOccurs="0" maxOccurs="unbounded"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="kutuphaneSorgulaCType">
+                <xsd:complexContent>
+                    <xsd:extension base="tns:islemSonucType">
+                        <xsd:sequence>
+                            <xsd:element name="kutuphaneListesi" type="tns:arrayOfKutuphaneBilgileri"/>
+                            <xsd:element name="detayListesi"     type="tns:arrayOfDetailType"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+
+            <xsd:element name="kutuphaneSorgulaG" type="tns:sorguParametreType"/>
+            <xsd:element name="kutuphaneSorgulaC" type="tns:kutuphaneSorgulaCType"/>
+
+            <xsd:complexType name="katalogTaramaGType">
+                <xsd:complexContent>
+                    <xsd:extension base="tns:sorguParametreType">
+                        <xsd:sequence>
+                            <xsd:element name="arananKutuphaneKodu" type="xsd:string"/>
+                            <xsd:element name="aramaMetni"          type="xsd:string"/>
+                            <xsd:element name="aramaTuru"           type="xsd:string"/>
+                            <xsd:element name="detayListesi"        type="tns:arrayOfDetailType"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+
+            <xsd:complexType name="katalogTaramaSonucType">
+                <xsd:sequence>
+                    <xsd:element name="eserAdi"                type="xsd:string"/>
+                    <xsd:element name="yazarAdi"               type="xsd:string"/>
+                    <xsd:element name="yayinBilgisi"           type="xsd:string"/>
+                    <xsd:element name="isbniisn"               type="xsd:string"/>
+                    <xsd:element name="bulunduguKutuphane"     type="xsd:string"/>
+                    <xsd:element name="bulunduguKutuphaneKodu" type="xsd:string"/>
+                    <xsd:element name="yerNumarasi"            type="xsd:string"/>
+                    <xsd:element name="durumu"                 type="xsd:string"/>
+                    <xsd:element name="sonIadeTarihi"          type="xsd:string"/>
+                    <xsd:element name="detayListesi"           type="tns:arrayOfDetailType"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="arrayOfKatalogTaramaSonuc">
+                <xsd:sequence>
+                    <xsd:element name="taramaSonucu" type="tns:katalogTaramaSonucType" minOccurs="0" maxOccurs="unbounded"/>
+                </xsd:sequence>
+            </xsd:complexType>
+
+            <xsd:complexType name="katalogTaramaCType">
+                <xsd:complexContent>
+                    <xsd:extension base="tns:islemSonucType">
+                        <xsd:sequence>
+                            <xsd:element name="taramaSonucListesi" type="tns:arrayOfKatalogTaramaSonuc"/>
+                            <xsd:element name="detayListesi"       type="tns:arrayOfDetailType"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+
+            <xsd:element name="katalogTaramaG" type="tns:katalogTaramaGType"/>
+            <xsd:element name="katalogTaramaC" type="tns:katalogTaramaCType"/>
+
+            <xsd:complexType name="ayarOkuGType">
+                <xsd:complexContent>
+                    <xsd:extension base="tns:sorguParametreType">
+                        <xsd:sequence>
+                            <xsd:element name="ayar" type="xsd:string"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+
+            <xsd:complexType name="ayarOkuCType">
+                <xsd:complexContent>
+                    <xsd:extension base="tns:islemSonucType">
+                        <xsd:sequence>
+                            <xsd:element name="deger" type="xsd:string"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+
+            <xsd:element name="ayarOkuG" type="tns:ayarOkuGType"/>
+            <xsd:element name="ayarOkuC" type="tns:ayarOkuCType"/>
+
+            <xsd:complexType name="ayarOkuListeCType">
+                <xsd:complexContent>
+                    <xsd:extension base="tns:islemSonucType">
+                        <xsd:sequence>
+                            <xsd:element name="detayListesi" type="tns:arrayOfDetailType"/>
+                        </xsd:sequence>
+                    </xsd:extension>
+                </xsd:complexContent>
+            </xsd:complexType>
+
+            <xsd:element name="ayarOkuListeC" type="tns:ayarOkuListeCType"/>
+            <xsd:element name="ayarOkuListeG" type="tns:ayarOkuGType"/>
+
+        </xsd:schema>
+    </types>
+
+    <message name="kutuphaneSorgulaRequest">
+        <part name="part1" element="tns:kutuphaneSorgulaG"/>
+    </message>
+    <message name="kutuphaneSorgulaResponse">
+        <part name="part1" element="tns:kutuphaneSorgulaC"/>
+    </message>
+    <message name="katalogTaramaRequest">
+        <part name="part1" element="tns:katalogTaramaG"/>
+    </message>
+    <message name="katalogTaramaResponse">
+        <part name="part1" element="tns:katalogTaramaC"/>
+    </message>
+    <message name="ayarOkuRequest">
+        <part element="tns:ayarOkuG" name="part1"/>
+    </message>
+    <message name="ayarOkuResponse">
+        <part element="tns:ayarOkuC" name="part1"/>
+    </message>
+    <message name="ayarOkuListeRequest">
+        <part element="ns:ayarOkuListeG" name="part1"/> 
+    </message>
+    <message name="ayarOkuListeResponse">
+        <part element="ns:ayarOkuListeC" name="part1"/>
+    </message>    
+
+    <portType name="BelediyePortType">
+        <operation name="kutuphaneSorgula">
+            <input  name="kutuphaneSorgulaInput"  message="tns:kutuphaneSorgulaRequest"/>
+            <output name="kutuphaneSorgulaOutput" message="tns:kutuphaneSorgulaResponse"/>
+        </operation>
+        <operation name="katalogTarama">
+            <input  name="katalogTaramaInput"  message="tns:katalogTaramaRequest"/>
+            <output name="katalogTaramaOutput" message="tns:katalogTaramaResponse"/>
+        </operation>
+        <operation name="ayarOku">
+            <input  name="ayarOkuInput"  message="tns:ayarOkuRequest"/>
+            <output name="ayarOkuOutput" message="tns:ayarOkuResponse"/>
+        </operation>
+        <operation name="ayarOkuListe">
+            <input name="ayarOkuListeInput" message="tns:ayarOkuListeRequest"/>
+            <output name="ayarOkuListeOutput" message="tns:ayarOkuListeResponse"/>
+        </operation>
+    </portType>
+
+    <binding name="BelediyePortTypeBinding" type="tns:BelediyePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+        <operation name="kutuphaneSorgula">
+            <soap:operation soapAction="http://belediye.turkiye.gov.tr/v3/kutuphaneSorgula" style="document"/>
+            <input name="kutuphaneSorgulaInput">
+                <soap:body use="literal"/>
+            </input>
+            <output name="kutuphaneSorgulaOutput">
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+
+        <operation name="katalogTarama">
+            <soap:operation soapAction="http://belediye.turkiye.gov.tr/v3/katalogTarama" style="document"/>
+            <input name="katalogTaramaInput">
+                <soap:body use="literal"/>
+            </input>
+            <output name="katalogTaramaOutput">
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+
+        <operation name="ayarOku">
+            <soap:operation soapAction="http://belediye.turkiye.gov.tr/v3/ayarOku" style="document"/>
+            <input name="ayarOkuInput">
+                <soap:body use="literal"/>
+            </input>
+            <output name="ayarOkuOutput">
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+
+        <operation name="ayarOkuListe">
+            <soap:operation soapAction="http://belediye.turkiye.gov.tr/v3/ayarOkuListe" style="document"/>
+            <input name="ayarOkuListeInput">
+                <soap:body use="literal"/>
+            </input>
+            <output name="ayarOkuListeOutput">
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+
+    </binding>
+
+    <service name="eDevletBelediyeService">
+        <port name="BelediyePortTypeBindingPort" binding="tns:BelediyePortTypeBinding">
+            <soap:address location="__SERVICE_URL__"/>
+        </port>
+    </service>
+
+</definitions>

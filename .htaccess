@@ -1,0 +1,34 @@
+# KURAL: SERVİS DOMAİNİ KISITLAMASI ---
+# Eğer istek kutuphaneservis.beyoglu.bel.tr üzerinden geliyorsa...
+RewriteCond %{HTTP_HOST} ^kutuphaneservis\.beyoglu\.bel\.tr$ [NC]
+# VE istek yolu /soap/katalog ile BAŞLAMIYORSA engelle
+RewriteCond %{REQUEST_URI} !^/soap/katalog [NC]
+RewriteRule ^.*$ - [F,L]
+
+
+Options +FollowSymLinks
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]    RewriteCond %{REQUEST_FILENAME} .*    RewriteCond %{HTTP_REFERER} ^https?://([^.]+\.)?kutuphaneyonetim.beyoglu.bel.tr\. [NC]    RewriteRule (.*) https://kutuphaneyonetim.beyoglu.bel.tr/ [R=301,L]    # RewriteRule (.*) - [F,L]
+
+
+</IfModule>

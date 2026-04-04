@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#7a5c3c" />
+    <title>Ödünç Detayı — Beyoğlu Kütüphane Sistemi</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        :root{--background:#f5f0e8;--foreground:#3d3226;--card:#faf8f3;--primary:#7a5c3c;--primary-foreground:#f5f0e8;--secondary:#ede8de;--muted:#ede8de;--muted-foreground:#7a7060;--destructive:#c53030;--border:#d9d0c2;--ring:#7a5c3c;--radius:0.625rem;--sidebar:#3d3226;--sidebar-foreground:#e8e2d6;--sidebar-primary:#9b7b55;--sidebar-primary-foreground:#f5f0e8;--sidebar-accent:#524435;--sidebar-accent-foreground:#e8e2d6;--sidebar-border:#5a4a3a;--font-sans:'Source Sans 3',system-ui,sans-serif;--font-serif:'Merriweather',Georgia,serif}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:var(--font-sans);background:var(--background);color:var(--foreground);-webkit-font-smoothing:antialiased;line-height:1.5}
+        input,select,button{font-family:inherit;font-size:inherit}
+        .app-layout{display:flex;min-height:100vh}
+        .sidebar{width:260px;background:var(--sidebar);color:var(--sidebar-foreground);display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid var(--sidebar-border);position:fixed;top:0;left:0;bottom:0;z-index:40;transition:transform .3s ease}
+        .sidebar.collapsed{transform:translateX(-260px)}
+        .sidebar-header{padding:16px;display:flex;align-items:center;gap:12px}
+        .sidebar-logo{width:36px;height:36px;border-radius:8px;background:var(--sidebar-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .sidebar-logo svg{width:20px;height:20px;color:var(--sidebar-primary-foreground)}
+        .sidebar-brand-name{font-size:16px;font-weight:700;letter-spacing:-.025em}
+        .sidebar-brand-sub{font-size:12px;opacity:.6}
+        .sidebar-separator{height:1px;background:var(--sidebar-border);margin:0 16px}
+        .sidebar-content{flex:1;overflow-y:auto;padding:8px 0}
+        .sidebar-group{padding:8px 12px}
+        .sidebar-group-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--sidebar-foreground);opacity:.5;padding:4px 8px;margin-bottom:4px}
+        .sidebar-menu{list-style:none}
+        .sidebar-menu-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:14px;font-weight:500;color:var(--sidebar-foreground);cursor:pointer;transition:background .15s;text-decoration:none}
+        .sidebar-menu-item:hover{background:var(--sidebar-accent)}
+        .sidebar-menu-item.active{background:var(--sidebar-accent);color:var(--sidebar-accent-foreground)}
+        .sidebar-menu-item svg{width:18px;height:18px;flex-shrink:0;opacity:.8}
+        .sidebar-footer{padding:16px;border-top:1px solid var(--sidebar-border)}
+        .sidebar-user{display:flex;align-items:center;gap:12px}
+        .sidebar-avatar{width:32px;height:32px;border-radius:50%;background:var(--sidebar-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
+        .sidebar-user-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .sidebar-user-role{font-size:12px;opacity:.6}
+        .main-content{flex:1;margin-left:260px;display:flex;flex-direction:column;min-height:100vh;transition:margin-left .3s ease}
+        .main-content.expanded{margin-left:0}
+        .top-header{height:56px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid rgba(217,208,194,.6);background:var(--card);flex-shrink:0}
+        .sidebar-trigger{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:none;background:transparent;cursor:pointer;color:var(--foreground);transition:background .15s}
+        .sidebar-trigger:hover{background:var(--muted)}
+        .sidebar-trigger svg{width:18px;height:18px}
+        .header-separator{width:1px;height:20px;background:var(--border)}
+        .breadcrumb{display:flex;align-items:center;gap:8px;font-size:14px}
+        .breadcrumb-link{display:flex;align-items:center;gap:6px;color:var(--muted-foreground);text-decoration:none;transition:color .15s}
+        .breadcrumb-link:hover{color:var(--foreground)}
+        .breadcrumb-link svg{width:14px;height:14px}
+        .breadcrumb-sep{color:var(--muted-foreground);opacity:.5;font-size:12px}
+        .breadcrumb-current{font-weight:500;color:var(--foreground)}
+        .content-area{flex:1;padding:24px;display:flex;flex-direction:column;gap:20px;max-width:760px}
+        /* Status banner */
+        .status-banner{border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+        .status-banner.aktif{background:rgba(37,99,235,.07);border:1px solid rgba(37,99,235,.2)}
+        .status-banner.gecikti{background:rgba(197,48,48,.07);border:1px solid rgba(197,48,48,.2)}
+        .status-banner.iade{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2)}
+        .status-banner.kayip{background:rgba(107,114,128,.1);border:1px solid rgba(107,114,128,.2)}
+        .status-banner-left{display:flex;align-items:center;gap:12px}
+        .status-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+        .status-icon svg{width:22px;height:22px}
+        .status-title{font-family:var(--font-serif);font-size:17px;font-weight:700}
+        .status-sub{font-size:13px;margin-top:2px}
+        /* Cards */
+        .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+        .detail-card{background:var(--card);border:1px solid rgba(217,208,194,.6);border-radius:var(--radius);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+        .detail-card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-foreground);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+        .detail-card-title svg{width:13px;height:13px}
+        .detail-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid rgba(217,208,194,.4)}
+        .detail-row:last-child{border-bottom:none;padding-bottom:0}
+        .detail-row:first-of-type{padding-top:0}
+        .detail-label{font-size:13px;color:var(--muted-foreground);flex-shrink:0}
+        .detail-val{font-size:13px;font-weight:500;text-align:right}
+        .detail-val.red{color:var(--destructive)}
+        .detail-val.green{color:#16a34a}
+        /* Person hero */
+        .person-hero{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+        .person-av{width:48px;height:48px;border-radius:50%;background:var(--sidebar-accent);color:var(--sidebar-foreground);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+        .person-name{font-family:var(--font-serif);font-size:16px;font-weight:700}
+        .person-meta{font-size:13px;color:var(--muted-foreground);margin-top:2px}
+        /* Book hero */
+        .book-hero{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+        .book-cover-lg{width:56px;height:76px;border-radius:4px;object-fit:cover;flex-shrink:0;background:var(--secondary)}
+        .book-cover-ph{width:56px;height:76px;border-radius:4px;background:var(--secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .book-cover-ph svg{width:22px;height:22px;color:var(--muted-foreground)}
+        .book-title{font-family:var(--font-serif);font-size:15px;font-weight:700;line-height:1.4}
+        .book-author{font-size:13px;color:var(--muted-foreground);margin-top:3px}
+        /* Note box */
+        .note-box{background:var(--secondary);border-radius:calc(var(--radius) - 2px);padding:12px 14px;font-size:13px;line-height:1.6;color:var(--foreground)}
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:calc(var(--radius) - 2px);font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,opacity .15s;border:none;text-decoration:none}
+        .btn svg{width:16px;height:16px}
+        .btn-primary{background:var(--primary);color:var(--primary-foreground)}
+        .btn-primary:hover{opacity:.9}
+        .btn-outline{background:transparent;color:var(--foreground);border:1px solid var(--border)}
+        .btn-outline:hover{background:var(--muted)}
+        .btn-success{background:#16a34a;color:#fff}
+        .btn-success:hover{opacity:.9}
+        /* Badge */
+        .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+        .badge-aktif{background:rgba(37,99,235,.08);color:#1e40af}
+        .badge-gecikti{background:rgba(197,48,48,.1);color:#991b1b}
+        .badge-iade{background:rgba(34,197,94,.1);color:#166534}
+        .badge-kayip{background:rgba(107,114,128,.12);color:#374151}
+        /* Toast */
+        .toast-container{position:fixed;top:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:10px}
+        .toast{padding:14px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;min-width:280px;box-shadow:0 4px 16px rgba(0,0,0,.12);border:1px solid transparent;animation:toast-in .3s ease}
+        .toast.success{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+        .toast.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+        @keyframes toast-in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+        .sidebar-overlay{display:none;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.4)}
+        @media(max-width:768px){.main-content{margin-left:0}.sidebar{transform:translateX(-260px)}.sidebar.open{transform:translateX(0)}.sidebar-overlay.visible{display:block}.detail-grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    @include('partials.sidebar')
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="main-content" id="mainContent">
+        <div class="top-header">
+            <button class="sidebar-trigger" id="sidebarToggle">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+            <div class="header-separator"></div>
+            <nav class="breadcrumb">
+                <a href="{{ route('odunc.index') }}" class="breadcrumb-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+                    Ödünç İşlemleri
+                </a>
+                <span class="breadcrumb-sep">›</span>
+                <span class="breadcrumb-current">#{{ $islem->id }}</span>
+            </nav>
+        </div>
+
+        <div class="content-area">
+
+            @php
+                $gecikiyor = $islem->statu === 'aktif' && \Carbon\Carbon::today()->gt($islem->iade_tarihi_planlanan);
+                $gecikmeGun = $gecikiyor ? \Carbon\Carbon::today()->diffInDays($islem->iade_tarihi_planlanan) : 0;
+                $kalanGun = $islem->statu === 'aktif' && !$gecikiyor ? \Carbon\Carbon::today()->diffInDays($islem->iade_tarihi_planlanan, false) : null;
+                $iadeTarihiFormatted = $islem->iade_tarihi_planlanan->format('d.m.Y');
+            @endphp
+
+                <!-- Status Banner -->
+            @if($islem->statu === 'iade_edildi')
+                <div class="status-banner iade">
+                    <div class="status-banner-left">
+                        <div class="status-icon" style="background:rgba(34,197,94,.12);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <div>
+                            <div class="status-title" style="color:#166534;">İade Edildi</div>
+                            <div class="status-sub" style="color:#16a34a;">{{ $islem->iade_tarihi_gercek?->format('d.m.Y') }} tarihinde teslim alındı.</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-iade">İade Edildi</span>
+                </div>
+            @elseif($islem->statu === 'kayip')
+                <div class="status-banner kayip">
+                    <div class="status-banner-left">
+                        <div class="status-icon" style="background:rgba(107,114,128,.12);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                        </div>
+                        <div>
+                            <div class="status-title" style="color:#374151;">Kayıp Bildirildi</div>
+                            <div class="status-sub" style="color:#6b7280;">Bu kitap kayıp olarak işaretlenmiş.</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-kayip">Kayıp</span>
+                </div>
+            @elseif($gecikiyor)
+                <div class="status-banner gecikti">
+                    <div class="status-banner-left">
+                        <div class="status-icon" style="background:rgba(197,48,48,.1);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--destructive)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <div>
+                            <div class="status-title" style="color:#991b1b;">Gecikmiş Ödünç</div>
+                            <div class="status-sub" style="color:#b91c1c;">{{ $islem->iade_tarihi_planlanan->format('d.m.Y') }} tarihinde iade edilmeliydi. {{ $gecikmeGun }} gün gecikmiş.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <button class="btn btn-outline" onclick="openUzatModal({{ $islem->id }}, '{{ $iadeTarihiFormatted }}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="m22 22-4-4"/><path d="M18 22v-4h-4"/></svg>
+                            Süre Uzat
+                        </button>
+                        <button class="btn btn-success" onclick="openIadeModal({{ $islem->id }})">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                            İade Al
+                        </button>
+                    </div>
+                </div>
+            @else
+                <div class="status-banner aktif">
+                    <div class="status-banner-left">
+                        <div class="status-icon" style="background:rgba(37,99,235,.1);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+                        </div>
+                        <div>
+                            <div class="status-title" style="color:#1e40af;">Aktif Ödünç</div>
+                            <div class="status-sub" style="color:#3b82f6;">Son iade: {{ $islem->iade_tarihi_planlanan->format('d.m.Y') }} · {{ $kalanGun }} gün kaldı.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                        <button class="btn btn-outline" onclick="openUzatModal({{ $islem->id }}, '{{ $iadeTarihiFormatted }}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="m22 22-4-4"/><path d="M18 22v-4h-4"/></svg>
+                            Süre Uzat
+                        </button>
+                        <button class="btn btn-success" onclick="openIadeModal({{ $islem->id }})">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                            İade Al
+                        </button>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Detail Cards -->
+            <div class="detail-grid">
+
+                <!-- Üye Kartı -->
+                <div class="detail-card">
+                    <div class="detail-card-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        Üye Bilgileri
+                    </div>
+                    <div class="person-hero">
+                        <div class="person-av">{{ mb_strtoupper(mb_substr($islem->uye->ad, 0, 1, 'UTF-8') . mb_substr($islem->uye->soyad, 0, 1, 'UTF-8'), 'UTF-8') }}</div>
+                        <div>
+                            <div class="person-name">{{ $islem->uye->ad }} {{ $islem->uye->soyad }}</div>
+                            <div class="person-meta">TC: {{ $islem->uye->tc_kimlik }}</div>
+                        </div>
+                    </div>
+                    <div class="detail-row"><span class="detail-label">Telefon</span><span class="detail-val">{{ $islem->uye->telefon }}</span></div>
+                    <div class="detail-row"><span class="detail-label">E-posta</span><span class="detail-val">{{ $islem->uye->email ?: '—' }}</span></div>
+                    <div class="detail-row"><span class="detail-label">Üyelik Durumu</span><span class="detail-val {{ $islem->uye->statu === 'aktif' ? 'green' : '' }}">{{ $islem->uye->statu_label }}</span></div>
+                    <div style="margin-top:14px;">
+                        <a href="{{ route('uyeler.edit', $islem->uye) }}" class="btn btn-outline" style="font-size:13px;padding:6px 12px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            Üyeyi Düzenle
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Kitap Kartı -->
+                <div class="detail-card">
+                    <div class="detail-card-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+                        Kitap Bilgileri
+                    </div>
+                    <div class="book-hero">
+                        @if($islem->katalog->kunyeKapakResmi)
+                            <img src="{{ asset('storage/' . $islem->katalog->kunyeKapakResmi) }}" alt="" class="book-cover-lg" />
+                        @else
+                            <div class="book-cover-ph">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+                            </div>
+                        @endif
+                        <div>
+                            <div class="book-title">{{ $islem->katalog->kunyeEserAdi }}</div>
+                            <div class="book-author">{{ $islem->katalog->kunyeYazar }}</div>
+                        </div>
+                    </div>
+                    <div class="detail-row"><span class="detail-label">ISBN</span><span class="detail-val" style="font-family:monospace;font-size:12px;">{{ $islem->katalog->kunyeISBNISSN ?: '—' }}</span></div>
+                    <div class="detail-row"><span class="detail-label">Demirbaş No</span><span class="detail-val">{{ $islem->katalog->kunyeDemirbasKN ?: '—' }}</span></div>
+                    <div class="detail-row"><span class="detail-label">Kütüphane</span><span class="detail-val">{{ $islem->kutuphane?->title ?? '—' }}</span></div>
+                    <div style="margin-top:14px;">
+                        <a href="{{ route('katalog.edit', $islem->katalog) }}" class="btn btn-outline" style="font-size:13px;padding:6px 12px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            Kitabı Düzenle
+                        </a>
+                    </div>
+                </div>
+
+                <!-- İşlem Bilgileri -->
+                <div class="detail-card">
+                    <div class="detail-card-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                        Tarih Bilgileri
+                    </div>
+                    <div class="detail-row"><span class="detail-label">Ödünç Tarihi</span><span class="detail-val">{{ $islem->odunc_tarihi->format('d.m.Y') }}</span></div>
+                    <div class="detail-row"><span class="detail-label">Planlanan İade</span><span class="detail-val {{ $gecikiyor ? 'red' : '' }}">{{ $islem->iade_tarihi_planlanan->format('d.m.Y') }}</span></div>
+                    @if($islem->iade_tarihi_gercek)
+                        <div class="detail-row"><span class="detail-label">Gerçekleşen İade</span><span class="detail-val green">{{ $islem->iade_tarihi_gercek->format('d.m.Y') }}</span></div>
+                    @endif
+                    @if($gecikiyor)
+                        <div class="detail-row"><span class="detail-label">Gecikme</span><span class="detail-val red">{{ $gecikmeGun }} gün</span></div>
+                    @endif
+                    <div class="detail-row"><span class="detail-label">Ödünç Veren</span><span class="detail-val">{{ $islem->oduncVeren?->name ?? '—' }}</span></div>
+                    @if($islem->iadeAlan)
+                        <div class="detail-row"><span class="detail-label">İade Alan</span><span class="detail-val">{{ $islem->iadeAlan->name }}</span></div>
+                    @endif
+                </div>
+
+                @if($islem->sure_uzatimi)
+                    <div class="detail-card" style="border-color:rgba(122,92,60,.3);background:rgba(122,92,60,.03);">
+                        <div class="detail-card-title" style="color:var(--primary);">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="m22 22-4-4"/><path d="M18 22v-4h-4"/></svg>
+                            Süre Uzatma
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Uzatılan Süre</span>
+                            <span class="detail-val" style="color:var(--primary);font-weight:700;">{{ $islem->sure_uzatimi }} gün</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Uzatma Tarihi</span>
+                            <span class="detail-val">{{ $islem->sure_uzatma_tarihi ? \Carbon\Carbon::parse($islem->sure_uzatma_tarihi)->format('d.m.Y') : '—' }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Uzatan Kişi</span>
+                            <span class="detail-val">{{ $islem->sureUzatan?->name ?? '—' }}</span>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Notlar -->
+                @if($islem->notlar || $islem->iade_notu)
+                    <div class="detail-card">
+                        <div class="detail-card-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>
+                            Notlar
+                        </div>
+                        @if($islem->notlar)
+                            <p style="font-size:12px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ödünç Notu</p>
+                            <div class="note-box" style="margin-bottom:12px;">{{ $islem->notlar }}</div>
+                        @endif
+                        @if($islem->iade_notu)
+                            <p style="font-size:12px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">İade Notu</p>
+                            <div class="note-box">{{ $islem->iade_notu }}</div>
+                        @endif
+                    </div>
+                @endif
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center;">
+                <a href="{{ route('odunc.index') }}" class="btn btn-outline">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                    Listeye Dön
+                </a>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- Süre Uzat Modal -->
+<div class="modal-backdrop" id="uzatModal" style="position:fixed;inset:0;z-index:2000;background:rgba(61,50,38,.48);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:0;max-width:440px;width:calc(100% - 32px);box-shadow:0 24px 64px rgba(0,0,0,.22);transform:scale(.93);transition:transform .2s;overflow:hidden" id="uzatBox">
+        <div style="padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <h2 style="font-family:var(--font-serif);font-size:18px;font-weight:700;">Süre Uzat</h2>
+            <button onclick="closeUzatModal()" style="width:28px;height:28px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div style="margin:14px 24px 0;padding:14px;background:var(--secondary);border-radius:8px;font-size:13px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;gap:12px;">
+                <span style="color:var(--muted-foreground);">Üye</span>
+                <strong style="text-align:right;">{{ $islem->uye->ad }} {{ $islem->uye->soyad }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:12px;">
+                <span style="color:var(--muted-foreground);">Kitap</span>
+                <strong style="text-align:right;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $islem->katalog->kunyeEserAdi }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:12px;">
+                <span style="color:var(--muted-foreground);">Mevcut Planlanan İade</span>
+                <strong id="uzatMevcutTarih">{{ $iadeTarihiFormatted }}</strong>
+            </div>
+        </div>
+        <div style="padding:16px 24px 0;">
+            <div style="margin-bottom:14px;">
+                <label style="font-size:14px;font-weight:500;display:block;margin-bottom:6px;">
+                    Kaç Gün Uzatılsın? <span style="color:var(--destructive)">*</span>
+                    <span style="font-weight:400;color:var(--muted-foreground);font-size:12px;">(En fazla 15 gün)</span>
+                </label>
+                <input type="number" id="uzatma_gun" min="1" max="15" placeholder="1 – 15 gün"
+                       oninput="hesaplaYeniTarih()" onchange="hesaplaYeniTarih()"
+                       style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--foreground);font-size:14px;outline:none;" />
+            </div>
+            <div id="uzatSonucWrap" style="display:none;padding:12px 14px;background:rgba(122,92,60,.06);border:1px solid rgba(122,92,60,.2);border-radius:8px;font-size:13px;color:var(--foreground);margin-bottom:4px;">
+                <span style="color:var(--muted-foreground);">Yeni Planlanan İade Tarihi:</span>
+                <strong id="uzatYeniTarih" style="margin-left:6px;font-size:15px;color:var(--primary);"></strong>
+            </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;padding:16px 24px 20px;border-top:1px solid var(--border);margin-top:16px;">
+            <button type="button" class="btn btn-outline" onclick="closeUzatModal()">Vazgeç</button>
+            <button type="button" class="btn btn-primary" id="uzatSubmitBtn" onclick="submitUzat({{ $islem->id }})">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="m22 22-4-4"/><path d="M18 22v-4h-4"/></svg>
+                Süreyi Uzat
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- İade Modal (list.blade ile aynı) -->
+<div class="modal-backdrop" id="iadeModal" style="position:fixed;inset:0;z-index:2000;background:rgba(61,50,38,.48);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:0;max-width:480px;width:calc(100% - 32px);box-shadow:0 24px 64px rgba(0,0,0,.22);transform:scale(.93);transition:transform .2s;overflow:hidden" id="iadeBox">
+        <div style="padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <h2 style="font-family:var(--font-serif);font-size:18px;font-weight:700;">İade Al</h2>
+            <button onclick="closeIadeModal()" style="width:28px;height:28px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <form id="iadeForm" style="padding:16px 24px 20px;">
+            @csrf
+            <div style="margin-bottom:14px;">
+                <label style="font-size:14px;font-weight:500;display:block;margin-bottom:6px;">İşlem Türü</label>
+                <div style="display:flex;gap:10px;">
+                    <label style="flex:1;cursor:pointer;position:relative;">
+                        <input type="radio" name="statu" value="iade_edildi" checked style="position:absolute;opacity:0;" />
+                        <div class="radio-inner" style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-size:13px;font-weight:600;transition:border-color .15s,background .15s;">✓ İade Alındı</div>
+                    </label>
+                    <label style="flex:1;cursor:pointer;position:relative;">
+                        <input type="radio" name="statu" value="kayip" style="position:absolute;opacity:0;" />
+                        <div class="radio-inner" style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;text-align:center;font-size:13px;font-weight:600;transition:border-color .15s,background .15s;">⚠ Kayıp</div>
+                    </label>
+                </div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:14px;font-weight:500;display:block;margin-bottom:6px;">İade Tarihi <span style="color:var(--destructive)">*</span></label>
+                <input type="date" name="iade_tarihi_gercek" id="iade_tarihi_gercek" value="{{ date('Y-m-d') }}"
+                       max="{{ date('Y-m-d') }}"
+                       min="{{ date('Y-m-d', strtotime('-7 days')) }}"
+                       style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--foreground);font-size:14px;outline:none;" required />
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:14px;font-weight:500;display:block;margin-bottom:6px;">Not</label>
+                <textarea name="iade_notu" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--foreground);font-size:14px;outline:none;resize:vertical;min-height:72px;"></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:8px;border-top:1px solid var(--border);">
+                <button type="button" class="btn btn-outline" onclick="closeIadeModal()">Vazgeç</button>
+                <button type="button" class="btn btn-success" id="iadeSubmitBtn" onclick="submitIade({{ $islem->id }})">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                    İadeyi Tamamla
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    // Sidebar
+    var sidebar = document.getElementById('sidebar');
+    var mainContent = document.getElementById('mainContent');
+    var isMobile = window.innerWidth <= 768;
+    document.getElementById('sidebarToggle').addEventListener('click', function() {
+        if (isMobile) { sidebar.classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('visible'); }
+        else { sidebar.classList.toggle('collapsed'); mainContent.classList.toggle('expanded'); }
+    });
+    document.getElementById('sidebarOverlay').addEventListener('click', function() { sidebar.classList.remove('open'); this.classList.remove('visible'); });
+
+    // Toast
+    function showToast(type, title, desc) {
+        var c = document.getElementById('toastContainer');
+        var t = document.createElement('div'); t.className = 'toast ' + type;
+        t.innerHTML = '<div>' + title + '</div>' + (desc ? '<div style="font-size:13px;opacity:.8;margin-top:2px">' + desc + '</div>' : '');
+        c.appendChild(t);
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(() => { if(t.parentNode) t.parentNode.removeChild(t); }, 300); }, 4000);
+    }
+
+    @if(session('success')) showToast('success', @json(session('success'))); @endif
+
+    // İade modal
+    var iadeModal = document.getElementById('iadeModal');
+    function openIadeModal(id) {
+        iadeModal.style.opacity = '1'; iadeModal.style.visibility = 'visible';
+        document.getElementById('iadeBox').style.transform = 'scale(1)';
+    }
+    function closeIadeModal() {
+        iadeModal.style.opacity = '0'; iadeModal.style.visibility = 'hidden';
+        document.getElementById('iadeBox').style.transform = 'scale(.93)';
+    }
+    iadeModal.addEventListener('click', function(e) { if (e.target === this) closeIadeModal(); });
+
+    // İade tarihi kısıtı
+    (function() {
+        var inp = document.getElementById('iade_tarihi_gercek');
+        inp.addEventListener('change', function() {
+            var today   = new Date(new Date().toDateString());
+            var minDate = new Date(today); minDate.setDate(today.getDate() - 7);
+            var chosen  = new Date(this.value + 'T00:00:00');
+            if (chosen > today)   this.value = today.toISOString().slice(0,10);
+            if (chosen < minDate) this.value = minDate.toISOString().slice(0,10);
+        });
+    })();
+
+    // Süre Uzat Modal
+    var uzatModal = document.getElementById('uzatModal');
+    var currentUzatPlanlanan = null;
+
+    function openUzatModal(id, planlananTarih) {
+        currentUzatPlanlanan = planlananTarih || '{{ $iadeTarihiFormatted }}';
+        uzatModal.style.opacity = '1'; uzatModal.style.visibility = 'visible';
+        document.getElementById('uzatBox').style.transform = 'scale(1)';
+        document.getElementById('uzatma_gun').value = '';
+        document.getElementById('uzatSonucWrap').style.display = 'none';
+        document.getElementById('uzatSubmitBtn').disabled = false;
+        setTimeout(function() { document.getElementById('uzatma_gun').focus(); }, 200);
+    }
+
+    function closeUzatModal() {
+        uzatModal.style.opacity = '0'; uzatModal.style.visibility = 'hidden';
+        document.getElementById('uzatBox').style.transform = 'scale(.93)';
+        currentUzatPlanlanan = null;
+    }
+
+    uzatModal.addEventListener('click', function(e) { if (e.target === this) closeUzatModal(); });
+
+    function hesaplaYeniTarih() {
+        var gun  = parseInt(document.getElementById('uzatma_gun').value);
+        var wrap = document.getElementById('uzatSonucWrap');
+        if (!currentUzatPlanlanan || isNaN(gun) || gun < 1 || gun > 15) { wrap.style.display = 'none'; return; }
+        var parts = currentUzatPlanlanan.split('.');
+        var base  = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        base.setDate(base.getDate() + gun);
+        var yeni = base.getDate().toString().padStart(2,'0') + '.'
+            + (base.getMonth()+1).toString().padStart(2,'0') + '.'
+            + base.getFullYear();
+        document.getElementById('uzatYeniTarih').textContent = yeni;
+        wrap.style.display = 'block';
+    }
+
+    function submitUzat(id) {
+        var gun = parseInt(document.getElementById('uzatma_gun').value);
+        if (isNaN(gun) || gun < 1 || gun > 15) {
+            showToast('error', 'Geçersiz Gün', 'Lütfen 1 ile 15 arasında bir gün girin.');
+            return;
+        }
+        var btn = document.getElementById('uzatSubmitBtn');
+        btn.disabled = true; btn.textContent = 'İşleniyor…';
+
+        var fd = new FormData();
+        fd.append('uzatma_gun', gun);
+
+        fetch('/odunc/' + id + '/sure-uzat', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+            body: fd
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showToast('success', data.message);
+                    closeUzatModal();
+                    setTimeout(function() { window.location.reload(); }, 800);
+                } else {
+                    showToast('error', data.message || 'Hata oluştu.');
+                    btn.disabled = false; btn.textContent = 'Süreyi Uzat';
+                }
+            })
+            .catch(function() {
+                showToast('error', 'Bağlantı hatası.');
+                btn.disabled = false; btn.textContent = 'Süreyi Uzat';
+            });
+    }
+
+    function submitIade(id) {
+        var btn = document.getElementById('iadeSubmitBtn');
+        btn.disabled = true; btn.textContent = 'İşleniyor…';
+        var formData = new FormData(document.getElementById('iadeForm'));
+        fetch('/odunc/' + id + '/iade', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' },
+            body: formData
+        })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.success) { showToast('success', data.message); closeIadeModal(); setTimeout(() => window.location.reload(), 800); }
+                else { showToast('error', data.message); btn.disabled = false; btn.textContent = 'İadeyi Tamamla'; }
+            })
+            .catch(() => { showToast('error', 'Bağlantı hatası.'); btn.disabled = false; });
+    }
+
+    // Radio style
+    document.querySelectorAll('[name=statu]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.radio-inner').forEach(el => {
+                el.style.borderColor = 'var(--border)'; el.style.background = '';
+            });
+            var inner = this.parentElement.querySelector('.radio-inner');
+            inner.style.borderColor = 'var(--primary)'; inner.style.background = 'rgba(122,92,60,.05)';
+        });
+    });
+</script>
+</body>
+</html>

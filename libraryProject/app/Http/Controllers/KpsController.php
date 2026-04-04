@@ -1,0 +1,132 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+
+class KpsController extends Controller
+{
+    public function kimlikSorgulaHttp(Request $request)
+    {
+        $tcKimlikNo  = trim($request->input('tc_kimlik', ''));
+        $dogumTarihi = trim($request->input('dogum_tarihi', ''));
+
+        if (!$tcKimlikNo || !$dogumTarihi) {
+            return response()->json([
+                'success' => false,
+                'message' => 'TC Kimlik No ve Doğum Tarihi gereklidir.',
+            ], 422);
+        }
+
+        if (strlen($tcKimlikNo) !== 11 || !ctype_digit($tcKimlikNo)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Geçerli bir TC Kimlik No giriniz (11 rakam).',
+            ], 422);
+        }
+
+        $ham = static::kimlikSorgula($dogumTarihi, $tcKimlikNo);
+
+        // Servisten başarılı yanıt geldiyse ad/soyad çıkar
+        if (isset($ham['success']) && $ham['success'] === true && isset($ham['sbsKisiDto'])) {
+            return response()->json([
+                'success' => true,
+                'ad'      => $ham['sbsKisiDto']['adi']     ?? '',
+                'soyad'   => $ham['sbsKisiDto']['soyadi']  ?? '',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Kimlik doğrulaması başarısız. Lütfen bilgileri kontrol edin.',
+        ], 422);
+    }
+
+    // ─── Kimlik Sorgula ──────────────────────────────────────────────────────────
+    public static function kimlikSorgula($dogumTarihi,$tcKimlikNo)
+    {
+        // Postman'daki birebir body string'i
+        $body = "dogumTarihi={$dogumTarihi}T00:00:00+02:00&tcKimlikNo={$tcKimlikNo}";
+
+        $response = Http::withHeaders([
+            'Authorization' => 'applicationkey=BRIDGE,requestdate=2022-07-21T15:55:51+03:00,md5hashcode=9278682f6caad7c8fa5ba3f330a3bfb3',
+            'Content-Type'  => 'application/json',
+        ])
+            ->withBody($body, 'application/json') // Kritik nokta: Veriyi olduğu gibi (raw) gönderiyoruz
+            ->withoutVerifying()
+            ->post('https://servis.beyoglu.bel.tr/FlexCityUi/rest/json/sbs/FindSbsKisiDtoByNvi');
+
+        return $response->json();
+    }
+
+    public function adresSorgulaHttp(Request $request)
+    {
+        $tcKimlikNo  = trim($request->input('tc_kimlik', ''));
+        $dogumTarihi = trim($request->input('dogum_tarihi', ''));
+
+        if (!$tcKimlikNo || !$dogumTarihi) {
+            return response()->json([
+                'success' => false,
+                'message' => 'TC Kimlik No ve Doğum Tarihi gereklidir.',
+            ], 422);
+        }
+
+        if (strlen($tcKimlikNo) !== 11 || !ctype_digit($tcKimlikNo)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Geçerli bir TC Kimlik No giriniz (11 rakam).',
+            ], 422);
+        }
+
+        $sonuc = static::adresSorgula($tcKimlikNo, $dogumTarihi);
+
+        return response()->json($sonuc);
+    }
+
+    // ─── Adres Sorgula (Core — diğer controller'lardan da çağrılabilir) ─────────
+    public static function adresSorgula(string $tcKimlikNo, string $dogumTarihi): array
+    {
+        // ── Gerçek servis entegrasyonu ───────────────────────────────────────────
+        // Servis hazır olduğunda aşağıdaki blok aktif edilecek:
+        //
+        // $body = "dogumTarihi={$dogumTarihi}T00:00:00+02:00&tcKimlikNo={$tcKimlikNo}";
+        // $response = Http::withHeaders([
+        //     'Authorization' => 'applicationkey=BRIDGE,requestdate=2022-07-21T15:55:51+03:00,md5hashcode=9278682f6caad7c8fa5ba3f330a3bfb3',
+        //     'Content-Type'  => 'application/json',
+        // ])
+        //     ->withBody($body, 'application/json')
+        //     ->withoutVerifying()
+        //     ->post('https://servis.beyoglu.bel.tr/FlexCityUi/rest/json/sbs/FindSbsAdresByNvi');
+        //
+        // $data = $response->json();
+        // return static::parseAdresSonucu($data);
+
+        // ── Mock implementasyon (servis entegrasyonuna kadar) ────────────────────
+        // TC'nin son rakamına göre farklı senaryolar simüle edilir.
+        $sonRakam = (int) substr($tcKimlikNo, -1);
+
+        if ($sonRakam % 3 === 0) {
+            // Senaryo A: Beyoğlu'nda ikamet ediyor
+            return [
+                'success'      => true,
+                'ikametEdiyor' => true,
+                'adres'        => 'Kemankeş Karamustafa Paşa Mah. Kemeraltı Cad. No:7 Daire:3 Beyoğlu/İstanbul',
+            ];
+        } elseif ($sonRakam % 3 === 1) {
+            // Senaryo B: Başka ilçede ikamet ediyor
+            return [
+                'success'      => true,
+                'ikametEdiyor' => false,
+                'adres'        => 'Kadıköy Mah. Moda Cad. No:42 Daire:8 Kadıköy/İstanbul',
+            ];
+        } else {
+            // Senaryo C: Kayıtlı adres bulunamadı
+            return [
+                'success'      => true,
+                'ikametEdiyor' => false,
+                'adres'        => null,
+            ];
+        }
+    }
+}
