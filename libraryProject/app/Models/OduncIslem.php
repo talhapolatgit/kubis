@@ -13,6 +13,7 @@ class OduncIslem extends Model
     protected $fillable = [
         'uye_id',
         'katalog_id',
+        'rezerve_id',
         'kutuphane_id',
         'odunc_tarihi',
         'iade_tarihi_planlanan',
@@ -43,6 +44,11 @@ class OduncIslem extends Model
     public function katalog(): BelongsTo
     {
         return $this->belongsTo(Katalog::class, 'katalog_id');
+    }
+
+    public function rezervasyon(): BelongsTo
+    {
+        return $this->belongsTo(UyeRezerve::class, 'rezerve_id');
     }
 
     public function kutuphane(): BelongsTo

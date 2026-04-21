@@ -400,23 +400,8 @@
                             <div class="form-grid cols-3">
                                 <div class="form-field">
                                     <label class="form-label" for="il">İl</label>
-                                    <select id="il" name="il" class="form-select">
-                                        <option value="">— Seçiniz —</option>
-                                        @foreach(config('turkiye.iller', [
-                                            'Adana','Adıyaman','Afyonkarahisar','Ağrı','Amasya','Ankara','Antalya','Artvin',
-                                            'Aydın','Balıkesir','Bilecik','Bingöl','Bitlis','Bolu','Burdur','Bursa','Çanakkale',
-                                            'Çankırı','Çorum','Denizli','Diyarbakır','Edirne','Elazığ','Erzincan','Erzurum',
-                                            'Eskişehir','Gaziantep','Giresun','Gümüşhane','Hakkari','Hatay','Isparta','Mersin',
-                                            'İstanbul','İzmir','Kars','Kastamonu','Kayseri','Kırklareli','Kırşehir','Kocaeli',
-                                            'Konya','Kütahya','Malatya','Manisa','Kahramanmaraş','Mardin','Muğla','Muş',
-                                            'Nevşehir','Niğde','Ordu','Rize','Sakarya','Samsun','Siirt','Sinop','Sivas',
-                                            'Tekirdağ','Tokat','Trabzon','Tunceli','Şanlıurfa','Uşak','Van','Yozgat','Zonguldak',
-                                            'Aksaray','Bayburt','Karaman','Kırıkkale','Batman','Şırnak','Bartın','Ardahan',
-                                            'Iğdır','Yalova','Karabük','Kilis','Osmaniye','Düzce'
-                                        ]) as $il)
-                                            <option value="{{ $il }}" {{ old('il', $uye->il) === $il ? 'selected' : '' }}>{{ $il }}</option>
-                                        @endforeach
-                                    </select>
+                                    <input type="text" id="il" name="il" class="form-input"
+                                           value="{{ old('il', $uye->il) }}" placeholder="İl adı (adres sorgulamayla KPS'den gelir)" autocomplete="address-level1" />
                                 </div>
                                 <div class="form-field">
                                     <label class="form-label" for="ilce">İlçe</label>
@@ -948,6 +933,8 @@
                     return;
                 }
 
+                applyAdresSorguToForm(data);
+
                 panel.style.display = 'block';
 
                 if (data.ikametEdiyor) {
@@ -969,6 +956,10 @@
                     wrap.style.display = 'none';
                     input.value = '';
                 }
+
+                if (data.ilAdi || data.ilceAdi || data.mahalleAdi || (data.kapi !== undefined && data.kapi !== null && String(data.kapi).trim() !== '') || (data.daire !== undefined && data.daire !== null && String(data.daire).trim() !== '')) {
+                    showToast('success', 'Adres getirildi', 'İl, ilçe, mahalle ve kapı/daire bilgileri forma yazıldı.');
+                }
             })
             .catch(function(err) {
                 btn.disabled = false;
@@ -976,6 +967,65 @@
                 console.error('Adres sorgu hatası:', err);
                 showToast('error', 'Bağlantı Hatası', 'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
             });
+    }
+
+    function kpsMahalleParcasi(mahalleAdi) {
+        if (!mahalleAdi) return '';
+        var m = String(mahalleAdi).trim();
+        if (/mahallesi?$/i.test(m)) return m;
+        return m;
+    }
+    function kpsSokakParcasi(data) {
+        var raw = (data.caddesokakAdi || data.sokakAdi || data.caddeAdi || '').trim();
+        if (!raw) return '';
+        var lo = raw.toLowerCase();
+        if (lo.endsWith(' sokak') || lo.endsWith(' cadde') || lo.endsWith(' bulvarı') || lo.endsWith(' bulvari')) return raw;
+        return raw;
+    }
+    function buildAcikAdresKpsLine(data) {
+        var parcalar = [];
+        var mz = kpsMahalleParcasi(data.mahalleAdi);
+        if (mz) parcalar.push(mz);
+        var sk = kpsSokakParcasi(data);
+        if (sk) parcalar.push(sk);
+        if (data.kapi !== undefined && data.kapi !== null && String(data.kapi).trim() !== '') {
+            parcalar.push('No ' + String(data.kapi).trim());
+        }
+        var daireIlce = [];
+        if (data.daire !== undefined && data.daire !== null && String(data.daire).trim() !== '') {
+            daireIlce.push('Daire ' + String(data.daire).trim());
+        }
+        if (data.ilceAdi) daireIlce.push(String(data.ilceAdi).trim());
+        if (daireIlce.length) parcalar.push(daireIlce.join(' '));
+        if (data.ilAdi) parcalar.push(String(data.ilAdi).trim());
+        return parcalar.filter(Boolean).join(' ');
+    }
+
+    function applyAdresSorguToForm(data) {
+        if (!data || !data.success) return;
+        var ilEl = document.getElementById('il');
+        var ilceEl = document.getElementById('ilce');
+        var mahalleEl = document.getElementById('mahalle');
+        var acikEl = document.getElementById('acik_adres');
+        if (ilEl && data.ilAdi) {
+            ilEl.value = String(data.ilAdi).trim();
+            ilEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (ilceEl && data.ilceAdi) {
+            ilceEl.value = String(data.ilceAdi).trim();
+            ilceEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (mahalleEl && data.mahalleAdi) {
+            mahalleEl.value = String(data.mahalleAdi).trim();
+            mahalleEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (acikEl) {
+            var satir = buildAcikAdresKpsLine(data);
+            if (satir) {
+                acikEl.value = satir;
+                acikEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
     }
 
 </script>

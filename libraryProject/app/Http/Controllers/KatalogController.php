@@ -13,6 +13,7 @@ use App\Models\Sekil;
 use App\Models\Ortam;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class KatalogController extends Controller
 {
@@ -110,7 +111,8 @@ class KatalogController extends Controller
             $s = $request->input('search');
             $query->where(function ($q) use ($s) {
                 $q->where('kunyeEserAdi',  'LIKE', "%{$s}%")
-                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%");
+                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%")
+                    ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$s}%");
             });
         }
         if ($request->filled('kategori'))     $query->where('kunyeKategori', (int) $request->input('kategori'));
@@ -148,9 +150,15 @@ class KatalogController extends Controller
         }
 
         $kitaplar = $query->orderBy('id', 'desc')->paginate($perPage);
+        $rows = collect($kitaplar->items())->map(function (Katalog $kitap) {
+            $row = $kitap->toArray();
+            $row['kunyeKapakResmi'] = $kitap->kapak_resim_path;
+
+            return $row;
+        })->all();
 
         return response()->json([
-            'rows'          => $kitaplar->items(),
+            'rows'          => $rows,
             'current_page'  => $kitaplar->currentPage(),
             'last_page'     => $kitaplar->lastPage(),
             'per_page'      => $kitaplar->perPage(),
@@ -285,7 +293,7 @@ class KatalogController extends Controller
     // Format: YYYYMMDD + 4 haneli sıra (örn. 202603150001)
     private function nextDemirbasNo(): string
     {
-        $bugun  = now()->format('Ymd');      // örn. "20260315"
+        $bugun  = now()->format('ym');      // örn. "202603"
         $prefix = $bugun;                    // 8 karakter
 
         // Bugün girilen en yüksek demirbaşı bul
@@ -300,7 +308,7 @@ class KatalogController extends Controller
             $sira = 1;
         }
 
-        return $prefix . str_pad($sira, 4, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($sira, 5, '0', STR_PAD_LEFT);
     }
 
     // ─── Yeni Form ──────────────────────────────────────────────────────────────
@@ -332,10 +340,16 @@ class KatalogController extends Controller
     public function store(Request $request)
     {
         abort_unless($this->canSaveBooks(), 403);
+
+        $allowedKutuphaneIds = $this->allowedKutuphaneIdsForSave();
         $request->validate([
             'kunyeEserAdi'  => 'required|string|max:500',
             'kunyeYazar'    => 'required|string|max:255',
             'kunyeISBNISSN' => 'required|string|max:50',
+            'kutuphaneId'   => ['required', 'integer', Rule::in($allowedKutuphaneIds)],
+        ], [
+            'kutuphaneId.required' => 'Lütfen bir kütüphane seçin.',
+            'kutuphaneId.in'       => 'Seçilen kütüphane geçerli değil veya bu kütüphaneye kayıt yetkiniz yok.',
         ]);
 
         $data = $request->only([
@@ -360,12 +374,6 @@ class KatalogController extends Controller
 
         // Kaydı oluşturan kullanıcı otomatik atanır
         $data['created_user'] = auth()->id();
-
-        // Kütüphane kaydetme yetkisine göre doğrulama
-        $allowedIds = $this->allowedKutuphaneIdsForSave();
-        if (!empty($data['kutuphaneId']) && !in_array((int) $data['kutuphaneId'], $allowedIds, true)) {
-            return response()->json(['success' => false, 'message' => 'Bu kütüphaneye kayıt yetkiniz yok.'], 403);
-        }
 
         // ── Demirbaş No: gönderilen değer boşsa / elle geçersizse yeniden üret ──
         // DB'ye kayıt sırasında her zaman güncel ve benzersiz numara garantilensin.
@@ -410,6 +418,11 @@ class KatalogController extends Controller
                 Storage::disk('public')->put($filename, $imageContents);
                 $data['kunyeKapakResmi'] = $filename;
             } catch (\Exception $e) {}
+        } elseif ($request->filled('copy_kapak_from_katalog_id')) {
+            $copied = $this->duplicateKunyeKapakFromKatalog((int) $request->input('copy_kapak_from_katalog_id'));
+            if ($copied !== null) {
+                $data['kunyeKapakResmi'] = $copied;
+            }
         }
 
         Katalog::create($data);
@@ -488,11 +501,17 @@ class KatalogController extends Controller
             $ids = auth()->user()->yetkiliKutuphaneIds();
             abort_unless(in_array((int) $kitap->kutuphaneId, $ids, true), 403);
         }
-        $request->validate([
+        $durumKilitli = in_array($kitap->kunyeDurum, ['Ödünç', 'Rezerve'], true);
+
+        $validateRules = [
             'kunyeEserAdi'  => 'required|string|max:500',
             'kunyeYazar'    => 'required|string|max:255',
             'kunyeISBNISSN' => 'required|string|max:100',
-        ]);
+        ];
+        if (!$durumKilitli) {
+            $validateRules['kunyeDurum'] = ['required', Rule::in(['Rafta', 'Kayıp', 'Bakımda', 'Hurdaya Ayrıldı'])];
+        }
+        $request->validate($validateRules);
 
         $data = $request->only([
             'kunyeSiniflamaYer', 'kunyeYayinTarihi',
@@ -512,7 +531,7 @@ class KatalogController extends Controller
         // kunyeDemirbasKN güncellenmez — ne formdan gelirse gelsin yoksayılır
 
         // ── Checkbox alanları ─────────────────────────────────────────────────
-        $data['oduncVerilemez'] = $request->has('oduncVerilemez') ? 1 : 0;
+        $data['oduncVerilemez'] = $request->has('oduncVerilemez') == "true" ? "true" : "false";
         $data['etiketlendi']    = $request->has('etiketlendi')    ? 1 : 0;
 
         // ── Güncellemeyi yapan kullanıcı otomatik atanır ───────────────────────
@@ -568,6 +587,11 @@ class KatalogController extends Controller
             $data['tedarikci'] = null; $data['tedarikciTelefon'] = null; $data['tedarikciEposta'] = null;
         }
 
+        // ── Durum: ödünç/rezerve iken güncellenmez; aksi halde yalnızca manuel değerler ──
+        if (!$durumKilitli) {
+            $data['kunyeDurum'] = $request->input('kunyeDurum');
+        }
+
         // ── Kapak ──────────────────────────────────────────────────────────────
         if ($request->hasFile('kunyeKapakResmi')) {
             if ($kitap->kunyeKapakResmi) Storage::disk('public')->delete($kitap->kunyeKapakResmi);
@@ -593,4 +617,52 @@ class KatalogController extends Controller
         return redirect()->route('katalog.index')->with('success', '"' . $data['kunyeEserAdi'] . '" başarıyla güncellendi.');
     }
 
+    /**
+     * Kitap kopyalama: kaynak kaydın kapağını public disk üzerinde yeni bir dosyaya kopyalar (veya URL ise indirir).
+     */
+    private function duplicateKunyeKapakFromKatalog(int $katalogId): ?string
+    {
+        $src = Katalog::find($katalogId);
+        if (!$src || !$src->kunyeKapakResmi) {
+            return null;
+        }
+
+        $p = trim($src->kunyeKapakResmi);
+        if ($p === '') {
+            return null;
+        }
+
+        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+            try {
+                $imageContents = \Illuminate\Support\Facades\Http::timeout(30)->get($p)->body();
+                if ($imageContents === '' || $imageContents === false) {
+                    return null;
+                }
+                $filename = 'kapaklar/' . uniqid('copy_') . '.jpg';
+                Storage::disk('public')->put($filename, $imageContents);
+
+                return $filename;
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        $oldPath = ltrim($p, '/');
+        if (str_starts_with($oldPath, 'storage/')) {
+            $oldPath = substr($oldPath, strlen('storage/'));
+        }
+
+        if (!Storage::disk('public')->exists($oldPath)) {
+            return null;
+        }
+
+        $ext = pathinfo($oldPath, PATHINFO_EXTENSION);
+        if ($ext === '') {
+            $ext = 'jpg';
+        }
+        $newPath = 'kapaklar/' . uniqid('copy_') . '.' . $ext;
+        Storage::disk('public')->copy($oldPath, $newPath);
+
+        return $newPath;
+    }
 }

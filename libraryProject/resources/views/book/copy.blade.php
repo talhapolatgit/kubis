@@ -1033,8 +1033,8 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                                 </button>
                             </div>
-                            <div class="cover-upload-area" id="coverUploadArea" role="button" tabindex="0" aria-label="Kitap kapak resmi yukle">
-                                <div class="cover-placeholder" id="coverPlaceholder">
+                            <div class="cover-upload-area {{ $kitap->kunyeKapakResmi ? 'has-image' : '' }}" id="coverUploadArea" role="button" tabindex="0" aria-label="Kitap kapak resmi yukle">
+                                <div class="cover-placeholder" id="coverPlaceholder" style="{{ $kitap->kunyeKapakResmi ? 'display:none' : '' }}">
                                     <div class="cover-icon-circle">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
                                     </div>
@@ -1048,10 +1048,18 @@
                                         <span>Dosya Seç</span>
                                     </div>
                                 </div>
-                                <!-- Preview will be injected here -->
+                                @if($kitap->kunyeKapakResmi)
+                                    <img id="existingCoverImg" src="{{ $kitap->kapak_resim_path }}" alt="Kapak" style="width:100%;height:100%;object-fit:cover;">
+                                    <button type="button" class="cover-remove-btn" id="coverRemoveBtn" aria-label="Resmi kaldır">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                    </button>
+                                @endif
                             </div>
                             <input type="file" accept="image/*" id="coverInput" name="kunyeKapakResmi" style="display:none" aria-hidden="true" />
-                            <p class="cover-change-hint" id="coverChangeHint" style="display:none">Değiştirmek için resme tıklayin</p>
+                            @if($kitap->kunyeKapakResmi)
+                                <input type="hidden" name="copy_kapak_from_katalog_id" id="copyKapakFromId" value="{{ $kitap->id }}" />
+                            @endif
+                            <p class="cover-change-hint" id="coverChangeHint" style="{{ $kitap->kunyeKapakResmi ? '' : 'display:none' }}">Değiştirmek için resme tıklayin</p>
                         </div>
 
                         <!-- RIGHT: Form Fields -->
@@ -1435,9 +1443,9 @@
 
                                     <div class="form-field">
                                         <label class="form-label" for="kutuphaneId">
-                                            Kütüphane
+                                            Kütüphane <span class="required">*</span>
                                         </label>
-                                        <select class="form-select" id="kutuphaneId" name="kutuphaneId">
+                                        <select class="form-select form-select-required" id="kutuphaneId" name="kutuphaneId" required>
                                             <option value="">— Seçiniz —</option>
                                             @foreach($kutuphaneler as $kutuphane)
                                                 <option value="{{ $kutuphane->id }}"
@@ -1535,9 +1543,26 @@
     var removeBtn = null;
 
     coverUploadArea.addEventListener('click', function(e) {
-        if (removeBtn && e.target === removeBtn || (removeBtn && removeBtn.contains(e.target))) return;
+        if (removeBtn && (e.target === removeBtn || removeBtn.contains(e.target))) return;
+        var existingRemoveBtn = document.getElementById('coverRemoveBtn');
+        if (existingRemoveBtn && (e.target === existingRemoveBtn || existingRemoveBtn.contains(e.target))) return;
         coverInput.click();
     });
+
+    var existingRemoveBtnInit = document.getElementById('coverRemoveBtn');
+    if (existingRemoveBtnInit) {
+        existingRemoveBtnInit.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var existingImg = document.getElementById('existingCoverImg');
+            if (existingImg) existingImg.style.display = 'none';
+            existingRemoveBtnInit.style.display = 'none';
+            coverPlaceholder.style.display = 'flex';
+            coverUploadArea.classList.remove('has-image');
+            document.getElementById('coverChangeHint').style.display = 'none';
+            var copyFrom = document.getElementById('copyKapakFromId');
+            if (copyFrom) copyFrom.value = '';
+        });
+    }
 
     coverUploadArea.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -1555,11 +1580,28 @@
         coverUploadArea.classList.remove('drag-over');
     });
 
+    function isLikelyImageFile(file) {
+        if (!file) return false;
+        if (file.type && file.type.indexOf('image/') === 0) return true;
+        return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name || '');
+    }
+
+    function assignFileToCoverInput(file) {
+        try {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            coverInput.files = dt.files;
+        } catch (err) {
+            console.error('Kapak dosyası inputa atanamadı:', err);
+        }
+    }
+
     coverUploadArea.addEventListener('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         coverUploadArea.classList.remove('drag-over');
-        var file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
+        var file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && isLikelyImageFile(file)) {
             handleCoverFile(file);
         }
     });
@@ -1570,6 +1612,16 @@
     });
 
     function handleCoverFile(file) {
+        assignFileToCoverInput(file);
+        var isbnHidden = document.getElementById('isbnCoverUrl');
+        if (isbnHidden) isbnHidden.value = '';
+        var copyFrom = document.getElementById('copyKapakFromId');
+        if (copyFrom) copyFrom.value = '';
+        var existingImg = document.getElementById('existingCoverImg');
+        if (existingImg) existingImg.style.display = 'none';
+        var existingRmBtn = document.getElementById('coverRemoveBtn');
+        if (existingRmBtn) existingRmBtn.style.display = 'none';
+
         var reader = new FileReader();
         reader.onloadend = function() {
             showCoverPreview(reader.result);
@@ -1644,6 +1696,12 @@
                         if (data.cover) {
                             // Önce file input'u sıfırla (URL kaynağına geçiyoruz)
                             coverInput.value = '';
+                            var copyFrom = document.getElementById('copyKapakFromId');
+                            if (copyFrom) copyFrom.value = '';
+                            var exImg = document.getElementById('existingCoverImg');
+                            if (exImg) exImg.style.display = 'none';
+                            var exRm = document.getElementById('coverRemoveBtn');
+                            if (exRm) exRm.style.display = 'none';
                             // Hidden input ile URL'yi form'a ekle
                             var hidden = document.getElementById('isbnCoverUrl');
                             if (!hidden) {
@@ -1697,6 +1755,12 @@
                 .then(function (data) {
                     if (data.success && data.cover) {
                         coverInput.value = '';
+                        var copyFromCs = document.getElementById('copyKapakFromId');
+                        if (copyFromCs) copyFromCs.value = '';
+                        var exImgCs = document.getElementById('existingCoverImg');
+                        if (exImgCs) exImgCs.style.display = 'none';
+                        var exRmCs = document.getElementById('coverRemoveBtn');
+                        if (exRmCs) exRmCs.style.display = 'none';
                         var hidden = document.getElementById('isbnCoverUrl');
                         if (!hidden) {
                             hidden = document.createElement('input');
@@ -1737,6 +1801,8 @@
         coverInput.value = '';
         var isbnHidden = document.getElementById('isbnCoverUrl');
         if (isbnHidden) isbnHidden.value = '';
+        var copyFromRm = document.getElementById('copyKapakFromId');
+        if (copyFromRm) copyFromRm.value = '';
     }
 
     // ============================
@@ -1753,9 +1819,16 @@
         var title  = document.getElementById('kunyeEserAdi').value.trim();
         var author = document.getElementById('kunyeYazarSearch').value.trim();
         var isbn   = document.getElementById('kunyeISBNISSN').value.trim();
+        var kutuphaneEl = document.getElementById('kutuphaneId');
+        var kutuphaneId = kutuphaneEl ? String(kutuphaneEl.value).trim() : '';
 
         if (!title || !author || !isbn) {
             showToast('error', 'Zorunlu alanlar eksik', 'Eser adı, yazar ve ISBN zorunludur.');
+            return;
+        }
+        if (!kutuphaneId) {
+            showToast('error', 'Zorunlu alanlar eksik', 'Lütfen bir kütüphane seçin.');
+            if (kutuphaneEl) kutuphaneEl.focus();
             return;
         }
 
@@ -1793,7 +1866,9 @@
             .then(function(result) {
                 if (result.status === 200 && result.data.success) {
                     showToast('success', 'Kayıt Başarılı', result.data.message || 'Kitap başarıyla eklendi.');
-                    resetForm();
+                    setTimeout(function() {
+                        window.location.href = @json(route('katalog.index'));
+                    }, 400);
                 } else if (result.status === 422 && result.data.errors) {
                     // Validation hataları
                     var msgs = Object.values(result.data.errors).flat();

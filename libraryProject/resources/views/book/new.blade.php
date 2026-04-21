@@ -1495,8 +1495,6 @@
                                         <label class="form-label" for="kunyeDurum">Durum</label>
                                         <select class="form-select" id="kunyeDurum" name="kunyeDurum">
                                             <option value="Rafta" selected>Rafta (Müsait)</option>
-                                            <option value="Ödünç">Ödünç Verildi</option>
-                                            <option value="Rezerve">Rezerve Edildi</option>
                                             <option value="Kayıp">Kayıp</option>
                                             <option value="Bakımda">Bakımda / Onarımda</option>
                                             <option value="Hurda">Hurdaya Ayrıldı</option>
@@ -1505,9 +1503,9 @@
 
                                     <div class="form-field">
                                         <label class="form-label" for="kutuphaneId">
-                                            Kütüphane
+                                            Kütüphane <span class="required">*</span>
                                         </label>
-                                        <select class="form-select" id="kutuphaneId" name="kutuphaneId">
+                                        <select class="form-select form-select-required" id="kutuphaneId" name="kutuphaneId" required>
                                             <option value="">— Seçiniz —</option>
                                             @foreach($kutuphaneler as $kutuphane)
                                                 <option value="{{ $kutuphane->id }}"
@@ -1651,11 +1649,28 @@
         coverUploadArea.classList.remove('drag-over');
     });
 
+    function isLikelyImageFile(file) {
+        if (!file) return false;
+        if (file.type && file.type.indexOf('image/') === 0) return true;
+        return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name || '');
+    }
+
+    function assignFileToCoverInput(file) {
+        try {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            coverInput.files = dt.files;
+        } catch (err) {
+            console.error('Kapak dosyası inputa atanamadı:', err);
+        }
+    }
+
     coverUploadArea.addEventListener('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         coverUploadArea.classList.remove('drag-over');
-        var file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
+        var file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && isLikelyImageFile(file)) {
             handleCoverFile(file);
         }
     });
@@ -1666,6 +1681,10 @@
     });
 
     function handleCoverFile(file) {
+        assignFileToCoverInput(file);
+        var isbnHidden = document.getElementById('isbnCoverUrl');
+        if (isbnHidden) isbnHidden.value = '';
+
         var reader = new FileReader();
         reader.onloadend = function() {
             showCoverPreview(reader.result);
@@ -1849,9 +1868,16 @@
         var title  = document.getElementById('kunyeEserAdi').value.trim();
         var author = document.getElementById('kunyeYazarSearch').value.trim();
         var isbn   = document.getElementById('kunyeISBNISSN').value.trim();
+        var kutuphaneEl = document.getElementById('kutuphaneId');
+        var kutuphaneId = kutuphaneEl ? String(kutuphaneEl.value).trim() : '';
 
         if (!title || !author || !isbn) {
             showToast('error', 'Zorunlu alanlar eksik', 'Eser adı, yazar ve ISBN zorunludur.');
+            return;
+        }
+        if (!kutuphaneId) {
+            showToast('error', 'Zorunlu alanlar eksik', 'Lütfen bir kütüphane seçin.');
+            if (kutuphaneEl) kutuphaneEl.focus();
             return;
         }
 
@@ -1889,7 +1915,9 @@
             .then(function(result) {
                 if (result.status === 200 && result.data.success) {
                     showToast('success', 'Kayıt Başarılı', result.data.message || 'Kitap başarıyla eklendi.');
-                    resetForm();
+                    setTimeout(function() {
+                        window.location.href = @json(route('katalog.index'));
+                    }, 400);
                 } else if (result.status === 422 && result.data.errors) {
                     // Validation hataları
                     var msgs = Object.values(result.data.errors).flat();

@@ -1512,13 +1512,33 @@
                                     Stok &amp; Durum
                                 </h3>
                                 <div class="form-grid cols-3">
+                                    @php
+                                        $durumKilitli = in_array($kitap->kunyeDurum, ['Ödünç', 'Rezerve'], true);
+                                        $manuelDurumlar = ['Rafta' => 'Rafta (Müsait)', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'];
+                                        $tumDurumEtiketleri = ['Rafta' => 'Rafta (Müsait)', 'Ödünç' => 'Ödünç Verildi', 'Rezerve' => 'Rezerve Edildi', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'];
+                                    @endphp
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDurum">Durum</label>
-                                        <select class="form-select" id="kunyeDurum" name="kunyeDurum" disabled>
-                                            @foreach(['Rafta' => 'Rafta (Müsait)', 'Ödünç' => 'Ödünç Verildi','Rezerve' => 'Rezerve Edildi', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'] as $val => $label)
-                                                <option value="{{ $val }}" {{ old('kunyeDurum', $kitap->kunyeDurum) == $val ? 'selected' : '' }}>{{ $label }}</option>
-                                            @endforeach
-                                        </select>
+                                        @if($durumKilitli)
+                                            <select class="form-select" id="kunyeDurum" disabled aria-describedby="kunyeDurumKilitAciklama">
+                                                @foreach($tumDurumEtiketleri as $val => $label)
+                                                    <option value="{{ $val }}" {{ old('kunyeDurum', $kitap->kunyeDurum) == $val ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="hidden" name="kunyeDurum" value="{{ old('kunyeDurum', $kitap->kunyeDurum) }}" tabindex="-1" aria-hidden="true" />
+                                            <p id="kunyeDurumKilitAciklama" class="form-hint" style="margin-top:6px;font-size:12px;color:var(--muted-foreground);">
+                                                Ödünçte veya rezerve iken durum sistem tarafından yönetilir; buradan değiştirilemez.
+                                            </p>
+                                        @else
+                                            <select class="form-select" id="kunyeDurum" name="kunyeDurum">
+                                                @foreach($manuelDurumlar as $val => $label)
+                                                    <option value="{{ $val }}" {{ old('kunyeDurum', $kitap->kunyeDurum) == $val ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            <p class="form-hint" style="margin-top:6px;font-size:12px;color:var(--muted-foreground);">
+                                                Rafta, kayıp, bakımda veya hurda olarak güncelleyebilirsiniz.
+                                            </p>
+                                        @endif
                                     </div>
 
                                     <div class="form-field">
@@ -1540,7 +1560,7 @@
                                         <span class="form-label">Özellikler</span>
                                         <div class="checkbox-group" style="margin-top:2px;">
                                             <label class="checkbox-item">
-                                                <input type="checkbox" id="oduncVerilemez" name="oduncVerilemez" value="1" {{ old('oduncVerilemez', $kitap->oduncVerilemez) ? 'checked' : '' }}>
+                                                <input type="checkbox" id="oduncVerilemez" name="oduncVerilemez" value="true" {{ old('oduncVerilemez', $kitap->oduncVerilemez == "true") ? 'checked' : '' }}>
                                                 <span class="checkbox-box">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                                 </span>
@@ -1706,11 +1726,28 @@
         coverUploadArea.classList.remove('drag-over');
     });
 
+    function isLikelyImageFile(file) {
+        if (!file) return false;
+        if (file.type && file.type.indexOf('image/') === 0) return true;
+        return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name || '');
+    }
+
+    function assignFileToCoverInput(file) {
+        try {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            coverInput.files = dt.files;
+        } catch (err) {
+            console.error('Kapak dosyası inputa atanamadı:', err);
+        }
+    }
+
     coverUploadArea.addEventListener('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         coverUploadArea.classList.remove('drag-over');
-        var file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
+        var file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && isLikelyImageFile(file)) {
             handleCoverFile(file);
         }
     });
@@ -1721,6 +1758,16 @@
     });
 
     function handleCoverFile(file) {
+        assignFileToCoverInput(file);
+        var isbnHidden = document.getElementById('isbnCoverUrl');
+        if (isbnHidden) isbnHidden.value = '';
+        var kapakSil = document.getElementById('kapakSilInput');
+        if (kapakSil) kapakSil.value = '0';
+        var existingImg = document.getElementById('existingCoverImg');
+        if (existingImg) existingImg.style.display = 'none';
+        var existingRmBtn = document.getElementById('coverRemoveBtn');
+        if (existingRmBtn) existingRmBtn.style.display = 'none';
+
         var reader = new FileReader();
         reader.onloadend = function() {
             showCoverPreview(reader.result);
@@ -1885,6 +1932,9 @@
             .then(function(result) {
                 if (result.status === 200 && result.data.success) {
                     showToast('success', 'Güncelleme Başarılı', result.data.message || 'Kitap başarıyla güncellendi.');
+                    setTimeout(function() {
+                        window.location.href = @json(route('katalog.index'));
+                    }, 400);
                 } else if (result.status === 422 && result.data.errors) {
                     var msgs = Object.values(result.data.errors).flat();
                     showToast('error', 'Doğrulama Hatası', msgs[0] || 'Lütfen formu kontrol edin.');

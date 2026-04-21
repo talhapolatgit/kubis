@@ -176,7 +176,7 @@ class KatalogSoapService
         $kitaplar = $query->select([
             'id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeYayinYeri',
             'kunyeYayinlayan', 'kunyeYayinTarihi', 'kunyeISBNISSN',
-            'kunyeSiniflamaYer', 'kunyeDurum', 'kutuphaneId',
+            'kunyeSiniflamaYer', 'kunyeDurum', 'kutuphaneId', 'iade_tarihi_planlanan',
         ])->limit(100)->get();
 
         if ($kitaplar->isEmpty()) {
@@ -204,7 +204,7 @@ class KatalogSoapService
                 'bulunduguKutuphaneKodu' => (string) ($k->kutuphaneId ?? ''),
                 'yerNumarasi'            => (string) ($k->kunyeSiniflamaYer ?? ''),
                 'durumu'                 => (string) ($k->kunyeDurum        ?? ''),
-                'sonIadeTarihi'          => '',
+                'sonIadeTarihi'          => (string) ($k->iade_tarihi_planlanan ? \Carbon\Carbon::parse($k->iade_tarihi_planlanan)->format('d-m-Y') : ''),
                 'detayListesi'           => (object) ['detay' => []],
             ];
         })->values()->all();

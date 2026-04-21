@@ -6,11 +6,21 @@ use App\Models\OduncIslem;
 use App\Models\Uye;
 use App\Models\Katalog;
 use App\Models\Kutuphane;
+use App\Models\UyeBekleme;
+use App\Models\UyeRezerve;
+use App\Services\BeyogluWebhookService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OduncController extends Controller
 {
+
+    public function __construct(
+        private readonly BeyogluWebhookService $webhookService
+    ) {}
+
+
     private function canViewAllLoans(): bool
     {
         $u = auth()->user();
@@ -163,9 +173,7 @@ class OduncController extends Controller
                 'kitap'          => $i->katalog->kunyeEserAdi,
                 'kitap_isbn'     => $i->katalog->kunyeISBNISSN,
                 'kitap_demir'    => $i->katalog->kunyeDemirbasKN,
-                'kitap_kapak'    => $i->katalog->kunyeKapakResmi
-                    ? asset('storage/' . $i->katalog->kunyeKapakResmi)
-                    : null,
+                'kitap_kapak'    => $i->katalog->kapak_resim_path,
                 'odunc_tarihi'   => $i->odunc_tarihi->format('d.m.Y'),
                 'odunc_veren'    => $i->oduncVeren?->name,
                 'iade_planlanan' => $i->iade_tarihi_planlanan->format('d.m.Y'),
@@ -323,22 +331,10 @@ class OduncController extends Controller
         // Katalog listesinden "Ödünç Ver" ile gelindiyse kitabı önceden yükle
         $preKitap = null;
         if ($request->filled('katalog_id')) {
-            $k = \App\Models\Katalog::find((int) $request->input('katalog_id'));
+            $k = Katalog::find((int) $request->input('katalog_id'));
             if ($k) {
-                $oduncTa = \App\Models\OduncIslem::where('katalog_id', $k->id)
-                    ->where('statu', 'aktif')->exists();
-                $preKitap = [
-                    'id'             => $k->id,
-                    'label'          => $k->kunyeEserAdi,
-                    'yazar'          => $k->kunyeYazar,
-                    'isbn'           => $k->kunyeISBNISSN,
-                    'demir'          => $k->kunyeDemirbasKN,
-                    'kapak'          => $k->kunyeKapakResmi ? asset('storage/' . $k->kunyeKapakResmi) : null,
-                    'odunc_ta'       => $oduncTa,
-                    'kunyeDurum'     => $k->kunyeDurum,
-                    'oduncVerilemez' => (bool) $k->oduncVerilemez,
-                    'verilebilir'    => $k->kunyeDurum === 'Rafta' && !$k->oduncVerilemez && !$oduncTa,
-                ];
+                $preUyeIdForKitap = $request->filled('uye_id') ? (int) $request->input('uye_id') : null;
+                $preKitap         = $this->kitapAraSatir($k, $preUyeIdForKitap);
             }
         }
 
@@ -387,66 +383,99 @@ class OduncController extends Controller
         return response()->json($uyeler);
     }
 
+    /**
+     * Kitap arama / ön seçim için JSON satırı (isteğe bağlı üye: Rezerve + aktif rezervasyon eşleşmesi).
+     */
+    private function kitapAraSatir(Katalog $k, ?int $uyeId = null): array
+    {
+        $oduncTa = OduncIslem::where('katalog_id', $k->id)->where('statu', 'aktif')->exists();
+        $rezerveAktifBuUye   = false;
+        $rezerveEdenUyeAdi   = null;
+        if ($k->kunyeDurum === 'Rezerve') {
+            $rezKayit = UyeRezerve::query()
+                ->where('katalog_id', $k->id)
+                ->where('iptalMi', 'false')
+                ->where('rezerve_bitis', '>', now())
+                ->where('oduncAldiMi', 'false')
+                ->with('uye:id,ad,soyad')
+                ->first();
+            if ($rezKayit && $rezKayit->uye) {
+                $rezerveEdenUyeAdi = trim($rezKayit->uye->ad . ' ' . $rezKayit->uye->soyad);
+            }
+            if ($rezKayit && $uyeId !== null && $uyeId > 0) {
+                $rezerveAktifBuUye = (int) $rezKayit->uye_id === $uyeId;
+            }
+        }
+        $verilebilir = !$k->oduncVerilemez && !$oduncTa && (
+            $k->kunyeDurum === 'Rafta'
+            || ($k->kunyeDurum === 'Rezerve' && $rezerveAktifBuUye)
+        );
+
+        return [
+            'id'                     => $k->id,
+            'label'                  => $k->kunyeEserAdi,
+            'yazar'                  => $k->kunyeYazar,
+            'isbn'                   => $k->kunyeISBNISSN,
+            'demir'                  => $k->kunyeDemirbasKN,
+            'kapak'                  => $k->kapak_resim_path,
+            'odunc_ta'               => $oduncTa,
+            'kunyeDurum'             => $k->kunyeDurum,
+            'oduncVerilemez'         => $k->oduncVerilemez,
+            'rezerve_aktif_bu_uye'   => $rezerveAktifBuUye,
+            'rezerve_eden_uye_adi'   => $rezerveEdenUyeAdi,
+            'verilebilir'            => $verilebilir,
+        ];
+    }
+
     // ─── Kitap Arama (AJAX) ─────────────────────────────────────────────────────
     public function kitapAra(Request $request)
     {
-        $term = trim($request->input('q', ''));
-        if (strlen($term) < 2) return response()->json([]);
+        $uyeId = $request->filled('uye_id') ? (int) $request->input('uye_id') : null;
 
-        if($this->canDoAllLoans()) {
+        if ($request->filled('katalog_id')) {
+            $k = Katalog::find((int) $request->input('katalog_id'));
+            if (!$k) {
+                return response()->json([]);
+            }
+            if (!$this->canDoAllLoans()) {
+                $ids = auth()->user()->yetkiliKutuphaneIds();
+                if ($k->kutuphaneId && !in_array((int) $k->kutuphaneId, $ids ?: [-1], true)) {
+                    return response()->json([]);
+                }
+            }
+
+            return response()->json([$this->kitapAraSatir($k, $uyeId)]);
+        }
+
+        $term = trim($request->input('q', ''));
+        if (strlen($term) < 2) {
+            return response()->json([]);
+        }
+
+        if ($this->canDoAllLoans()) {
             $kitaplar = Katalog::where(function ($q) use ($term) {
-                $q->where('kunyeEserAdi',    'LIKE', "%{$term}%")
-                    ->orWhere('kunyeYazar',    'LIKE', "%{$term}%")
+                $q->where('kunyeEserAdi', 'LIKE', "%{$term}%")
+                    ->orWhere('kunyeYazar', 'LIKE', "%{$term}%")
                     ->orWhere('kunyeISBNISSN', 'LIKE', "%{$term}%")
-                    ->orWhere('kunyeDemirbasKN','LIKE', "%{$term}%");
+                    ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$term}%");
             })
                 ->select('id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeISBNISSN', 'kunyeDemirbasKN', 'kunyeKapakResmi', 'kunyeDurum', 'oduncVerilemez')
                 ->limit(8)->get()
-                ->map(function ($k) {
-                    $oduncTa = OduncIslem::where('katalog_id', $k->id)->where('statu', 'aktif')->exists();
-                    return [
-                        'id'              => $k->id,
-                        'label'           => $k->kunyeEserAdi,
-                        'yazar'           => $k->kunyeYazar,
-                        'isbn'            => $k->kunyeISBNISSN,
-                        'demir'           => $k->kunyeDemirbasKN,
-                        'kapak'           => $k->kunyeKapakResmi ? asset('storage/' . $k->kunyeKapakResmi) : null,
-                        'odunc_ta'        => $oduncTa,
-                        'kunyeDurum'      => $k->kunyeDurum,
-                        'oduncVerilemez'  => (bool) $k->oduncVerilemez,
-                        // Kitap ödünç verilebilir mi? Sadece Rafta + ödünç izni var + şu an ödünçte değil
-                        'verilebilir'     => $k->kunyeDurum === 'Rafta' && !$k->oduncVerilemez && !$oduncTa,
-                    ];
-                });
-        } elseif($this->canDoScopedLoans()) {
+                ->map(fn (Katalog $k) => $this->kitapAraSatir($k, $uyeId));
+        } elseif ($this->canDoScopedLoans()) {
             $ids = auth()->user()->yetkiliKutuphaneIds();
-            $kitaplar = Katalog::whereIn('kutuphaneId', $ids)
+            $kitaplar = Katalog::whereIn('kutuphaneId', $ids ?: [-1])
                 ->where(function ($q) use ($term) {
-                    $q->where('kunyeEserAdi',    'LIKE', "%{$term}%")
-                        ->orWhere('kunyeYazar',    'LIKE', "%{$term}%")
+                    $q->where('kunyeEserAdi', 'LIKE', "%{$term}%")
+                        ->orWhere('kunyeYazar', 'LIKE', "%{$term}%")
                         ->orWhere('kunyeISBNISSN', 'LIKE', "%{$term}%")
-                        ->orWhere('kunyeDemirbasKN','LIKE', "%{$term}%");
-        })
-        ->select('id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeISBNISSN', 'kunyeDemirbasKN', 'kunyeKapakResmi', 'kunyeDurum', 'oduncVerilemez')
-        ->limit(8)->get()
-        ->map(function ($k) {
-            $oduncTa = OduncIslem::where('katalog_id', $k->id)->where('statu', 'aktif')->exists();
-            return [
-                'id'              => $k->id,
-                'label'           => $k->kunyeEserAdi,
-                'yazar'           => $k->kunyeYazar,
-                'isbn'            => $k->kunyeISBNISSN,
-                'demir'           => $k->kunyeDemirbasKN,
-                'kapak'           => $k->kunyeKapakResmi ? asset('storage/' . $k->kunyeKapakResmi) : null,
-                'odunc_ta'        => $oduncTa,
-                'kunyeDurum'      => $k->kunyeDurum,
-                'oduncVerilemez'  => (bool) $k->oduncVerilemez,
-                // Kitap ödünç verilebilir mi? Sadece Rafta + ödünç izni var + şu an ödünçte değil
-                'verilebilir'     => $k->kunyeDurum === 'Rafta' && !$k->oduncVerilemez && !$oduncTa,
-            ];
-        });
+                        ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$term}%");
+                })
+                ->select('id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeISBNISSN', 'kunyeDemirbasKN', 'kunyeKapakResmi', 'kunyeDurum', 'oduncVerilemez')
+                ->limit(8)->get()
+                ->map(fn (Katalog $k) => $this->kitapAraSatir($k, $uyeId));
         } else {
-            $kitaplar = [];
+            $kitaplar = collect();
         }
 
         return response()->json($kitaplar);
@@ -455,6 +484,7 @@ class OduncController extends Controller
     // ─── Ödünç Ver ──────────────────────────────────────────────────────────────
     public function store(Request $request)
     {
+
         abort_unless($this->canDoAllLoans() || $this->canDoScopedLoans(), 403);
         $oduncTarihi = $request->input('odunc_tarihi');
         $maxIade     = $oduncTarihi ? \Carbon\Carbon::parse($oduncTarihi)->addDays(30)->format('Y-m-d') : now()->addDays(30)->format('Y-m-d');
@@ -493,17 +523,50 @@ class OduncController extends Controller
                 return response()->json(['success' => false, 'message' => 'Yetkili olmadığınız kütüphaneye ait bir kitap ödünç verilemez.'], 422);
             }
         }
-        
 
-        if ($kitapKontrol && $kitapKontrol->kunyeDurum !== 'Rafta') {
-            $mesaj = 'Bu kitabın durumu "' . ($kitapKontrol->kunyeDurum ?? '?') . '" olduğu için ödünç verilemez. Yalnızca "Rafta" durumundaki kitaplar ödünç verilebilir.';
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $mesaj], 422);
+
+        if ($kitapKontrol) {
+            $durum = $kitapKontrol->kunyeDurum;
+            if ($durum === 'Rafta') {
+                // ödünç verilebilir
+            } elseif ($durum === 'Rezerve') {
+                $uyeId = (int) $request->input('uye_id');
+                $rezervasyonSahibi = UyeRezerve::query()
+                    ->where('katalog_id', $kitapKontrol->id)
+                    ->where('uye_id', $uyeId)
+                    ->where('iptalMi', 'false')
+                    ->where('rezerve_bitis', '>', now())
+                    ->where('oduncAldiMi', 'false')
+                    ->exists();
+                if (!$rezervasyonSahibi) {
+                    $mesaj = 'Bu kitap rezerve edilmiş. Ödünç vermek için seçili üyenin aktif rezervasyon sahibi olması gerekir.';
+                    $rk    = UyeRezerve::query()
+                        ->where('katalog_id', $kitapKontrol->id)
+                        ->where('iptalMi', 'false')
+                        ->where('rezerve_bitis', '>', now())
+                        ->where('oduncAldiMi', 'false')
+                        ->with('uye:id,ad,soyad')
+                        ->first();
+                    if ($rk && $rk->uye) {
+                        $mesaj .= ' Bu kitabı rezerve eden kişi: ' . trim($rk->uye->ad . ' ' . $rk->uye->soyad) . '.';
+                    }
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $mesaj], 422);
+                    }
+
+                    return back()->withInput()->withErrors(['katalog_id' => $mesaj]);
+                }
+            } else {
+                $mesaj = 'Bu kitabın durumu "' . ($durum ?? '?') . '" olduğu için ödünç verilemez. Yalnızca "Rafta" durumundaki kitaplar veya rezervasyon sahibi için "Rezerve" durumundaki kitaplar ödünç verilebilir.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $mesaj], 422);
+                }
+
+                return back()->withInput()->withErrors(['katalog_id' => $mesaj]);
             }
-            return back()->withInput()->withErrors(['katalog_id' => $mesaj]);
         }
 
-        if ($kitapKontrol && $kitapKontrol->oduncVerilemez) {
+        if ($kitapKontrol && $kitapKontrol->oduncVerilemez == "true") {
             $mesaj = 'Bu kitap "Ödünç Verilemez" olarak işaretlendiğinden ödünç verilemiyor.';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $mesaj], 422);
@@ -511,9 +574,18 @@ class OduncController extends Controller
             return back()->withInput()->withErrors(['katalog_id' => $mesaj]);
         }
 
+        $aktifRezerveKayit = UyeRezerve::query()
+            ->where('katalog_id', $request->input('katalog_id'))
+            ->where('uye_id', $request->input('uye_id'))
+            ->where('iptalMi', 'false')
+            ->where('rezerve_bitis', '>', now())
+            ->where('oduncAldiMi', 'false')
+            ->first();
+
         $islem = OduncIslem::create([
             'uye_id'                => $request->input('uye_id'),
             'katalog_id'            => $request->input('katalog_id'),
+            'rezerve_id'            => $aktifRezerveKayit?->id,
             'kutuphane_id'          => $kitapKontrol->kutuphaneId,
             'odunc_tarihi'          => $request->input('odunc_tarihi'),
             'iade_tarihi_planlanan' => $request->input('iade_tarihi_planlanan'),
@@ -522,8 +594,18 @@ class OduncController extends Controller
             'notlar'                => $request->input('notlar'),
         ]);
 
+        if ($aktifRezerveKayit) {
+            $aktifRezerveKayit->update([
+                'oduncAldiMi' => 'true',
+                'odunc_id'    => $islem->id,
+            ]);
+        }
+
         // ── Kitabın durumunu "Ödünç" olarak güncelle ─────────────────────────
-        $kitapKontrol->update(['kunyeDurum' => 'Ödünç']);
+        $kitapKontrol->update([
+            'kunyeDurum' => 'Ödünç',
+            'iade_tarihi_planlanan' => $request->input('iade_tarihi_planlanan')
+        ]);
 
         $islem->load(['uye', 'katalog']);
 
@@ -539,6 +621,20 @@ class OduncController extends Controller
             "Son iade tarihi: " . Carbon::parse($request->input('iade_tarihi_planlanan'))->format('d.m.Y')
         );
 
+        try {
+            $result = $this->webhookService->sendBildirim(
+                tcList:  [$uye->tc_kimlik],
+                title:   'Keyifli Okumalar 😊',
+                message: $islem->katalog->kunyeEserAdi . ' isimli kitap ' . $kutuphane->title . ' tarafından sana ödünç verildi. Son iade tarihi ' . Carbon::parse($request->input('iade_tarihi_planlanan'))->format('d.m.Y') . '.',
+            );
+
+        } catch (\Exception $e) {
+            // İade işlemi tamamlandı, sadece bildirim başarısız
+            Log::error('Webhook gönderilemedi: ' . $e->getMessage());
+
+        }
+
+       
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -571,6 +667,7 @@ class OduncController extends Controller
     // ─── İade Al ────────────────────────────────────────────────────────────────
     public function iade(Request $request, OduncIslem $islem)
     {
+
         if ($islem->statu !== 'aktif') {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Bu işlem zaten tamamlanmış.'], 422);
@@ -605,6 +702,30 @@ class OduncController extends Controller
         $msg = $islem->statu === 'kayip'
             ? '"' . $islem->katalog->kunyeEserAdi . '" kayıp olarak işaretlendi.'
             : '"' . $islem->katalog->kunyeEserAdi . '" iade alındı.';
+
+            $beklemeList = UyeBekleme::where('katalog_id', $islem->katalog_id)
+            ->with('uye')
+            ->get()
+            ->pluck('uye.tc_kimlik')
+            ->toArray();
+
+            if (!empty($beklemeList)) {
+                try {
+                    $result = $this->webhookService->sendBildirim(
+                        tcList:  $beklemeList,
+                        title:   'Beklediğiniz kitap artık müsait!',
+                        message: $islem->katalog->kunyeEserAdi . " isimli kitap artık müsait. Kaçırmamak için tıkla ve hemen rezerve et!",
+                    );
+
+                    UyeBekleme::where('katalog_id', $islem->katalog_id)
+                        ->update(['bildirim' => DB::raw('COALESCE(bildirim, 0) + 1')]);
+    
+                } catch (\Exception $e) {
+                    // İade işlemi tamamlandı, sadece bildirim başarısız
+                    Log::error('Webhook gönderilemedi: ' . $e->getMessage());
+    
+                }
+            }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => $msg]);

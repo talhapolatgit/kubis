@@ -1562,11 +1562,28 @@
         coverUploadArea.classList.remove('drag-over');
     });
 
+    function isLikelyImageFile(file) {
+        if (!file) return false;
+        if (file.type && file.type.indexOf('image/') === 0) return true;
+        return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(file.name || '');
+    }
+
+    function assignFileToCoverInput(file) {
+        try {
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            coverInput.files = dt.files;
+        } catch (err) {
+            console.error('Kapak dosyası inputa atanamadı:', err);
+        }
+    }
+
     coverUploadArea.addEventListener('drop', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         coverUploadArea.classList.remove('drag-over');
-        var file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
+        var file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file && isLikelyImageFile(file)) {
             handleCoverFile(file);
         }
     });
@@ -1577,6 +1594,10 @@
     });
 
     function handleCoverFile(file) {
+        assignFileToCoverInput(file);
+        var isbnHidden = document.getElementById('isbnCoverUrl');
+        if (isbnHidden) isbnHidden.value = '';
+
         var reader = new FileReader();
         reader.onloadend = function() {
             showCoverPreview(reader.result);

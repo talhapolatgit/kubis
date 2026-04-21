@@ -14,6 +14,10 @@ class UyeRezerve extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'rezerve_baslangic' => 'datetime',
+        'rezerve_bitis'     => 'datetime',
+    ];
 
     public function uye(): BelongsTo
     {
@@ -28,6 +32,11 @@ class UyeRezerve extends Model
     public function kutuphane(): BelongsTo
     {
         return $this->belongsTo(Kutuphane::class, 'kutuphane_id');
+    }
+
+    public function oduncIslem(): BelongsTo
+    {
+        return $this->belongsTo(OduncIslem::class, 'odunc_id');
     }
 
 }

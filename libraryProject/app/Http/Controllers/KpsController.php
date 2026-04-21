@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class KpsController extends Controller
 {
@@ -87,46 +88,42 @@ class KpsController extends Controller
     // ─── Adres Sorgula (Core — diğer controller'lardan da çağrılabilir) ─────────
     public static function adresSorgula(string $tcKimlikNo, string $dogumTarihi): array
     {
-        // ── Gerçek servis entegrasyonu ───────────────────────────────────────────
-        // Servis hazır olduğunda aşağıdaki blok aktif edilecek:
-        //
-        // $body = "dogumTarihi={$dogumTarihi}T00:00:00+02:00&tcKimlikNo={$tcKimlikNo}";
-        // $response = Http::withHeaders([
-        //     'Authorization' => 'applicationkey=BRIDGE,requestdate=2022-07-21T15:55:51+03:00,md5hashcode=9278682f6caad7c8fa5ba3f330a3bfb3',
-        //     'Content-Type'  => 'application/json',
-        // ])
-        //     ->withBody($body, 'application/json')
-        //     ->withoutVerifying()
-        //     ->post('https://servis.beyoglu.bel.tr/FlexCityUi/rest/json/sbs/FindSbsAdresByNvi');
-        //
-        // $data = $response->json();
-        // return static::parseAdresSonucu($data);
+        try {
+        $body = "dogumTarihi={$dogumTarihi}T00:00:00+02:00&tcKimlikNo={$tcKimlikNo}";
+        $response = Http::withHeaders([
+            'Authorization' => 'applicationkey=BRIDGE,requestdate=2022-07-21T15:55:51+03:00,md5hashcode=9278682f6caad7c8fa5ba3f330a3bfb3',
+            'Content-Type'  => 'application/json',
+        ])
+            ->withBody($body, 'application/json')
+            ->withoutVerifying()
+            ->post('https://servis.beyoglu.bel.tr/FlexCityUi/rest/json/nvi/FindAllBaseAdresDto');
+        
+            $data = $response->json();
+            if (isset($data['baseAdresDtoList'][0])) {
+                $a = $data['baseAdresDtoList'][0];
 
-        // ── Mock implementasyon (servis entegrasyonuna kadar) ────────────────────
-        // TC'nin son rakamına göre farklı senaryolar simüle edilir.
-        $sonRakam = (int) substr($tcKimlikNo, -1);
-
-        if ($sonRakam % 3 === 0) {
-            // Senaryo A: Beyoğlu'nda ikamet ediyor
+                return [
+                    'success'      => true,
+                    'ikametEdiyor' => ($a['ilceAdi'] ?? '') === 'BEYOĞLU',
+                    'adres'        => $a['ilceAdi'] ?? '',
+                    'ilAdi'        => $a['ilAdi'] ?? '',
+                    'ilceAdi'      => $a['ilceAdi'] ?? '',
+                    'mahalleAdi'   => $a['mahalleAdi'] ?? '',
+                    'kapi'         => $a['kapi'] ?? '',
+                    'daire'        => $a['daire'] ?? '',
+                    'sokakAdi'     => $a['sokakAdi'] ?? $a['sokak'] ?? '',
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('Adres sorgulama hatası: ' . $e->getMessage());
             return [
-                'success'      => true,
-                'ikametEdiyor' => true,
-                'adres'        => 'Kemankeş Karamustafa Paşa Mah. Kemeraltı Cad. No:7 Daire:3 Beyoğlu/İstanbul',
-            ];
-        } elseif ($sonRakam % 3 === 1) {
-            // Senaryo B: Başka ilçede ikamet ediyor
-            return [
-                'success'      => true,
-                'ikametEdiyor' => false,
-                'adres'        => 'Kadıköy Mah. Moda Cad. No:42 Daire:8 Kadıköy/İstanbul',
-            ];
-        } else {
-            // Senaryo C: Kayıtlı adres bulunamadı
-            return [
-                'success'      => true,
-                'ikametEdiyor' => false,
-                'adres'        => null,
+                'success' => false,
+                'message' => 'Adres sorgulama hatası: ' . $e->getMessage(),
             ];
         }
+        return [
+            'success' => false,
+            'message' => 'Adres bulunamadı.',
+        ];
     }
 }

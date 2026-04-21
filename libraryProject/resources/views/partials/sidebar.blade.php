@@ -1,4 +1,49 @@
 {{-- resources/views/partials/sidebar.blade.php --}}
+<style>
+    .sidebar-reserve-badge {
+        margin-left: auto;
+        flex-shrink: 0;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 22px;
+        text-align: center;
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+    }
+    .sidebar-reserve-badge--active {
+        color: #fffbeb;
+        background: linear-gradient(145deg, #f97316, #ea580c);
+        box-shadow:
+            0 1px 3px rgba(194, 65, 12, 0.5),
+            0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+            0 0 12px rgba(234, 88, 12, 0.45);
+        animation: sidebarReserveGlow 2.2s ease-in-out infinite;
+    }
+    .sidebar-reserve-badge--zero {
+        color: var(--sidebar-foreground);
+        opacity: 0.45;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    @keyframes sidebarReserveGlow {
+        0%, 100% {
+            box-shadow:
+                0 1px 3px rgba(194, 65, 12, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+                0 0 10px rgba(234, 88, 12, 0.35);
+        }
+        50% {
+            box-shadow:
+                0 2px 8px rgba(194, 65, 12, 0.65),
+                0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+                0 0 18px rgba(251, 146, 60, 0.55);
+        }
+    }
+</style>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-logo">
@@ -34,12 +79,19 @@
                 @if(auth()->user()->hasYetki(7) || auth()->user()->hasYetki(8) || auth()->user()->hasYetki(9) || auth()->user()->hasYetki(10))
                 <li><a href="{{ route('odunc.index') }}" class="sidebar-menu-item {{ request()->routeIs('odunc.index') || request()->routeIs('odunc.show') ? 'active' : '' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
-                        Tüm İşlemler</a></li>
+                        Ödünç İşlemleri</a></li>
                 @endif
                 @if(auth()->user()->hasYetki(8) || auth()->user()->hasYetki(10))  
                 <li><a href="{{ route('odunc.new') }}" class="sidebar-menu-item {{ request()->routeIs('odunc.new') ? 'active' : '' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
                         Yeni Ödünç Ver</a></li>
+                @endif
+                @if(auth()->user()->hasYetki(7) || auth()->user()->hasYetki(8) || auth()->user()->hasYetki(9) || auth()->user()->hasYetki(10))
+                <li><a href="{{ route('rezerve.index') }}" class="sidebar-menu-item {{ request()->routeIs('rezerve.*') ? 'active' : '' }}" title="Aktif rezervasyon sayısı">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                        <span style="flex:1;min-width:0;">Rezervasyon İşlemleri</span>
+                        <span class="sidebar-reserve-badge {{ ($sidebarAktifRezerveSayisi ?? 0) > 0 ? 'sidebar-reserve-badge--active' : 'sidebar-reserve-badge--zero' }}" aria-label="Aktif rezervasyon: {{ $sidebarAktifRezerveSayisi ?? 0 }}">{{ $sidebarAktifRezerveSayisi ?? 0 }}</span>
+                    </a></li>
                 @endif
             </ul>
         </div>

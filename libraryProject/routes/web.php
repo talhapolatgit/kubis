@@ -2,14 +2,15 @@
 
 use App\Http\Controllers\EtiketController;
 use App\Http\Controllers\OduncController;
+use App\Http\Controllers\RezerveController;
 use App\Http\Controllers\SoapController;
 use App\Http\Controllers\UyeController;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\KatalogController;
 use App\Http\Controllers\KutuphaneController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Storage;
 
 // ─── Ana sayfa → katalog'a yönlendir ──────────────────────────────────────────
 Route::get('/', function () {
@@ -91,6 +92,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/kps/kimlik-sorgula', [\App\Http\Controllers\KpsController::class, 'kimlikSorgulaHttp'])->name('kps.kimlikSorgula');
 
     // Ödünç — AJAX arama rotaları önce gelmeli (wildcard çakışmasını önlemek için)
+    Route::get('/rezerve',                 [RezerveController::class, 'index'])->name('rezerve.index');
+    Route::get('/rezerve/tablo',           [RezerveController::class, 'tableData'])->name('rezerve.tableData');
+    Route::post('/rezerve',                [RezerveController::class, 'store'])->name('rezerve.store');
+
     Route::get('/odunc/ara/uye',           [OduncController::class, 'uyeAra'])->name('odunc.uyeAra');
     Route::get('/odunc/ara/kitap',         [OduncController::class, 'kitapAra'])->name('odunc.kitapAra');
     Route::get('/odunc/tablo',             [OduncController::class, 'tableData'])->name('odunc.tableData');
@@ -104,10 +109,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/odunc/{islem}/sure-uzat', [OduncController::class, 'sureUzat'])->name('odunc.sureUzat');
 });
 
-// Storage linki (gerekirse)
-Route::get('/storage/kapaklar/{file}', function () {
-    Artisan::call('storage:link');
-});
+// public/storage sembolik bağlantısı yoksa bile kapak görsellerinin açılması için (Storage disk: public)
+Route::get('/storage/kapaklar/{file}', function (string $file) {
+    if (!preg_match('/^[A-Za-z0-9._-]+$/', $file)) {
+        abort(404);
+    }
+    $relative = 'kapaklar/' . $file;
+    if (!Storage::disk('public')->exists($relative)) {
+        abort(404);
+    }
+
+    return Storage::disk('public')->response($relative);
+})->where('file', '[A-Za-z0-9._-]+');
 
 
 Route::match(['get', 'post'], '/soap/katalog', [SoapController::class, 'handle'])

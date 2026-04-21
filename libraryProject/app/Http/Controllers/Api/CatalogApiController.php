@@ -10,12 +10,17 @@ use App\Models\OduncIslem;
 use App\Models\UyeFavori;
 use App\Models\UyeBekleme;
 use App\Models\UyeRezerve;
+use App\Services\BeyogluWebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\DB;
 
 class CatalogApiController extends Controller
 {
+    public function __construct(
+        private readonly BeyogluWebhookService $webhookService
+    ) {}
     /**
      * Katalog tablosundaki kitap listesini döndürür.
      * İlişkili yazar, yayınevi ve kütüphane adlarını da içerir.
@@ -49,6 +54,10 @@ class CatalogApiController extends Controller
                     ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%")
                     ->orWhere('kunyeYazar', 'LIKE', "%{$s}%");
             });
+        }
+
+        if ($request->filled('katalog_id')) {
+            $query->where('id', $request->input('katalog_id'));
         }
 
         if ($request->filled('durum')) {
@@ -92,29 +101,29 @@ class CatalogApiController extends Controller
         $rows = $kitaplar->getCollection()->transform(function (Katalog $k) use ($uye) {
             return [
                 'id'             => $k->id,
-                'demirbas_no'    => $k->kunyeDemirbasKN,
+                // 'demirbas_no'    => $k->kunyeDemirbasKN,
                 'eser_adi'       => $k->kunyeEserAdi,
-                'eser_adi_alt'   => $k->kunyeEserAdiAlt,
-                'isbn_issn'      => $k->kunyeISBNISSN,
+                // 'eser_adi_alt'   => $k->kunyeEserAdiAlt,
+                // 'isbn_issn'      => $k->kunyeISBNISSN,
                 'yazar_adi'      => optional($k->yazar)->ad ?? $k->kunyeYazar,
-                'yayinevi_adi'   => optional($k->yayinevi)->ad ?? $k->kunyeYayinlayan,
+                // 'yayinevi_adi'   => optional($k->yayinevi)->ad ?? $k->kunyeYayinlayan,
                 'kutuphane_adi'  => optional($k->kutuphane)->title,
-                'yayin_yeri'     => $k->kunyeYayinYeri,
-                'yayin_tarihi'   => $k->kunyeYayinTarihi,
-                'kategori_id'    => $k->kunyeKategori,
-                'siniflama_yer'  => $k->kunyeSiniflamaYer,
-                'dil'            => $k->kunyeDilKN,
-                'sayfaSayisi'    => $k->kunyeSayfaSayisi,
-                'aciklama'       => $k->aciklama,
+                // 'yayin_yeri'     => $k->kunyeYayinYeri,
+                // 'yayin_tarihi'   => $k->kunyeYayinTarihi,
+                // 'kategori_id'    => $k->kunyeKategori,
+                // 'siniflama_yer'  => $k->kunyeSiniflamaYer,
+                // 'dil'            => $k->kunyeDilKN,
+                // 'sayfaSayisi'    => $k->kunyeSayfaSayisi,
+                // 'aciklama'       => $k->aciklama,
                 'durum'          => $k->kunyeDurum,
-                'odunc_verilemez'=> (bool) $k->oduncVerilemez,
-                'rezerv_edilemez'=> (bool) false,
-                'kapak'          => 'storage/'.$k->kunyeKapakResmi,
-                'tahmini_musaitlik' => optional($k->tahminiMusaitlik)->iade_tarihi_planlanan?->toDateString() ?? null,
-                'favorimi'      => $k->favorimi($uye->id),
-                'rezervemi'     => false,
-                'beklememi'     => false,
-                'oduncmu'       => false
+                // 'odunc_verilemez'=> (bool) $k->oduncVerilemez,
+                // 'rezerv_edilemez'=> (bool) false,
+                'kapak'          => $k->kapak_resim_path,
+                // 'tahmini_musaitlik' => optional($k->tahminiMusaitlik)->iade_tarihi_planlanan?->toDateString() ?? null,
+                // 'favorimi'      => $k->favorimi($uye->id),
+                // 'rezervemi'     => $k->rezervemi($uye->id),
+                // 'beklememi'     => $k->beklememi($uye->id),
+                // 'oduncmu'       => $k->oduncmu($uye->id),
             ];
         });
 
@@ -134,6 +143,71 @@ class CatalogApiController extends Controller
         ], Response::HTTP_OK);
     }
 
+    public function catalogDetail(Request $request): JsonResponse
+    {
+        /** @var Uye $uye */
+        $uye = $request->attributes->get('uye');
+    
+        if ($request->filled('katalog_id')) {
+            $k = Katalog::where('id', $request->input('katalog_id'));
+
+            if ($k != null) {
+                $katalog = $k->with([
+                    'yazar:id,ad',
+                    'yayinevi:id,ad',
+                    'kutuphane:id,title',
+                ])
+                ->first();
+            } else {
+                return response()->json([
+                    'status' => Response::HTTP_CONFLICT,
+                    'success' => false,
+                    'message' => 'Kitap bulunamadı.',
+                ], Response::HTTP_CONFLICT);
+            }
+        } else {
+            return response()->json([
+                'status' => Response::HTTP_CONFLICT,
+                'success' => false,
+                'message' => 'Katalog id zorunlu',
+            ], Response::HTTP_CONFLICT);
+        }
+
+        // Çıktıyı mobil kullanıma uygun, sade bir formata dönüştür
+        $row = [
+                'id'             => $katalog->id,
+                'demirbas_no'    => $katalog->kunyeDemirbasKN,
+                'eser_adi'       => $katalog->kunyeEserAdi,
+                'eser_adi_alt'   => $katalog->kunyeEserAdiAlt,
+                'isbn_issn'      => $katalog->kunyeISBNISSN,
+                'yazar_adi'      => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
+                'yayinevi_adi'   => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
+                'kutuphane_adi'  => optional($katalog->kutuphane)->title,
+                'yayin_yeri'     => $katalog->kunyeYayinYeri,
+                'yayin_tarihi'   => $katalog->kunyeYayinTarihi,
+                'kategori_id'    => $katalog->kunyeKategori,
+                'siniflama_yer'  => $katalog->kunyeSiniflamaYer,
+                'dil'            => $katalog->kunyeDilKN,
+                'sayfaSayisi'    => $katalog->kunyeSayfaSayisi,
+                'aciklama'       => $katalog->aciklama,
+                'durum'          => $katalog->kunyeDurum,
+                'odunc_verilemez'=> (bool) $katalog->oduncVerilemez,
+                'rezerv_edilemez'=> (bool) $katalog->oduncVerilemez,
+                'kapak'          => $katalog->kapak_resim_path,
+                'tahmini_musaitlik' => optional($katalog->tahminiMusaitlik)->iade_tarihi_planlanan?->toDateString() ?? null,
+                'favorimi'      => $katalog->favorimi($uye->id),
+                'rezervemi'     => $katalog->rezervemi($uye->id),
+                'beklememi'     => $katalog->beklememi($uye->id),
+                'oduncmu'       => $katalog->oduncmu($uye->id),
+            ];
+
+        return response()->json([
+            'status'  => Response::HTTP_OK,
+            'success' => true,
+            'message' => 'Kitap detayları başarıyla getirildi.',
+            'data'    => [$row],
+        ], Response::HTTP_OK);
+    }
     /**
      * Aktif kategori listesini döndürür.
      */
@@ -158,7 +232,7 @@ class CatalogApiController extends Controller
     {
         $kutuphaneler = Kutuphane::aktif()
             ->orderBy('title')
-            ->get(['id', 'title', 'address', "phone", "email", "statu"]);
+            ->get(['id', 'title', 'address', "phone", "email", "latitude", "longitude", "statu"]);
 
         return response()->json([
             'status'  => Response::HTTP_OK,
@@ -243,7 +317,7 @@ class CatalogApiController extends Controller
                     'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
-                    'kapak'         => 'storage/' . $katalog->kunyeKapakResmi,
+                    'kapak'         => $katalog->kapak_resim_path,
                     'sayfaSayisi'    => $katalog->kunyeSayfaSayisi,
                     'aciklama'       => $katalog->aciklama,
                 ] : null,
@@ -328,7 +402,7 @@ class CatalogApiController extends Controller
                     'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
-                    'kapak'         => 'storage/' . $katalog->kunyeKapakResmi,
+                    'kapak'         => $katalog->kapak_resim_path,
                     'kategori_id'   => $katalog->kunyeKategori,
                     'siniflama_yer'  => $katalog->kunyeSiniflamaYer,
                     'dil'            => $katalog->kunyeDilKN,
@@ -407,7 +481,7 @@ class CatalogApiController extends Controller
                         'uye_id' => $uye->id,
                         'katalog_id' => $validated['katalog_id'],
                         'eser_adi' => $katalog->kunyeEserAdi,
-                        'kapak' => $katalog->kunyeKapakResmi,
+                        'kapak' => $katalog->kapak_resim_path,
                     ],
                 ], Response::HTTP_CREATED);
             } else {
@@ -467,7 +541,7 @@ class CatalogApiController extends Controller
                         'uye_id' => $uye->id,
                         'katalog_id' => $validated['katalog_id'],
                         'eser_adi' => $katalog->kunyeEserAdi,
-                        'kapak' => $katalog->kunyeKapakResmi,
+                        'kapak' => $katalog->kapak_resim_path,
                     ],
                 ], Response::HTTP_OK);
             } else {
@@ -536,7 +610,7 @@ class CatalogApiController extends Controller
                     'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
-                    'kapak'         => 'storage/' . $katalog->kunyeKapakResmi,
+                    'kapak'         => $katalog->kapak_resim_path,
                     'kategori_id'   => $katalog->kunyeKategori,
                     'siniflama_yer'  => $katalog->kunyeSiniflamaYer,
                     'dil'            => $katalog->kunyeDilKN,
@@ -610,6 +684,34 @@ class CatalogApiController extends Controller
                 ], Response::HTTP_CONFLICT);
             }
 
+            $checkRezerve = UyeRezerve::query()->where('katalog_id', $validated['katalog_id'])
+            ->where('uye_id', $uye->id)
+            ->where('iptalMi', 'false')
+            ->where('rezerve_bitis', '>', now())
+            ->where('deleted_at', null)
+            ->first();
+
+        if($checkRezerve) {
+            return response()->json([
+                'status' => Response::HTTP_CONFLICT,
+                'success' => false,
+                'message' => 'Bu kitabı zaten rezerve ettiniz. Rezervasyon süreniz dolmadan kütüphanemize giderek ödünç alabilirsiniz.',
+            ], Response::HTTP_CONFLICT);
+        }
+
+        $checkOdunc = OduncIslem::query()->where('katalog_id', $validated['katalog_id'])
+        ->where('uye_id', $uye->id)
+        ->where('statu', 'aktif')
+        ->first();
+
+        if($checkOdunc) {
+            return response()->json([
+                'status' => Response::HTTP_CONFLICT,
+                'success' => false,
+                'message' => 'Bu kitap zaten sizde ödünçte.',
+            ], Response::HTTP_CONFLICT);
+        }
+
             $bekleme = UyeBekleme::query()->create([
                 'katalog_id' => $validated['katalog_id'],
                 'uye_id' => $uye->id,
@@ -624,7 +726,7 @@ class CatalogApiController extends Controller
                         'uye_id' => $uye->id,
                         'katalog_id' => $validated['katalog_id'],
                         'eser_adi' => $katalog->kunyeEserAdi,
-                        'kapak' => $katalog->kunyeKapakResmi,
+                        'kapak' => $katalog->kapak_resim_path,
                     ],
                 ], Response::HTTP_CREATED);
             } else {
@@ -653,7 +755,7 @@ class CatalogApiController extends Controller
             return response()->json([
                 'status' => Response::HTTP_CONFLICT,
                 'success' => false,
-                'message' => 'Bu kitap zaten bekleme listesinde kayıtlı değil.',
+                'message' => 'Bu kitap zaten bekleme listenizde kayıtlı değil.',
             ], Response::HTTP_CONFLICT);
         }
 
@@ -684,7 +786,7 @@ class CatalogApiController extends Controller
                         'uye_id' => $uye->id,
                         'katalog_id' => $validated['katalog_id'],
                         'eser_adi' => $katalog->kunyeEserAdi,
-                        'kapak' => $katalog->kunyeKapakResmi
+                        'kapak' => $katalog->kapak_resim_path
                     ],
                 ], Response::HTTP_OK);
             } else {
@@ -701,8 +803,10 @@ class CatalogApiController extends Controller
         /** @var Uye $uye */
         $uye = $request->attributes->get('uye');
 
-        $favoricount = UyeFavori::where('uye_id', $uye->id)->count();
-        $odunccount  = OduncIslem::where('uye_id', $uye->id)->count();
+        $favoricount  = UyeFavori::where('uye_id', $uye->id)->count();
+        $odunccount   = OduncIslem::where('uye_id', $uye->id)->count();
+        $rezervecount = UyeRezerve::where('uye_id', $uye->id)->where('deleted_at', null)->count();
+        $beklemecount = UyeBekleme::where('uye_id', $uye->id)->count();
 
         return response()->json([
             'status'  => Response::HTTP_OK,
@@ -711,8 +815,8 @@ class CatalogApiController extends Controller
             'data'    => [
                 'favori_count'  => $favoricount,
                 'odunc_count'   => $odunccount,
-                'rezerve_count' => 0,
-                'bekleme_count' => 0,
+                'rezerve_count' => $rezervecount,
+                'bekleme_count' => $beklemecount,
             ],
         ], Response::HTTP_OK);
     }
@@ -767,8 +871,9 @@ class CatalogApiController extends Controller
                 'ekleme_tarihi'           => $rezerve->created_at?->toDateString(),
                 'rezerve_baslangic' => $rezerve->rezerve_baslangic,
                 'rezerve_bitis' => $rezerve->rezerve_bitis,
-                'oduncAldiMi' => 'false',
-                'iptalMi' => 'false',
+                'oduncAldiMi' => $rezerve->oduncAldiMi,
+                'iptalMi' => $rezerve->iptalMi,
+                'suresiDolduMu' => $rezerve->suresiDolduMu,
                 // ─ Kitap bilgileri ───────────────────────────────────────────
                 'kitap'                  => $katalog ? [
                     'id'            => $katalog->id,
@@ -779,7 +884,7 @@ class CatalogApiController extends Controller
                     'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
-                    'kapak'         => 'storage/' . $katalog->kunyeKapakResmi,
+                    'kapak'         => $katalog->kapak_resim_path,
                     'kategori_id'   => $katalog->kunyeKategori,
                     'siniflama_yer'  => $katalog->kunyeSiniflamaYer,
                     'dil'            => $katalog->kunyeDilKN,
@@ -883,12 +988,19 @@ class CatalogApiController extends Controller
                 'rezerve_bitis' => now()->addHours(24),
                 'oduncAldiMi' => 'false',
                 'iptalMi' => 'false',
+                'suresiDolduMu' => 'false',
             ]);
 
             if($rezerve) {
 
                 $katalog->kunyeDurum = "Rezerve";
                 $katalog->save();
+
+                $beklemecheck = UyeBekleme::query()->where('katalog_id', $validated['katalog_id'])->where('uye_id', $uye->id)->first();
+
+                if($beklemecheck) {
+                $beklemecheck->delete();
+                }
 
                 return response()->json([
                     'status' => Response::HTTP_CREATED,
@@ -899,7 +1011,7 @@ class CatalogApiController extends Controller
                         'uye_id' => $uye->id,
                         'katalog_id' => $validated['katalog_id'],
                         'eser_adi' => $katalog->kunyeEserAdi,
-                        'kapak' => $katalog->kunyeKapakResmi,
+                        'kapak' => $katalog->kapak_resim_path,
                         'rezerve_baslangic' => $rezerve->rezerve_baslangic?->toDateTimeString(),
                         'rezerve_bitis' => $rezerve->rezerve_bitis?->toDateTimeString(),
                         'oduncAldiMi' => $rezerve->oduncAldiMi,
@@ -936,6 +1048,14 @@ class CatalogApiController extends Controller
             ], Response::HTTP_CONFLICT);
         }
 
+        if($rezerve->oduncAldiMi == "true") {
+            return response()->json([
+                'status' => Response::HTTP_CONFLICT,
+                'success' => false,
+                'message' => 'Kitabı ödünç alarak rezervasyonu tamamladınız. Bu sebeple iptal edilememektedir.',
+            ], Response::HTTP_CONFLICT);
+        }
+
         $katalog = Katalog::query()
         ->where('id', $validated['katalog_id'])
         ->where('deleted_at', null)
@@ -957,6 +1077,30 @@ class CatalogApiController extends Controller
             $katalog->save();
 
             if($rezerve->iptalMi == "true") {
+
+                $beklemeList = UyeBekleme::where('katalog_id', $katalog->id)
+                    ->with('uye')
+                    ->get()
+                    ->pluck('uye.tc_kimlik')
+                    ->toArray();
+
+            if (!empty($beklemeList)) {
+                try {
+                    $result = $this->webhookService->sendBildirim(
+                        tcList:  $beklemeList,
+                        title:   'Beklediğiniz kitap artık müsait!',
+                        message: $katalog->kunyeEserAdi . " isimli kitap artık müsait. Kaçırmamak için tıkla ve hemen rezerve et 😊",
+                    );
+
+                    UyeBekleme::where('katalog_id', $katalog->id)
+                        ->update(['bildirim' => DB::raw('COALESCE(bildirim, 0) + 1')]);
+    
+                } catch (\Exception $e) {
+                    // İade işlemi tamamlandı, sadece bildirim başarısız
+    
+                }
+            }
+
                 return response()->json([
                     'status' => Response::HTTP_OK,
                     'success' => true,
@@ -965,7 +1109,7 @@ class CatalogApiController extends Controller
                         'uye_id' => $uye->id,
                         'katalog_id' => $validated['katalog_id'],
                         'eser_adi' => $katalog->kunyeEserAdi,
-                        'kapak' => $katalog->kunyeKapakResmi,
+                        'kapak' => $katalog->kapak_resim_path,
                         'rezerve_baslangic' => $rezerve->rezerve_baslangic,
                         'rezerve_bitis' => $rezerve->rezerve_bitis,
                         'oduncAldiMi' => $rezerve->oduncAldiMi,

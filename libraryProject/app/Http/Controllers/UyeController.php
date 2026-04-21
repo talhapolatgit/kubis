@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Uye;
 use App\Services\OtpService;
+use App\Services\BeyogluWebhookService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class UyeController extends Controller
 {
-    public function __construct(private OtpService $otp) {}
+    public function __construct(
+        private readonly OtpService $otp,
+        private readonly BeyogluWebhookService $webhookService
+    ) {}
 
     // ─── Liste Sayfası (sadece view, veri AJAX ile yükleniyor) ──────────────────
     public function index()
@@ -339,6 +343,19 @@ class UyeController extends Controller
         ]);
 
         session()->forget('otp_verified_phone');
+
+        try {
+            $result = $this->webhookService->sendBildirim(
+                tcList:  [$uye->tc_kimlik],
+                title:   'Kütüphane Üyeliğin Oluşturuldu 😊',
+                message: 'Kütüphanemizdeki kitapları keşfetmek için tıkla ve ödünç almak istediğin kitabı hemen rezerve et.',
+            );
+
+        } catch (\Exception $e) {
+            // İade işlemi tamamlandı, sadece bildirim başarısız
+            Log::error('Webhook gönderilemedi: ' . $e->getMessage());
+
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

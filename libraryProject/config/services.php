@@ -45,4 +45,9 @@ return [
         'sifre'         => env('SOAP_SIFRE', 'secret'),
     ],
 
+    'beyoglu' => [
+    'webhook_url'    => env('BEYOGLU_WEBHOOK_URL', 'https://api.beyoglu.app/api/webhook/kutuphane/bildirim'),
+    'webhook_secret' => env('BEYOGLU_WEBHOOK_SECRET'),
+],
+
 ];

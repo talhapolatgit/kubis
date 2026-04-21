@@ -214,7 +214,7 @@ class MemberAuthController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        $ttlMinutes = (int) config('app.jwt_ttl_minutes', 120);
+        $ttlMinutes = (int) config('app.jwt_ttl_minutes', 525600);
         $issuedAt = Carbon::now();
         $expiresAt = $issuedAt->copy()->addMinutes($ttlMinutes);
 

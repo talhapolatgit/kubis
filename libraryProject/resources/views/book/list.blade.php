@@ -1146,7 +1146,7 @@
                     {{-- Satır 1: Eser Adı/ISBN + Yazar + Yayınevi + Kütüphane --}}
                     <div class="form-grid cols-3" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
                         <div class="form-field">
-                            <label class="form-label">Eser Adı / ISBN</label>
+                            <label class="form-label">Eser Adı / Demirbaş / ISBN</label>
                             <input type="text" id="filterSearch" class="form-input" placeholder="Eser adı veya ISBN..." autocomplete="off">
                         </div>
                         <div class="form-field">
@@ -1333,9 +1333,10 @@
                             <tr style="background: var(--muted); border-bottom: 1px solid var(--border);">
                                 <th style="padding: 12px 24px; font-weight: 600;">Görsel</th>
                                 <th style="padding: 12px; font-weight: 600;">Kitap Bilgisi</th>
+                                <th style="padding: 12px; font-weight: 600;">Demirbaş</th>
                                 <th style="padding: 12px; font-weight: 600;">ISBN</th>
                                 <th style="padding: 12px; font-weight: 600;">Kategori</th>
-                                <th style="padding: 12px; font-weight: 600;">Stok</th>
+                                <th style="padding: 12px; font-weight: 600;">Durum</th>
                                 <th style="padding: 12px; font-weight: 600;">İşlem</th>
                             </tr>
                             </thead>
@@ -1372,7 +1373,6 @@
             // ============================
             var ajaxUrl    = '{{ route('katalog.index') }}';
             var exportUrl  = '{{ route('katalog.export') }}';
-            var storageUrl = '{{ rtrim(asset('storage'), '/') }}';
             var searchTimer = null;
             var reqCounter  = 0; // race condition önlemi
 
@@ -1446,16 +1446,17 @@
                 }
                 return rows.map(function(k) {
                     var coverSrc = k.kunyeKapakResmi
-                        ? (storageUrl + '/' + k.kunyeKapakResmi)
+                        ? k.kunyeKapakResmi
                         : ('https://ui-avatars.com/api/?name=' + encodeURIComponent(k.kunyeEserAdi || '') + '&background=7a5c3c&color=fff');
                     return '<tr style="border-bottom:1px solid var(--border);transition:background 0.2s;" onmouseover="this.style.background=\'var(--card)\'" onmouseout="this.style.background=\'transparent\'">' +
                         '<td style="padding:12px 24px;"><div style="width:45px;height:65px;background:#ddd;border-radius:4px;overflow:hidden;border:1px solid var(--border);">' +
                         '<img src="' + coverSrc + '" alt="Kapak" style="width:100%;height:100%;object-fit:cover;"></div></td>' +
                         '<td style="padding:12px;"><div style="font-weight:600;color:var(--foreground);">' + (k.kunyeEserAdi || '') + '</div>' +
                         '<div style="font-size:12px;color:var(--muted-foreground);">' + (k.kunyeYazar || '') + (k.kunyeYayinlayan ? ' &middot; ' + k.kunyeYayinlayan : '') + '</div></td>' +
+                        '<td style="padding:12px;color:var(--muted-foreground);">' + (k.kunyeDemirbasKN || '') + '</td>' +
                         '<td style="padding:12px;color:var(--muted-foreground);">' + (k.kunyeISBNISSN || '') + '</td>' +
                         '<td style="padding:12px;"><span style="padding:4px 8px;background:rgba(122,92,60,0.1);color:var(--primary);border-radius:4px;font-size:12px;">' + (k.kunyeSiniflamaYer || 'Genel') + '</span></td>' +
-                        '<td style="padding:12px;">' + (k.kunyeKopya || 1) + ' Adet</td>' +
+                        '<td style="padding:12px;">' + (k.kunyeDurum || 1) + '</td>' +
                         '<td style="padding:12px;text-align:right;">' +
                         '<button class="row-actions-btn" onclick="toggleRowMenu(' + k.id + ', event)" title="İşlemler">' +
                         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>' +

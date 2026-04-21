@@ -354,7 +354,7 @@
     // ── Autocomplete Core ────────────────────────────────────────────────────
     var acTimers = {};
 
-    function setupAutocomplete(inputId, dropdownId, fetchUrl, onSelect, renderItem) {
+    function setupAutocomplete(inputId, dropdownId, fetchUrl, onSelect, renderItem, extraQueryFn) {
         var inp = document.getElementById(inputId);
         var dd  = document.getElementById(dropdownId);
         var hi  = -1; // highlighted index
@@ -366,7 +366,8 @@
             acTimers[inputId] = setTimeout(function() {
                 dd.innerHTML = '<div class="ac-loading"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .6s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Aranıyor…</div>';
                 dd.classList.add('open');
-                fetch(fetchUrl + '?q=' + encodeURIComponent(q), { headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } })
+                var extra = (typeof extraQueryFn === 'function') ? extraQueryFn() : '';
+                fetch(fetchUrl + '?q=' + encodeURIComponent(q) + extra, { headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } })
                     .then(r => r.json())
                     .then(function(items) {
                         dd.innerHTML = '';
@@ -428,6 +429,20 @@
             + (item.aktif_odunc > 0 ? ' · ' + item.aktif_odunc + ' aktif ödünç' : '');
         document.getElementById('uyeSearchField').style.display = 'none';
         document.getElementById('uyeCard').style.display = 'flex';
+
+        if (selectedKitap && selectedKitap.id) {
+            fetch('{{ route('odunc.kitapAra') }}?katalog_id=' + encodeURIComponent(selectedKitap.id) + '&uye_id=' + encodeURIComponent(item.id), {
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(rows) {
+                    if (rows && rows[0]) {
+                        selectedKitap = rows[0];
+                        selectKitap(rows[0]);
+                    }
+                })
+                .catch(function() {});
+        }
     }
 
     function clearUye() {
@@ -451,8 +466,10 @@
             var badges = '';
             if (item.odunc_ta) {
                 badges += '<span class="ac-item-badge danger">Ödünçte</span>';
-            } else if (item.oduncVerilemez) {
+            } else if (item.oduncVerilemez === 'true') {
                 badges += '<span class="ac-item-badge danger">Ödünç Verilemez</span>';
+            } else if (item.kunyeDurum === 'Rezerve' && item.rezerve_aktif_bu_uye) {
+                badges += '<span class="ac-item-badge warning">Rezerve · seçili üye</span>';
             } else if (item.kunyeDurum && item.kunyeDurum !== 'Rafta') {
                 badges += '<span class="ac-item-badge danger">' + item.kunyeDurum + '</span>';
             }
@@ -461,6 +478,11 @@
                 +   '<div class="ac-item-name">' + item.label + badges + '</div>'
                 +   '<div class="ac-item-meta">' + (item.yazar || '') + (item.demir ? ' · Demirbaş: ' + item.demir : '') + (item.isbn ? ' · ISBN: ' + item.isbn : '') + '</div>'
                 + '</div>';
+        }
+    ,
+        function() {
+            var uid = document.getElementById('uyeId').value;
+            return uid ? '&uye_id=' + encodeURIComponent(uid) : '';
         }
     );
 
@@ -496,11 +518,26 @@
             engelAciklama.textContent = 'Bu kitap şu an başka bir üyede ödünçte olduğu için tekrar ödünç verilemez.';
             engelDiv.style.display    = 'flex';
             btnSubmit.disabled        = true;
-        } else if (item.oduncVerilemez) {
+        } else if (item.oduncVerilemez == 'true') {
             engelBaslik.textContent   = 'Ödünç Verilemez';
             engelAciklama.textContent = 'Bu kitap "Ödünç Verilemez" olarak işaretlendiğinden ödünç verilemiyor.';
             engelDiv.style.display    = 'flex';
             btnSubmit.disabled        = true;
+        } else if (item.kunyeDurum == 'Rezerve') {
+            if (item.rezerve_aktif_bu_uye) {
+                engelDiv.style.display = 'none';
+                btnSubmit.disabled     = false;
+            } else {
+                engelBaslik.textContent   = document.getElementById('uyeId').value ? 'Rezervasyon uyumsuz' : 'Üye seçin';
+                var rezEk = (document.getElementById('uyeId').value && item.rezerve_eden_uye_adi)
+                    ? (' Bu kitabı rezerve eden kişi: ' + item.rezerve_eden_uye_adi + '.')
+                    : '';
+                engelAciklama.textContent = document.getElementById('uyeId').value
+                    ? ('Bu kitap başka bir üyeye rezerve; yalnızca rezervasyon sahibi seçildiğinde ödünç verilebilir.' + rezEk)
+                    : 'Rezerve kitaplar yalnızca rezervasyon sahibi üyeye ödünç verilir. Önce üyeyi seçin, ardından kitabı tekrar arayın.';
+                engelDiv.style.display    = 'flex';
+                btnSubmit.disabled        = true;
+            }
         } else if (item.kunyeDurum && item.kunyeDurum !== 'Rafta') {
             engelBaslik.textContent   = 'Kitap Rafta Değil';
             engelAciklama.textContent = 'Bu kitabın durumu "' + item.kunyeDurum + '" olduğu için ödünç verilemez. Yalnızca "Rafta" durumundaki kitaplar ödünç verilebilir.';
@@ -602,11 +639,19 @@
                 showToast('error', 'Kitap Ödünçte', 'Bu kitap şu an başka bir üyede ödünçte.');
                 return;
             }
-            if (selectedKitap.oduncVerilemez) {
+            if (selectedKitap.oduncVerilemez == 'true') {
                 showToast('error', 'Ödünç Verilemez', 'Bu kitap ödünç verilemez olarak işaretlenmiş.');
                 return;
             }
-            if (selectedKitap.kunyeDurum && selectedKitap.kunyeDurum !== 'Rafta') {
+            if (selectedKitap.kunyeDurum === 'Rezerve') {
+                if (!selectedKitap.rezerve_aktif_bu_uye) {
+                    var rezToastEk = selectedKitap.rezerve_eden_uye_adi
+                        ? (' Bu kitabı rezerve eden kişi: ' + selectedKitap.rezerve_eden_uye_adi + '.')
+                        : '';
+                    showToast('error', 'Rezervasyon', 'Bu rezerve kitap yalnızca rezervasyon sahibi üyeye ödünç verilebilir.' + rezToastEk);
+                    return;
+                }
+            } else if (selectedKitap.kunyeDurum && selectedKitap.kunyeDurum !== 'Rafta') {
                 showToast('error', 'Kitap Rafta Değil', '"' + selectedKitap.kunyeDurum + '" durumundaki kitap ödünç verilemez.');
                 return;
             }
@@ -645,20 +690,7 @@
         document.getElementById('oduncForm').submit();
     }
 
-    // ── Katalog listesinden "Ödünç Ver" ile gelindiyse kitabı otomatik seç ────
-    @if(!empty($preKitap))
-    (function() {
-        var preKitap = @json($preKitap);
-        // Sayfa tamamen yüklenince seç
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() { selectKitap(preKitap); });
-        } else {
-            selectKitap(preKitap);
-        }
-    })();
-    @endif
-
-    // ── Üye listesinden "Ödünç Ver" ile gelindiyse üyeyi otomatik seç ────────
+    // ── Üye listesinden "Ödünç Ver" ile gelindiyse üyeyi önce seç (rezerve eşleşmesi için) ─
     @if(!empty($preUye))
     (function() {
         var preUye = @json($preUye);
@@ -666,6 +698,18 @@
             document.addEventListener('DOMContentLoaded', function() { selectUye(preUye); });
         } else {
             selectUye(preUye);
+        }
+    })();
+    @endif
+
+    // ── Katalog listesinden "Ödünç Ver" ile gelindiyse kitabı otomatik seç ────
+    @if(!empty($preKitap))
+    (function() {
+        var preKitap = @json($preKitap);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() { selectKitap(preKitap); });
+        } else {
+            selectKitap(preKitap);
         }
     })();
     @endif
