@@ -501,7 +501,7 @@ class KatalogController extends Controller
             'kunyeYayinYeri', 'kunyeYayinlayan', 'kunyeFizikselTanim',
             'kunyeISBNISSN', 'kunyeBasimKaydi', 'kunyeDiziKaydi',
             'kunyeKonuBasligi', 'kunyeGelisTarihi',
-            'kunyeDurum', 'kunyeKategori',
+            'kunyeKategori',
             'girisTuruId', 'faturaNo', 'faturaTarihi',
             'tedarikci', 'tedarikciTelefon', 'tedarikciEposta', 'fiyat',
             'kutuphaneId',

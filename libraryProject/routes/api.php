@@ -15,5 +15,14 @@ Route::prefix('mobile')->group(function () {
         Route::get('/kutuphaneler', [CatalogApiController::class, 'libraries']);
         Route::get('/oduncler', [CatalogApiController::class, 'loans']);
         Route::get('/favoriler', [CatalogApiController::class, 'memberFavorites']);
+        Route::post('/favoriekle', [CatalogApiController::class, 'insertFavorites']);
+        Route::delete('/favorisil', [CatalogApiController::class, 'deleteFavorites']);
+        Route::get('/beklemeler', [CatalogApiController::class, 'memberWaitings']);
+        Route::post('/beklemeekle', [CatalogApiController::class, 'insertWaitings']);
+        Route::delete('/beklemesil', [CatalogApiController::class, 'deleteWaitings']);
+        Route::get('/rezervasyonlar', [CatalogApiController::class, 'memberReservations']);
+        Route::post('/rezervasyonekle', [CatalogApiController::class, 'insertReservation']);
+        Route::post('/rezervasyoniptal', [CatalogApiController::class, 'cancelReservation']);
+        Route::get('/uyesayac', [CatalogApiController::class, 'memberCounts']);
     });
 });

@@ -1496,9 +1496,10 @@
                                         <select class="form-select" id="kunyeDurum" name="kunyeDurum">
                                             <option value="Rafta" selected>Rafta (Müsait)</option>
                                             <option value="Ödünç">Ödünç Verildi</option>
+                                            <option value="Rezerve">Rezerve Edildi</option>
                                             <option value="Kayıp">Kayıp</option>
                                             <option value="Bakımda">Bakımda / Onarımda</option>
-                                            <option value="Hurdaya Ayrıldı">Hurdaya Ayrıldı</option>
+                                            <option value="Hurda">Hurdaya Ayrıldı</option>
                                         </select>
                                     </div>
 

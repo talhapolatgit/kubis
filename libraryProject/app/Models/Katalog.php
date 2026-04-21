@@ -42,4 +42,17 @@ class Katalog extends Model
         return $this->hasOne(OduncIslem::class, 'katalog_id')
                 ->where('statu', 'aktif');
     }
+
+    public function favorimi($uyeid)
+    {
+        $check = $this->hasOne(UyeFavori::class, 'katalog_id')
+                ->where('uye_id', $uyeid)
+                ->count();
+                
+        if ($check > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

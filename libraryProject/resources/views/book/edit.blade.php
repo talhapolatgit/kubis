@@ -1514,8 +1514,8 @@
                                 <div class="form-grid cols-3">
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDurum">Durum</label>
-                                        <select class="form-select" id="kunyeDurum" name="kunyeDurum">
-                                            @foreach(['Rafta' => 'Rafta (Müsait)', 'Ödünç' => 'Ödünç Verildi', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'] as $val => $label)
+                                        <select class="form-select" id="kunyeDurum" name="kunyeDurum" disabled>
+                                            @foreach(['Rafta' => 'Rafta (Müsait)', 'Ödünç' => 'Ödünç Verildi','Rezerve' => 'Rezerve Edildi', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'] as $val => $label)
                                                 <option value="{{ $val }}" {{ old('kunyeDurum', $kitap->kunyeDurum) == $val ? 'selected' : '' }}>{{ $label }}</option>
                                             @endforeach
                                         </select>
