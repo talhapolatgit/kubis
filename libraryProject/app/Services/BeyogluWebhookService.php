@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Log;
 
 class BeyogluWebhookService
 {
-    private string $webhookUrl;
-    private string $secretKey;
+    private ?string $webhookUrl;
+    private ?string $secretKey;
 
     public function __construct()
     {
