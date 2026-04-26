@@ -30,7 +30,7 @@ APP_DEBUG=true
 
 APP_URL=
 
-DB_CONNECTION=mysqL
+DB_CONNECTION=mysql
 
 DB_HOST=
 
