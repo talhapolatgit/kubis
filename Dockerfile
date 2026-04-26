@@ -2,13 +2,14 @@ FROM php:8.3-fpm-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache icu-dev libxml2-dev
+# install-php-extensions: çok daha hızlı, RAM dostu
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
-RUN docker-php-ext-install pdo pdo_mysql soap intl
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions pdo pdo_mysql soap intl opcache
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Sadece libraryProject içeriğini kopyala
 COPY libraryProject/ .
 
 RUN composer install --no-dev --optimize-autoloader --no-scripts
