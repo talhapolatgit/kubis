@@ -7,10 +7,24 @@ services:
     volumes:
       - app_storage:/app/storage/app/public
     ports:
-      - "8001:8000"
+      - "8000:8000"
     environment:
       - APP_ENV=production
       - APP_DEBUG=false
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: laravel123
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: laravel123
+    volumes:
+      - db_data:/var/lib/mysql
 
 volumes:
   app_storage:
+  db_data:
