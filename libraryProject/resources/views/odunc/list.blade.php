@@ -326,6 +326,12 @@
                     <input type="text" id="searchInput" class="search-input" placeholder="Üye adı, TC, kitap adı, ISBN…" autocomplete="off" />
                 </div>
                 <input type="text" id="demirbasInput" class="search-input" style="max-width:180px;" placeholder="Demirbaş No…" autocomplete="off" />
+                <select id="kutuphaneFilter" class="filter-select">
+                    <option value="">Tüm Kütüphaneler</option>
+                    @foreach($kutuphaneler as $kutuphane)
+                        <option value="{{ $kutuphane->id }}">{{ $kutuphane->title }}</option>
+                    @endforeach
+                </select>
                 <select id="statuFilter" class="filter-select">
                     <option value="aktif">Aktif Ödünçler</option>
                     <option value="gecikti">Gecikmiş</option>
@@ -514,6 +520,7 @@
     var state = {
         search:          '',
         demirbasNo:      '',
+        kutuphaneId:     '',
         statu:           '{{ $statu }}',
         tarih_baslangic: '',
         tarih_bitis:     '',
@@ -640,6 +647,7 @@
         var params = new URLSearchParams({
             search:          state.search,
             demirbasNo:      state.demirbasNo,
+            kutuphaneId:     state.kutuphaneId,
             statu:           state.statu,
             tarih_baslangic: state.tarih_baslangic,
             tarih_bitis:     state.tarih_bitis,
@@ -703,6 +711,11 @@
         state.statu = this.value;
         fetchTable(true);
     });
+    document.getElementById('kutuphaneFilter').addEventListener('change', function() {
+        clearTimeout(fetchTimer);
+        state.kutuphaneId = this.value;
+        fetchTable(true);
+    });
     document.getElementById('tarihBaslangic').addEventListener('change', function() {
         clearTimeout(fetchTimer);
         state.tarih_baslangic = this.value;
@@ -738,6 +751,7 @@
         var params = new URLSearchParams({
             search:          state.search,
             demirbasNo:      state.demirbasNo,
+            kutuphaneId:     state.kutuphaneId,
             statu:           state.statu,
             tarih_baslangic: state.tarih_baslangic,
             tarih_bitis:     state.tarih_bitis,

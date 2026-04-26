@@ -545,6 +545,17 @@
                                            autocomplete="off" />
                                 </div>
 
+                                {{-- Kütüphane --}}
+                                <div class="filter-field span-2">
+                                    <span class="filter-label">Kütüphane</span>
+                                    <select id="filterKutuphaneId" class="filter-input">
+                                        <option value="">Tüm Yetkili Kütüphaneler</option>
+                                        @foreach(($kutuphaneler ?? []) as $kutuphane)
+                                            <option value="{{ $kutuphane->id }}">{{ $kutuphane->title }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
                                 {{-- Kayıt Tarihi Aralığı --}}
                                 <div class="filter-field span-2">
                                     <span class="filter-label">Kayıt Tarihi Aralığı</span>
@@ -852,6 +863,7 @@
         document.getElementById('searchInput').value             = '';
         document.getElementById('filterDemirbas').value          = '';
         document.getElementById('filterOzelNotlar').value        = '';
+        document.getElementById('filterKutuphaneId').value       = '';
         document.getElementById('filterKayitBaslangic').value    = '';
         document.getElementById('filterKayitBitis').value        = '';
         document.getElementById('filterEtiketOlusmayanlar').checked = false;
@@ -864,6 +876,7 @@
         return document.getElementById('searchInput').value.trim().length > 0
             || document.getElementById('filterDemirbas').value.trim().length > 0
             || document.getElementById('filterOzelNotlar').value.trim().length > 0
+            || document.getElementById('filterKutuphaneId').value.trim().length > 0
             || document.getElementById('filterKayitBaslangic').value.trim().length > 0
             || document.getElementById('filterKayitBitis').value.trim().length > 0
             || document.getElementById('filterEtiketOlusmayanlar').checked;
@@ -887,6 +900,8 @@
         if (dm) params.set('demirbasNo', dm);
         var on = document.getElementById('filterOzelNotlar').value.trim();
         if (on) params.set('ozelNotlar', on);
+        var kt = document.getElementById('filterKutuphaneId').value.trim();
+        if (kt) params.set('kutuphaneId', kt);
         var kb = document.getElementById('filterKayitBaslangic').value;
         if (kb) params.set('kayitBaslangic', kb);
         var ke = document.getElementById('filterKayitBitis').value;

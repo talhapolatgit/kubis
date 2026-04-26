@@ -221,6 +221,13 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                 </button>
                             </div>
+                            <div id="uyeNotUyari" class="warning-box--block" style="display:none;margin-top:8px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4"/><path d="M12 16h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                                <div>
+                                    <strong>Üye Notu</strong>
+                                    <span id="uyeNotMetin">—</span>
+                                </div>
+                            </div>
 
                             @error('uye_id')
                             <div class="form-error" style="margin-top:6px;">{{ $message }}</div>
@@ -410,6 +417,9 @@
             var badge = item.aktif_odunc > 0
                 ? '<span class="ac-item-badge warning">' + item.aktif_odunc + ' aktif ödünç</span>'
                 : '';
+            if (item.notlar && String(item.notlar).trim().length > 0) {
+                badge += '<span class="ac-item-badge danger">Not var</span>';
+            }
             var initials = item.label.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
             return '<div class="ac-item-avatar">' + initials + '</div>'
                 + '<div class="ac-item-body">'
@@ -429,6 +439,16 @@
             + (item.aktif_odunc > 0 ? ' · ' + item.aktif_odunc + ' aktif ödünç' : '');
         document.getElementById('uyeSearchField').style.display = 'none';
         document.getElementById('uyeCard').style.display = 'flex';
+        var uyeNot = String(item.notlar || '').trim();
+        var uyeNotUyari = document.getElementById('uyeNotUyari');
+        var uyeNotMetin = document.getElementById('uyeNotMetin');
+        if (uyeNot) {
+            uyeNotMetin.textContent = uyeNot;
+            uyeNotUyari.style.display = 'flex';
+        } else {
+            uyeNotMetin.textContent = '';
+            uyeNotUyari.style.display = 'none';
+        }
 
         if (selectedKitap && selectedKitap.id) {
             fetch('{{ route('odunc.kitapAra') }}?katalog_id=' + encodeURIComponent(selectedKitap.id) + '&uye_id=' + encodeURIComponent(item.id), {
@@ -450,6 +470,8 @@
         document.getElementById('uyeId').value = '';
         document.getElementById('uyeSearchField').style.display = 'block';
         document.getElementById('uyeCard').style.display = 'none';
+        document.getElementById('uyeNotUyari').style.display = 'none';
+        document.getElementById('uyeNotMetin').textContent = '';
         document.getElementById('uyeSearch').value = '';
         document.getElementById('uyeSearch').focus();
     }

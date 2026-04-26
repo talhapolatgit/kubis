@@ -39,4 +39,9 @@ class UyeRezerve extends Model
         return $this->belongsTo(OduncIslem::class, 'odunc_id');
     }
 
+    public function iptalEdenUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'iptalEdenUserId');
+    }
+
 }

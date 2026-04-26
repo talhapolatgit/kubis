@@ -31,10 +31,12 @@ class KpsController extends Controller
 
         // Servisten başarılı yanıt geldiyse ad/soyad çıkar
         if (isset($ham['success']) && $ham['success'] === true && isset($ham['sbsKisiDto'])) {
+            $rawCinsiyet = $ham['sbsKisiDto']['cinsiyeti'] ?? $ham['sbsKisiDto']['cinsiyet'] ?? null;
             return response()->json([
                 'success' => true,
                 'ad'      => $ham['sbsKisiDto']['adi']     ?? '',
                 'soyad'   => $ham['sbsKisiDto']['soyadi']  ?? '',
+                'cinsiyet'=> $this->normalizeCinsiyet($rawCinsiyet),
             ]);
         }
 
@@ -42,6 +44,21 @@ class KpsController extends Controller
             'success' => false,
             'message' => 'Kimlik doğrulaması başarısız. Lütfen bilgileri kontrol edin.',
         ], 422);
+    }
+
+    private function normalizeCinsiyet(?string $raw): ?string
+    {
+        if ($raw === null) {
+            return null;
+        }
+
+        $value = mb_strtoupper(trim($raw), 'UTF-8');
+
+        return match ($value) {
+            'ERKEK' => 'erkek',
+            'KADIN' => 'kadin',
+            default => null,
+        };
     }
 
     // ─── Kimlik Sorgula ──────────────────────────────────────────────────────────
@@ -56,7 +73,7 @@ class KpsController extends Controller
         ])
             ->withBody($body, 'application/json') // Kritik nokta: Veriyi olduğu gibi (raw) gönderiyoruz
             ->withoutVerifying()
-            ->post('https://servis.beyoglu.bel.tr/FlexCityUi/rest/json/sbs/FindSbsKisiDtoByNvi');
+            ->post('https://10.40.8.16/FlexCityUi/rest/json/sbs/FindSbsKisiDtoByNvi');
 
         return $response->json();
     }
@@ -96,7 +113,7 @@ class KpsController extends Controller
         ])
             ->withBody($body, 'application/json')
             ->withoutVerifying()
-            ->post('https://servis.beyoglu.bel.tr/FlexCityUi/rest/json/nvi/FindAllBaseAdresDto');
+            ->post('https://10.40.8.16/FlexCityUi/rest/json/nvi/FindAllBaseAdresDto');
         
             $data = $response->json();
             if (isset($data['baseAdresDtoList'][0])) {

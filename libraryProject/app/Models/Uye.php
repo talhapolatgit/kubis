@@ -16,6 +16,7 @@ class Uye extends Model
         'dogum_tarihi',
         'ad',
         'soyad',
+        'cinsiyet',
         'email',
         'telefon',
         'telefon2',

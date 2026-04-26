@@ -66,9 +66,20 @@ class OduncController extends Controller
     public function index(Request $request)
     {
         abort_unless($this->canViewAllLoans() || $this->canViewScopedLoans(), 403);
+        $kutuphaneler = Kutuphane::query()
+            ->whereNull('deleted_at')
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        if (!$this->canViewAllLoans()) {
+            $ids = auth()->user()->yetkiliKutuphaneIds();
+            $kutuphaneler = $kutuphaneler->whereIn('id', $ids ?: [-1])->values();
+        }
+
         return view('odunc.list', [
-            'stats' => $this->stats(),
-            'statu' => $request->input('statu', 'aktif'),
+            'stats'       => $this->stats(),
+            'statu'       => $request->input('statu', 'aktif'),
+            'kutuphaneler'=> $kutuphaneler,
         ]);
     }
 
@@ -84,6 +95,7 @@ class OduncController extends Controller
         $statu      = $request->input('statu', 'aktif');
         $search     = trim($request->input('search', ''));
         $demirbasNo = trim($request->input('demirbasNo', ''));
+        $kutuphaneId= (int) $request->input('kutuphaneId', 0);
 
         $query = OduncIslem::with(['uye', 'katalog', 'kutuphane', 'oduncVeren']);
 
@@ -131,6 +143,19 @@ class OduncController extends Controller
         if ($demirbasNo !== '') {
             $query->whereHas('katalog', function ($k) use ($demirbasNo) {
                 $k->where('kunyeDemirbasKN', 'LIKE', "%{$demirbasNo}%");
+            });
+        }
+
+        // ── Kütüphane filtresi ────────────────────────────────────────────────
+        if ($kutuphaneId > 0) {
+            $query->where(function ($q) use ($kutuphaneId) {
+                $q->where('kutuphane_id', $kutuphaneId)
+                    ->orWhere(function ($q2) use ($kutuphaneId) {
+                        $q2->whereNull('kutuphane_id')
+                            ->whereHas('katalog', function ($k) use ($kutuphaneId) {
+                                $k->where('kutuphaneId', $kutuphaneId);
+                            });
+                    });
             });
         }
 
@@ -209,6 +234,7 @@ class OduncController extends Controller
         $statu      = $request->input('statu', 'aktif');
         $search     = trim($request->input('search', ''));
         $demirbasNo = trim($request->input('demirbasNo', ''));
+        $kutuphaneId= (int) $request->input('kutuphaneId', 0);
 
         $query = OduncIslem::with(['uye', 'katalog', 'kutuphane', 'oduncVeren']);
 
@@ -252,6 +278,18 @@ class OduncController extends Controller
         if ($demirbasNo !== '') {
             $query->whereHas('katalog', function ($k) use ($demirbasNo) {
                 $k->where('kunyeDemirbasKN', 'LIKE', "%{$demirbasNo}%");
+            });
+        }
+
+        if ($kutuphaneId > 0) {
+            $query->where(function ($q) use ($kutuphaneId) {
+                $q->where('kutuphane_id', $kutuphaneId)
+                    ->orWhere(function ($q2) use ($kutuphaneId) {
+                        $q2->whereNull('kutuphane_id')
+                            ->whereHas('katalog', function ($k) use ($kutuphaneId) {
+                                $k->where('kutuphaneId', $kutuphaneId);
+                            });
+                    });
             });
         }
 
@@ -348,6 +386,7 @@ class OduncController extends Controller
                     'label'       => $u->ad . ' ' . $u->soyad,
                     'tc'          => $u->tc_kimlik,
                     'telefon'     => $u->telefon ?? '',
+                    'notlar'      => $u->notlar ?? '',
                     'aktif_odunc' => OduncIslem::where('uye_id', $u->id)
                         ->where('statu', 'aktif')->count(),
                 ];
@@ -370,13 +409,14 @@ class OduncController extends Controller
                     ->orWhere('tc_kimlik','LIKE', "%{$term}%")
                     ->orWhere('telefon',  'LIKE', "%{$term}%");
             })
-            ->select('id', 'ad', 'soyad', 'tc_kimlik', 'telefon', 'statu')
+            ->select('id', 'ad', 'soyad', 'tc_kimlik', 'telefon', 'notlar', 'statu')
             ->limit(8)->get()
             ->map(fn($u) => [
                 'id'          => $u->id,
                 'label'       => $u->ad . ' ' . $u->soyad,
                 'tc'          => $u->tc_kimlik,
                 'telefon'     => $u->telefon,
+                'notlar'      => $u->notlar ?? '',
                 'aktif_odunc' => OduncIslem::where('uye_id', $u->id)->where('statu', 'aktif')->count(),
             ]);
 

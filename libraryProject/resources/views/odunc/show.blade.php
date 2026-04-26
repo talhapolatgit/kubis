@@ -140,6 +140,38 @@
                 $gecikmeGun = $gecikiyor ? \Carbon\Carbon::today()->diffInDays($islem->iade_tarihi_planlanan) : 0;
                 $kalanGun = $islem->statu === 'aktif' && !$gecikiyor ? \Carbon\Carbon::today()->diffInDays($islem->iade_tarihi_planlanan, false) : null;
                 $iadeTarihiFormatted = $islem->iade_tarihi_planlanan->format('d.m.Y');
+
+                $loanFormData = [
+                    'id' => $islem->id,
+                    'statu' => $islem->statu_label,
+                    'uye' => [
+                        'adSoyad' => trim(($islem->uye->ad ?? '') . ' ' . ($islem->uye->soyad ?? '')),
+                        'tc' => $islem->uye->tc_kimlik,
+                        'telefon' => $islem->uye->telefon,
+                        'email' => $islem->uye->email,
+                        'uyelikDurumu' => $islem->uye->statu_label,
+                    ],
+                    'kitap' => [
+                        'eserAdi' => $islem->katalog->kunyeEserAdi,
+                        'yazar' => $islem->katalog->kunyeYazar,
+                        'isbn' => $islem->katalog->kunyeISBNISSN,
+                        'demirbas' => $islem->katalog->kunyeDemirbasKN,
+                        'kutuphane' => $islem->kutuphane?->title,
+                    ],
+                    'odunc' => [
+                        'oduncTarihi' => $islem->odunc_tarihi?->format('d.m.Y'),
+                        'planlananIade' => $islem->iade_tarihi_planlanan?->format('d.m.Y'),
+                        'gerceklesenIade' => $islem->iade_tarihi_gercek?->format('d.m.Y'),
+                        'sureUzatimi' => $islem->sure_uzatimi ? ((string) $islem->sure_uzatimi . ' gün') : null,
+                        'sureUzatmaTarihi' => $islem->sure_uzatma_tarihi ? \Carbon\Carbon::parse($islem->sure_uzatma_tarihi)->format('d.m.Y') : null,
+                        'oduncVeren' => $islem->oduncVeren?->name,
+                        'iadeAlan' => $islem->iadeAlan?->name,
+                    ],
+                    'notlar' => [
+                        'oduncNotu' => $islem->notlar,
+                        'iadeNotu' => $islem->iade_notu,
+                    ],
+                ];
             @endphp
 
                 <!-- Status Banner -->
@@ -337,6 +369,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
                     Listeye Dön
                 </a>
+                <button type="button" class="btn btn-primary" onclick="createLoanFormPdf()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    Ödünç Formu
+                </button>
             </div>
 
         </div>
@@ -439,6 +475,7 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
     // Sidebar
     var sidebar = document.getElementById('sidebar');
@@ -460,6 +497,8 @@
     }
 
     @if(session('success')) showToast('success', @json(session('success'))); @endif
+
+    var loanFormData = @json($loanFormData);
 
     // İade modal
     var iadeModal = document.getElementById('iadeModal');
@@ -582,6 +621,214 @@
             inner.style.borderColor = 'var(--primary)'; inner.style.background = 'rgba(122,92,60,.05)';
         });
     });
+
+    /** Helvetica/cp1252 ile güvenli yedek metin (Türkçe font yüklenemezse). */
+    function normPDFAscii(str) {
+        return String(str || '')
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+            .replace(/ş/g, 's').replace(/Ş/g, 'S')
+            .replace(/ı/g, 'i').replace(/İ/g, 'I')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+            .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+    }
+
+    function arrayBufferToBase64(buf) {
+        var bytes = new Uint8Array(buf);
+        var binary = '';
+        var CHUNK = 8192;
+        for (var i = 0; i < bytes.length; i += CHUNK) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+        }
+        return btoa(binary);
+    }
+
+    var _pdfDejaVuLoadPromise = null;
+
+    /** DejaVu Sans (TTF) — Türkçe tam Unicode; CDN'den bir kez indirilir. */
+    function ensurePdfTurkishFonts() {
+        if (window._pdfDejaVuSansB64 && window._pdfDejaVuBoldB64) {
+            return Promise.resolve(true);
+        }
+        if (_pdfDejaVuLoadPromise) {
+            return _pdfDejaVuLoadPromise;
+        }
+        var base = 'https://unpkg.com/dejavu-fonts-ttf@2.37.3/ttf/';
+        _pdfDejaVuLoadPromise = Promise.all([
+            fetch(base + 'DejaVuSans.ttf').then(function(r) {
+                if (!r.ok) throw new Error('sans');
+                return r.arrayBuffer();
+            }),
+            fetch(base + 'DejaVuSans-Bold.ttf').then(function(r) {
+                if (!r.ok) throw new Error('bold');
+                return r.arrayBuffer();
+            }),
+        ]).then(function(bufs) {
+            window._pdfDejaVuSansB64 = arrayBufferToBase64(bufs[0]);
+            window._pdfDejaVuBoldB64 = arrayBufferToBase64(bufs[1]);
+            return true;
+        }).catch(function() {
+            _pdfDejaVuLoadPromise = null;
+            return false;
+        });
+        return _pdfDejaVuLoadPromise;
+    }
+
+    function valOrDash(v) {
+        var s = String(v || '').trim();
+        return s ? s : '-';
+    }
+
+    function createLoanFormPdf() {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('error', 'PDF Kütüphanesi Yüklenemedi', 'Lütfen sayfayı yenileyip tekrar deneyin.');
+            return;
+        }
+        ensurePdfTurkishFonts().then(function(ok) {
+            if (!ok) {
+                showToast('error', 'Bilgi', 'Türkçe font indirilemedi (ağ). Belge Latin karşılıklarıyla oluşturuldu.');
+            }
+            try {
+                runLoanFormPdfBuild(ok);
+            } catch (e) {
+                console.error(e);
+                showToast('error', 'PDF', 'Oluşturma sırasında hata oluştu.');
+            }
+        });
+    }
+
+    function runLoanFormPdfBuild(useDejaVu) {
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        if (useDejaVu) {
+            doc.addFileToVFS('DejaVuSans.ttf', window._pdfDejaVuSansB64);
+            doc.addFont('DejaVuSans.ttf', 'dejavu', 'normal');
+            doc.addFileToVFS('DejaVuSans-Bold.ttf', window._pdfDejaVuBoldB64);
+            doc.addFont('DejaVuSans-Bold.ttf', 'dejavu', 'bold');
+        }
+
+        function T(s) {
+            return useDejaVu ? String(s || '') : normPDFAscii(s);
+        }
+
+        function setBold(size) {
+            doc.setFont(useDejaVu ? 'dejavu' : 'helvetica', 'bold');
+            doc.setFontSize(size);
+        }
+
+        function setNormal(size) {
+            doc.setFont(useDejaVu ? 'dejavu' : 'helvetica', 'normal');
+            doc.setFontSize(size);
+        }
+
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var m = 14;
+        var y = 18;
+        var BLACK = [0, 0, 0];
+
+        function lineRgb(x1, y1, x2, y2, rgb) {
+            doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+            doc.line(x1, y1, x2, y2);
+        }
+
+        function sectionTitle(title, showUnderline) {
+            if (showUnderline === undefined) {
+                showUnderline = true;
+            }
+            if (y > pageH - 36) {
+                doc.addPage();
+                y = 18;
+            }
+            doc.setTextColor(0, 0, 0);
+            setBold(10.5);
+            doc.text(T(title), m, y);
+            y += 2.2;
+            if (showUnderline) {
+                doc.setLineWidth(0.35);
+                lineRgb(m, y, pageW - m, y, BLACK);
+                doc.setLineWidth(0.2);
+            }
+            y += 5.5;
+        }
+
+        function pair(label, value) {
+            var maxW = pageW - (m + 38) - m;
+            setNormal(9.5);
+            var valLines = doc.splitTextToSize(T(valOrDash(value)), maxW);
+            var rowH = Math.max(6.5, valLines.length * 4.2 + 1.5);
+            if (y + rowH > pageH - 20) {
+                doc.addPage();
+                y = 18;
+            }
+            doc.setTextColor(0, 0, 0);
+            setBold(9.5);
+            doc.text(T(label), m, y);
+
+            setNormal(9.5);
+            doc.text(valLines, m + 38, y);
+
+            y += rowH;
+        }
+
+        doc.setTextColor(0, 0, 0);
+        setBold(15);
+        doc.text(T('ÖDÜNÇ BELGESİ'), m, y);
+        y += 5.5;
+        setNormal(9.5);
+        doc.text(T('İşlem No: #' + loanFormData.id), m, y);
+        doc.text(T('Durum: ' + valOrDash(loanFormData.statu)), m, y + 4.2);
+        doc.text(T('Belge Tarihi: ' + new Date().toLocaleDateString('tr-TR')), pageW - m, y, { align: 'right' });
+        doc.text(T('Belge Saati: ' + new Date().toLocaleTimeString('tr-TR')), pageW - m, y + 4.2, { align: 'right' });
+        y += 12;
+
+        sectionTitle('Üye Bilgileri');
+        pair('Ad Soyad', loanFormData.uye.adSoyad);
+        pair('T.C. Kimlik', loanFormData.uye.tc);
+        pair('Telefon', loanFormData.uye.telefon);
+        pair('E-posta', loanFormData.uye.email);
+        pair('Üyelik durumu', loanFormData.uye.uyelikDurumu);
+
+        y += 4;
+        sectionTitle('Kitap Bilgileri');
+        pair('Eser adı', loanFormData.kitap.eserAdi);
+        pair('Yazar', loanFormData.kitap.yazar);
+        pair('ISBN', loanFormData.kitap.isbn);
+        pair('Demirbaş no', loanFormData.kitap.demirbas);
+        pair('Kütüphane', loanFormData.kitap.kutuphane);
+
+        y += 4;
+        sectionTitle('Ödünç Bilgileri');
+        pair('Ödünç tarihi', loanFormData.odunc.oduncTarihi);
+        pair('Planlanan iade', loanFormData.odunc.planlananIade);
+        pair('Gerçekleşen iade', loanFormData.odunc.gerceklesenIade);
+        pair('Süre uzatımı', loanFormData.odunc.sureUzatimi);
+        pair('Süre uzatma tarihi', loanFormData.odunc.sureUzatmaTarihi);
+        pair('Ödünç veren', loanFormData.odunc.oduncVeren);
+        pair('İade alan', loanFormData.odunc.iadeAlan);
+
+        if (loanFormData.notlar.oduncNotu || loanFormData.notlar.iadeNotu) {
+            y += 4;
+            sectionTitle('Notlar', false);
+            pair('Ödünç notu', loanFormData.notlar.oduncNotu);
+            pair('İade notu', loanFormData.notlar.iadeNotu);
+        }
+
+        var footerY = pageH - 28;
+        if (y > footerY - 12) {
+            doc.addPage();
+            y = 18;
+            footerY = pageH - 28;
+        }
+
+        doc.setTextColor(0, 0, 0);
+        setNormal(8.5);
+        doc.text(T('Bu belge kütüphane bilgi sistemi tarafından üretilmiştir.'), m, footerY + 5);
+        doc.text(T('İmza (görevli): ____________________'), m, footerY + 12);
+        doc.text(T('İmza (üye): ____________________'), pageW - m, footerY + 12, { align: 'right' });
+
+        doc.save('odunc-formu-' + loanFormData.id + '.pdf');
+    }
 </script>
 </body>
 </html>

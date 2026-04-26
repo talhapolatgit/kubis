@@ -1049,6 +1049,7 @@
             <!-- Book Registration Form -->
             <form id="bookForm" class="form-card" method="POST" action="{{ route('katalog.store') }}" enctype="multipart/form-data" novalidate>
                 @csrf
+                <input type="hidden" name="copy_kapak_from_katalog_id" id="copyKapakFromId" value="{{ old('copy_kapak_from_katalog_id', $copyKapakFromKatalogId ?? '') }}" />
                 <div class="form-card-header">
                     <h1 class="form-card-title">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><line x1="12" x2="12" y1="7" y2="7"/></svg>
@@ -1156,6 +1157,11 @@
                                     </div>
                                 </div>
 
+                                @php
+                                    $defaultTurId   = $turler->firstWhere('ad', 'Kitap')?->id;
+                                    $defaultSekilId = $sekiller->firstWhere('ad', 'Basılı')?->id;
+                                    $defaultOrtamId = $ortamlar->firstWhere('ad', 'Kağıt')?->id;
+                                @endphp
                                 {{-- Tür / Alt Tür / Şekil / Ortam — arama destekli combobox --}}
                                 <div class="form-grid cols-2" style="margin-top:16px;">
                                     <div class="form-field">
@@ -1169,7 +1175,7 @@
                                             </div>
                                             <div class="combobox-dropdown"></div>
                                         </div>
-                                        <input type="hidden" id="turId" name="turId" value="{{ old('turId') }}" />
+                                        <input type="hidden" id="turId" name="turId" value="{{ old('turId', $defaultTurId) }}" />
                                         <script id="turData" type="application/json">@json($turler->map(fn($t) => ['id' => $t->id, 'ad' => $t->ad]))</script>
                                     </div>
                                     <div class="form-field">
@@ -1197,7 +1203,7 @@
                                             </div>
                                             <div class="combobox-dropdown"></div>
                                         </div>
-                                        <input type="hidden" id="sekilId" name="sekilId" value="{{ old('sekilId') }}" />
+                                        <input type="hidden" id="sekilId" name="sekilId" value="{{ old('sekilId', $defaultSekilId) }}" />
                                         <script id="sekilData" type="application/json">@json($sekiller->map(fn($t) => ['id' => $t->id, 'ad' => $t->ad]))</script>
                                     </div>
                                     <div class="form-field">
@@ -1211,7 +1217,7 @@
                                             </div>
                                             <div class="combobox-dropdown"></div>
                                         </div>
-                                        <input type="hidden" id="ortamId" name="ortamId" value="{{ old('ortamId') }}" />
+                                        <input type="hidden" id="ortamId" name="ortamId" value="{{ old('ortamId', $defaultOrtamId) }}" />
                                         <script id="ortamData" type="application/json">@json($ortamlar->map(fn($t) => ['id' => $t->id, 'ad' => $t->ad]))</script>
                                     </div>
                                 </div>
@@ -1327,16 +1333,17 @@
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDilKN">Dil</label>
                                         <select class="form-select" id="kunyeDilKN" name="kunyeDilKN">
-                                            <option value="" disabled selected>Dil seçin</option>
-                                            <option value="Türkçe">Türkçe</option>
-                                            <option value="İngilizce">İngilizce</option>
-                                            <option value="Almanca">Almanca</option>
-                                            <option value="Fransızca">Fransızca</option>
-                                            <option value="Arapça">Arapça</option>
-                                            <option value="İspanyolca">İspanyolca</option>
-                                            <option value="Rusça">Rusça</option>
-                                            <option value="Farsça">Farsça</option>
-                                            <option value="Diğer">Diğer</option>
+                                            @php $selectedDil = old('kunyeDilKN', 'Türkçe'); @endphp
+                                            <option value="" disabled {{ $selectedDil === '' ? 'selected' : '' }}>Dil seçin</option>
+                                            <option value="Türkçe" {{ $selectedDil === 'Türkçe' ? 'selected' : '' }}>Türkçe</option>
+                                            <option value="İngilizce" {{ $selectedDil === 'İngilizce' ? 'selected' : '' }}>İngilizce</option>
+                                            <option value="Almanca" {{ $selectedDil === 'Almanca' ? 'selected' : '' }}>Almanca</option>
+                                            <option value="Fransızca" {{ $selectedDil === 'Fransızca' ? 'selected' : '' }}>Fransızca</option>
+                                            <option value="Arapça" {{ $selectedDil === 'Arapça' ? 'selected' : '' }}>Arapça</option>
+                                            <option value="İspanyolca" {{ $selectedDil === 'İspanyolca' ? 'selected' : '' }}>İspanyolca</option>
+                                            <option value="Rusça" {{ $selectedDil === 'Rusça' ? 'selected' : '' }}>Rusça</option>
+                                            <option value="Farsça" {{ $selectedDil === 'Farsça' ? 'selected' : '' }}>Farsça</option>
+                                            <option value="Diğer" {{ $selectedDil === 'Diğer' ? 'selected' : '' }}>Diğer</option>
                                         </select>
                                     </div>
                                     <div class="form-field">
@@ -1360,7 +1367,7 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeGelisTarihi">Geliş Tarihi</label>
-                                        <input type="date" class="form-input" id="kunyeGelisTarihi" name="kunyeGelisTarihi" placeholder="Geliş Tarihi" />
+                                        <input type="date" class="form-input" id="kunyeGelisTarihi" name="kunyeGelisTarihi" placeholder="Geliş Tarihi" value="{{ old('kunyeGelisTarihi', now()->format('Y-m-d')) }}" />
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="icerik">İçindekiler</label>
@@ -1684,6 +1691,8 @@
         assignFileToCoverInput(file);
         var isbnHidden = document.getElementById('isbnCoverUrl');
         if (isbnHidden) isbnHidden.value = '';
+        var copyKapakHidden = document.getElementById('copyKapakFromId');
+        if (copyKapakHidden) copyKapakHidden.value = '';
 
         var reader = new FileReader();
         reader.onloadend = function() {
@@ -1728,6 +1737,54 @@
         var btn      = document.getElementById('isbnSearchBtn');
         var spinSvg  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.8s linear infinite;display:block"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
         var searchSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+        var initialCopyPrefill = @json($copyPrefill ?? null);
+        var initialCopyCover = @json($copyCoverPreview ?? null);
+        var excluded = {
+            girisTuruId: true,
+            kunyeDurum: true,
+            kutuphaneId: true,
+            oduncVerilemez: true,
+            etiketlendi: true
+        };
+
+        function applyDatabasePrefill(prefill) {
+            if (!prefill || typeof prefill !== 'object') return;
+
+            Object.keys(prefill).forEach(function (key) {
+                if (excluded[key]) return;
+
+                var value = prefill[key];
+                if (value === null || typeof value === 'undefined') return;
+
+                var el = document.getElementById(key);
+                if (!el) return;
+
+                if (el.type === 'checkbox') {
+                    el.checked = value === 1 || value === '1' || value === true;
+                } else {
+                    el.value = value;
+                }
+
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            if (prefill.kunyeYazar) {
+                var yazarSearch = document.getElementById('kunyeYazarSearch');
+                if (yazarSearch) yazarSearch.value = prefill.kunyeYazar;
+            }
+            if (prefill.kunyeYayinlayan) {
+                var yayineviSearch = document.getElementById('kunyeYayinlayanSearch');
+                if (yayineviSearch) yayineviSearch.value = prefill.kunyeYayinlayan;
+            }
+        }
+
+        if (initialCopyPrefill) {
+            applyDatabasePrefill(initialCopyPrefill);
+        }
+        if (initialCopyCover) {
+            showCoverPreview(initialCopyCover);
+        }
 
         btn.addEventListener('click', function () {
             var isbn = document.getElementById('kunyeISBNISSN').value.trim();
@@ -1745,6 +1802,9 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.success) {
+                        if (data.source === 'database' && data.prefill) {
+                            applyDatabasePrefill(data.prefill);
+                        }
                         if (data.title) {
                             document.getElementById('kunyeEserAdi').value = data.title;
                         }
@@ -1759,6 +1819,8 @@
                         if (data.cover) {
                             // Önce file input'u sıfırla (URL kaynağına geçiyoruz)
                             coverInput.value = '';
+                            var copyKapakHidden = document.getElementById('copyKapakFromId');
+                            if (copyKapakHidden) copyKapakHidden.value = '';
                             // Hidden input ile URL'yi form'a ekle
                             var hidden = document.getElementById('isbnCoverUrl');
                             if (!hidden) {
@@ -1772,7 +1834,9 @@
                             // Mevcut preview sistemini kullan (removeBtn ve currentPreviewImg takip edilecek)
                             showCoverPreview(data.cover);
                         }
-                        showToast('success', 'Başarılı', 'Kitap bilgileri getirildi.');
+                        showToast('success', 'Başarılı', (data.source === 'database')
+                            ? 'Bu ISBN mevcut katalog kaydından getirildi.'
+                            : 'Kitap bilgileri getirildi.');
                     } else {
                         showToast('error', 'Bulunamadı', data.message || 'Bu ISBN için kayıt bulunamadı.');
                     }
@@ -1812,6 +1876,8 @@
                 .then(function (data) {
                     if (data.success && data.cover) {
                         coverInput.value = '';
+                        var copyKapakHidden = document.getElementById('copyKapakFromId');
+                        if (copyKapakHidden) copyKapakHidden.value = '';
                         var hidden = document.getElementById('isbnCoverUrl');
                         if (!hidden) {
                             hidden = document.createElement('input');
@@ -1852,6 +1918,8 @@
         coverInput.value = '';
         var isbnHidden = document.getElementById('isbnCoverUrl');
         if (isbnHidden) isbnHidden.value = '';
+        var copyKapakHidden = document.getElementById('copyKapakFromId');
+        if (copyKapakHidden) copyKapakHidden.value = '';
     }
 
     // ============================
@@ -1944,9 +2012,11 @@
 
         // Reset dil select
         var languageSelect = document.getElementById('kunyeDilKN');
-        if (languageSelect) languageSelect.selectedIndex = 0;
+        if (languageSelect) languageSelect.value = 'Türkçe';
         var language2Select = document.getElementById('kunyeDil2');
         if (language2Select) language2Select.selectedIndex = 0;
+        var gelisTarihiInput = document.getElementById('kunyeGelisTarihi');
+        if (gelisTarihiInput) gelisTarihiInput.value = '{{ now()->format('Y-m-d') }}';
 
         // Reset comboboxes
         document.getElementById('kunyeYazar').value = '';
@@ -2072,6 +2142,18 @@
                 }
             }
 
+            function syncSearchFromHidden() {
+                var curVal = hiddenInput.value;
+                if (!curVal) {
+                    searchInput.value = '';
+                    return;
+                }
+                var found = rawData.find(function(r) {
+                    return idKey ? String(r[idKey]) === String(curVal) : r[cfg.labelKey].toLowerCase() === String(curVal).toLowerCase();
+                });
+                searchInput.value = found ? found[cfg.labelKey] : (strict ? '' : curVal);
+            }
+
             function open() {
                 highlightedIndex = -1;
                 searchInput.value = ''; // Her açılışta temizle — tam liste görünür
@@ -2105,6 +2187,8 @@
                 render(this.value);
                 if (!isOpen()) open();
             });
+            hiddenInput.addEventListener('change', syncSearchFromHidden);
+            hiddenInput.addEventListener('input', syncSearchFromHidden);
             searchInput.addEventListener('blur', function() {
                 setTimeout(function() { validateOnBlur(); close(); }, 150);
             });
@@ -2132,6 +2216,7 @@
                 else if (e.key === 'Escape') { close(); }
             });
             document.addEventListener('click', function(e) { if (!wrapper.contains(e.target)) close(); });
+            syncSearchFromHidden();
         }
 
         initDbCombobox({ wrapperId: 'authorCombobox',    searchInputId: 'kunyeYazarSearch',       hiddenInputId: 'kunyeYazar',       dataScriptId: 'yazarData',    labelKey: 'ad' });
@@ -2164,10 +2249,16 @@
         var selectedId      = hiddenInput.value || '';
         var selectedTitle   = '';
 
-        // Sayfa yüklenince mevcut değeri göster (old() ile gelirse)
-        if (selectedId) {
+        function syncSelectedFromHidden() {
+            selectedId = hiddenInput.value || '';
+            if (!selectedId) {
+                selectedTitle = '';
+                searchInput.value = '';
+                return;
+            }
             var found = rawData.find(function(k) { return String(k.id) === String(selectedId); });
-            if (found) { selectedTitle = found.title; searchInput.value = found.title; }
+            selectedTitle = found ? found.title : '';
+            searchInput.value = selectedTitle;
         }
 
         function escHtml(s) {
@@ -2265,6 +2356,9 @@
             setTimeout(close, 150);
         });
 
+        hiddenInput.addEventListener('change', syncSelectedFromHidden);
+        hiddenInput.addEventListener('input', syncSelectedFromHidden);
+
         searchInput.addEventListener('keydown', function(e) {
             if (!isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
                 e.preventDefault(); open(); return;
@@ -2300,6 +2394,8 @@
             hiddenInput.value  = '';
             searchInput.value  = '';
         };
+
+        syncSelectedFromHidden();
     })();
 
     // ============================

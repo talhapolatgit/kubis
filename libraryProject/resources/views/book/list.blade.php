@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#7a5c3c" />
-    <title>Kütüphane Yönetim Sistemi</title>
+    <title>Kütüphane Bilgi Sistemi</title>
     <meta name="description" content="Modern kutuphane yonetim ve otomasyon sistemi. Kitap kaydi, odunc verme ve envanter yonetimi." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1009,6 +1009,23 @@
         .table-loading-wrapper {
             position: relative;
         }
+        .filter-row-extra { display: none; }
+        .form-card-body.filters-expanded .filter-row-extra { display: grid; }
+        .filter-toggle-row {
+            margin-top: -2px;
+            margin-bottom: 14px;
+        }
+        .more-filters-toggle {
+            border: 0;
+            background: transparent;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .more-filters-toggle:hover { color: var(--accent); }
 
         .table-loading-overlay {
             display: none;
@@ -1095,45 +1112,7 @@
 
         <!-- Content -->
         <div class="content-area">
-            <!-- Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
-                    </div>
-                    <div>
-                        <div class="stat-value">{{ number_format($bookcount, 0, '.', ',') }}</div>
-                        <div class="stat-label">Toplam Kitap</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    </div>
-                    <div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Aktif Uye</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="m9 9.5 2 2 4-4"/></svg>
-                    </div>
-                    <div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Ödünç Verilen</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-                    </div>
-                    <div>
-                        <div class="stat-value">0</div>
-                        <div class="stat-label">Günlük İşlem</div>
-                    </div>
-                </div>
-            </div>
+        
             <div class="form-card">
                 <div class="form-card-header">
                     <h2 class="form-card-title">
@@ -1144,7 +1123,7 @@
                 <div class="form-card-body">
 
                     {{-- Satır 1: Eser Adı/ISBN + Yazar + Yayınevi + Kütüphane --}}
-                    <div class="form-grid cols-3" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                    <div class="form-grid cols-3 filter-row-primary" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
                         <div class="form-field">
                             <label class="form-label">Eser Adı / Demirbaş / ISBN</label>
                             <input type="text" id="filterSearch" class="form-input" placeholder="Eser adı veya ISBN..." autocomplete="off">
@@ -1200,8 +1179,12 @@
                         </div>
                     </div>
 
+                    <div class="filter-toggle-row filter-row-primary">
+                        <button type="button" class="more-filters-toggle" id="toggleMoreFilters" aria-expanded="false">Daha fazla filtre</button>
+                    </div>
+
                     {{-- Satır 2: Kategori + Tür + Sınıflama/Yer Kodu + Durum --}}
-                    <div class="form-grid cols-3" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
                         {{-- Kategori — arama destekli combobox --}}
                         <div class="form-field">
                             <label class="form-label">Kategori</label>
@@ -1255,7 +1238,7 @@
                     </div>
 
                     {{-- Satır 3: Dil + Konu Başlığı + Özel Notlar + Ödünç Verilebilir + Etiketlendi --}}
-                    <div class="form-grid cols-3" style="margin-bottom:14px;grid-template-columns:repeat(5,1fr);">
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(5,1fr);">
                         <div class="form-field">
                             <label class="form-label">Dil</label>
                             <select id="filterDil" class="form-select">
@@ -1294,6 +1277,18 @@
                                 <option value="evet">Evet</option>
                                 <option value="hayir">Hayır</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {{-- Satır 4: Kayıt Tarihi --}}
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                        <div class="form-field">
+                            <label class="form-label">Kayıt Tarihi (Başlangıç)</label>
+                            <input type="date" id="filterKayitBaslangic" class="form-input" autocomplete="off">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Kayıt Tarihi (Bitiş)</label>
+                            <input type="date" id="filterKayitBitis" class="form-input" autocomplete="off">
                         </div>
                     </div>
 
@@ -1395,6 +1390,8 @@
                     ozelNotlar:        document.getElementById('filterOzelNotlar').value.trim(),
                     oduncVerilebilir:  document.getElementById('filterOduncVerilebilir').value,
                     etiketlendi:       document.getElementById('filterEtiketlendi').value,
+                    kayitBaslangic:    document.getElementById('filterKayitBaslangic').value,
+                    kayitBitis:        document.getElementById('filterKayitBitis').value,
                 };
             }
 
@@ -1536,6 +1533,8 @@
                 if (f.ozelNotlar)        params.set('ozelNotlar',        f.ozelNotlar);
                 if (f.oduncVerilebilir)  params.set('oduncVerilebilir',  f.oduncVerilebilir);
                 if (f.etiketlendi)       params.set('etiketlendi',       f.etiketlendi);
+                if (f.kayitBaslangic)    params.set('kayitBaslangic',    f.kayitBaslangic);
+                if (f.kayitBitis)        params.set('kayitBitis',        f.kayitBitis);
                 var a = document.createElement('a');
                 a.href = exportUrl + (params.toString() ? '?' + params.toString() : '');
                 a.download = '';
@@ -1585,6 +1584,8 @@
                 document.getElementById('filterOzelNotlar').value       = '';
                 document.getElementById('filterOduncVerilebilir').value = '';
                 document.getElementById('filterEtiketlendi').value      = '';
+                document.getElementById('filterKayitBaslangic').value   = '';
+                document.getElementById('filterKayitBitis').value       = '';
                 // per-page sıfırla
                 document.getElementById('perPageSelect').value = '20';
                 fetchPage(1);
@@ -1596,6 +1597,20 @@
                     if (e.key === 'Enter') { clearTimeout(searchTimer); fetchPage(1); }
                 });
             });
+
+            (function() {
+                var toggleMoreFilters = document.getElementById('toggleMoreFilters');
+                var formCardBody = document.querySelector('.form-card-body');
+                if (!toggleMoreFilters || !formCardBody) return;
+
+                var expanded = false;
+                toggleMoreFilters.addEventListener('click', function() {
+                    expanded = !expanded;
+                    formCardBody.classList.toggle('filters-expanded', expanded);
+                    this.textContent = expanded ? 'Daha az filtre' : 'Daha fazla filtre';
+                    this.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                });
+            })();
 
 
 
@@ -1843,6 +1858,10 @@
 
 <!-- Floating İşlemler Menüsü — script'ten önce DOM'a eklenir -->
 <div id="kitapFloatingMenu">
+    <a id="kfmGoruntule" href="#" class="row-actions-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Görüntüle
+    </a>
     <a id="kfmDuzenle" href="#" class="row-actions-item">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
         Düzenle
@@ -1860,6 +1879,7 @@
 
 <script>
             var canEditBook = @json(auth()->user()->hasYetki(2) || auth()->user()->hasYetki(5));
+            var canViewBook = @json(auth()->user()->hasYetki(1) || auth()->user()->hasYetki(2) || auth()->user()->hasYetki(4) || auth()->user()->hasYetki(5));
     // ============================
     // Toast System
     // ============================
@@ -1957,6 +1977,16 @@
             } else {
                 editEl.style.display = 'none';
                 editEl.href = '#';
+            }
+        }
+        var viewEl = document.getElementById('kfmGoruntule');
+        if (viewEl) {
+            if (canViewBook) {
+                viewEl.style.display = '';
+                viewEl.href = '/katalog/' + id + '/view';
+            } else {
+                viewEl.style.display = 'none';
+                viewEl.href = '#';
             }
         }
         document.getElementById('kfmKopyala').href  = '/katalog/' + id + '/copy';

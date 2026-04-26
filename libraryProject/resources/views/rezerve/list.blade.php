@@ -187,6 +187,9 @@
         .selected-card-clear{width:26px;height:26px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)}
         .selected-card-clear:hover{background:var(--muted);color:var(--foreground)}
         .selected-card-clear svg{width:14px;height:14px}
+        .warning-box--block{padding:12px 16px;background:rgba(197,48,48,.08);border:1.5px solid rgba(197,48,48,.35);border-radius:calc(var(--radius) - 2px);font-size:13px;color:#7f1d1d;display:flex;align-items:flex-start;gap:10px}
+        .warning-box--block svg{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+        .warning-box--block strong{display:block;font-size:13px;font-weight:700;margin-bottom:2px}
         .form-actions-rez{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;grid-column:1/-1}
         @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}}
         @media(max-width:768px){
@@ -361,6 +364,13 @@
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                         </button>
                     </div>
+                    <div id="uyeNotUyariRez" class="warning-box--block" style="display:none;margin-top:8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4"/><path d="M12 16h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                        <div>
+                            <strong>Üye Notu</strong>
+                            <span id="uyeNotMetinRez">—</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-field-rz">
                     <label class="form-label-rz" for="kitapSearchRez">Kitap <span class="req">*</span></label>
@@ -423,6 +433,7 @@
     function esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
 
     var bookIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>';
+    var cancelUrlTpl = @json(route('rezerve.cancel', ['rezerve' => '__ID__']));
 
     function durumBadge(lbl) {
         if (lbl === 'Aktif') return '<span class="badge badge-aktif"><span class="badge-dot"></span> Aktif</span>';
@@ -444,14 +455,56 @@
             '<div class="book-isbn">Demirbaş: ' + esc(i.kitap_demir || '—') + ' · ISBN: ' + esc(i.kitap_isbn || '—') + '</div></div></div>';
         var bas = '<div class="date-cell"><div class="date-main">' + esc(i.rezerve_baslangic) + '</div></div>';
         var bit = '<div class="date-cell"><div class="date-main">' + esc(i.rezerve_bitis) + '</div></div>';
-        var act = '';
+        var actions = [];
         if (i.odunc_yapilabilir && i.odunc_new_url) {
-            act = '<a href="' + String(i.odunc_new_url).replace(/"/g, '&quot;') + '" class="btn btn-primary btn-sm">Ödünç</a>';
-        } else {
-            act = '<span style="font-size:12px;color:var(--muted-foreground);">—</span>';
+            actions.push('<a href="' + String(i.odunc_new_url).replace(/"/g, '&quot;') + '" class="btn btn-primary btn-sm">Ödünç</a>');
         }
-        return '<tr><td>' + uyeCell + '</td><td>' + bookCell + '</td><td>' + bas + '</td><td>' + bit + '</td><td>' + durumBadge(i.durum_etiket) + '</td><td style="font-size:12px;color:var(--muted-foreground);max-width:120px;">' + esc(i.kutuphane || '—') + '</td><td style="text-align:right;white-space:nowrap;">' + act + '</td></tr>';
+        if (i.iptal_edilebilir) {
+            actions.push('<button type="button" class="btn btn-outline btn-sm js-rez-cancel" data-id="' + esc(String(i.id)) + '">İptal</button>');
+        }
+        var act = actions.length
+            ? actions.join(' ')
+            : '<span style="font-size:12px;color:var(--muted-foreground);">—</span>';
+        return '<tr><td>' + uyeCell + '</td><td>' + bookCell + '</td><td>' + bas + '</td><td>' + bit + '</td><td>' + durumBadge(i.durum_etiket) + '</td><td style="font-size:12px;color:var(--muted-foreground);max-width:120px;">' + esc(i.kutuphane || '—') + '</td><td style="text-align:right;white-space:nowrap;"><div style="display:inline-flex;gap:6px;justify-content:flex-end;">' + act + '</div></td></tr>';
     }
+
+    function handleCancelReservation(rezerveId, btn) {
+        if (!rezerveId) return;
+        if (!window.confirm('Bu rezervasyonu iptal etmek istiyor musunuz?')) return;
+
+        if (btn) btn.disabled = true;
+
+        var cancelUrl = cancelUrlTpl.replace('__ID__', encodeURIComponent(String(rezerveId)));
+        fetch(cancelUrl, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })
+            .then(function(res) {
+                if (btn) btn.disabled = false;
+                if (res.ok && res.body && res.body.success) {
+                    showToast('success', 'Rezervasyon', res.body.message || 'Rezervasyon iptal edildi.');
+                    fetchTable(true);
+                    return;
+                }
+                var msg = (res.body && res.body.message) ? res.body.message : 'Rezervasyon iptal edilemedi.';
+                showToast('error', 'Rezervasyon', msg);
+            })
+            .catch(function() {
+                if (btn) btn.disabled = false;
+                showToast('error', 'Hata', 'Sunucuya ulaşılamadı.');
+            });
+        }
+    
+    document.getElementById('tableBody').addEventListener('click', function(e) {
+        var btn = e.target.closest('.js-rez-cancel');
+        if (!btn) return;
+        handleCancelReservation(btn.getAttribute('data-id'), btn);
+    });
 
     var state = {
         search: '',
@@ -618,6 +671,9 @@
         function(item) { selectUyeRez(item); },
         function(item) {
             var badge = item.aktif_odunc > 0 ? '<span class="ac-item-badge warning">' + item.aktif_odunc + ' aktif ödünç</span>' : '';
+            if (item.notlar && String(item.notlar).trim().length > 0) {
+                badge += '<span class="ac-item-badge danger">Not var</span>';
+            }
             var initials = item.label.split(' ').map(function(w) { return w[0]; }).join('').slice(0,2).toUpperCase();
             return '<div class="ac-item-avatar">' + initials + '</div><div class="ac-item-body"><div class="ac-item-name">' + esc(item.label) + badge + '</div><div class="ac-item-meta">TC: ' + esc(item.tc) + ' · ' + esc(item.telefon) + '</div></div>';
         }
@@ -632,12 +688,24 @@
         document.getElementById('uyeCardMetaRez').textContent = 'TC: ' + item.tc + ' · ' + item.telefon;
         document.getElementById('uyeSearchFieldRez').style.display = 'none';
         document.getElementById('uyeCardRez').style.display = 'flex';
+        var uyeNot = String(item.notlar || '').trim();
+        var uyeNotUyari = document.getElementById('uyeNotUyariRez');
+        var uyeNotMetin = document.getElementById('uyeNotMetinRez');
+        if (uyeNot) {
+            uyeNotMetin.textContent = uyeNot;
+            uyeNotUyari.style.display = 'flex';
+        } else {
+            uyeNotMetin.textContent = '';
+            uyeNotUyari.style.display = 'none';
+        }
     }
     window.clearUyeRez = function() {
         selectedUyeRez = null;
         document.getElementById('uyeIdRez').value = '';
         document.getElementById('uyeSearchFieldRez').style.display = 'block';
         document.getElementById('uyeCardRez').style.display = 'none';
+        document.getElementById('uyeNotUyariRez').style.display = 'none';
+        document.getElementById('uyeNotMetinRez').textContent = '';
         document.getElementById('uyeSearchRez').value = '';
     };
 

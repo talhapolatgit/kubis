@@ -1,3 +1,4 @@
+@php($isViewOnly = $isViewOnly ?? false)
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -988,7 +989,7 @@
         .ue-selected-clear svg{width:13px;height:13px}
     </style>
 </head>
-<body>
+<body class="{{ $isViewOnly ? 'view-only-page' : '' }}">
 
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
@@ -1023,7 +1024,7 @@
                     Katalog
                 </a>
                 <span class="breadcrumb-sep">/</span>
-                <span class="breadcrumb-current">Kitap Güncelle</span>
+                <span class="breadcrumb-current">{{ $isViewOnly ? 'Kitap Görüntüle' : 'Kitap Güncelle' }}</span>
             </nav>
             <div class="header-actions">
                 <button class="notification-btn" aria-label="Bildirimler">
@@ -1036,16 +1037,21 @@
         <!-- Content -->
         <div class="content-area">
             <!-- Book Registration Form -->
-            <form id="bookForm" class="form-card" method="POST" action="{{ route('katalog.update', $kitap->id) }}" enctype="multipart/form-data" novalidate>
+            <form id="bookForm" class="form-card" method="POST" action="{{ $isViewOnly ? '#' : route('katalog.update', $kitap->id) }}" enctype="multipart/form-data" novalidate>
                 @csrf
-                @method('PUT')
+                @if(!$isViewOnly)
+                    @method('PUT')
+                @endif
                 <div class="form-card-header">
                     <h1 class="form-card-title">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><line x1="12" x2="12" y1="7" y2="7"/></svg>
-                        Kitap Güncelle
+                        {{ $isViewOnly ? 'Kitap Detayı' : 'Kitap Güncelle' }}
                     </h1>
                     <p class="form-card-desc">
-                        {{ $kitap->kunyeEserAdi }} kitabının bilgilerini güncelleyebilirsiniz.
+                        {{ $isViewOnly
+                            ? ($kitap->kunyeEserAdi . ' kitabının bilgileri görüntüleniyor.')
+                            : ($kitap->kunyeEserAdi . ' kitabının bilgilerini güncelleyebilirsiniz.')
+                        }}
                     </p>
                 </div>
 
@@ -1155,17 +1161,11 @@
 
                                 {{-- Tür / Alt Tür / Şekil / Ortam — arama destekli combobox --}}
                                 <div class="form-grid cols-2" style="margin-top:16px;">
-                                    @php
-                                        $turAd    = $turler->firstWhere('id', old('turId', $kitap->turId))?->ad ?? '';
-                                        $altturAd = $altturler->firstWhere('id', old('altTurId', $kitap->altTurId))?->ad ?? '';
-                                        $sekilAd  = $sekiller->firstWhere('id', old('sekilId', $kitap->sekilId))?->ad ?? '';
-                                        $ortamAd  = $ortamlar->firstWhere('id', old('ortamId', $kitap->ortamId))?->ad ?? '';
-                                    @endphp
                                     <div class="form-field">
                                         <label class="form-label" for="turIdSearch">Tür</label>
                                         <div class="combobox-wrapper" id="turCombobox">
                                             <div class="combobox-input-wrap">
-                                                <input type="text" class="form-input" id="turIdSearch" placeholder="Tür ara veya seçin…" autocomplete="off" value="{{ $turAd }}" />
+                                                <input type="text" class="form-input" id="turIdSearch" placeholder="Tür ara veya seçin…" autocomplete="off" value="{{ $turler->firstWhere('id', old('turId', $kitap->turId))?->ad ?? '' }}" />
                                                 <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                                 </button>
@@ -1179,7 +1179,7 @@
                                         <label class="form-label" for="altTurIdSearch">Alt Tür</label>
                                         <div class="combobox-wrapper" id="altTurCombobox">
                                             <div class="combobox-input-wrap">
-                                                <input type="text" class="form-input" id="altTurIdSearch" placeholder="Alt tür ara veya seçin…" autocomplete="off" value="{{ $altturAd }}" />
+                                                <input type="text" class="form-input" id="altTurIdSearch" placeholder="Alt tür ara veya seçin…" autocomplete="off" value="{{ $altturler->firstWhere('id', old('altTurId', $kitap->altTurId))?->ad ?? '' }}" />
                                                 <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                                 </button>
@@ -1193,7 +1193,7 @@
                                         <label class="form-label" for="sekilIdSearch">Şekil</label>
                                         <div class="combobox-wrapper" id="sekilCombobox">
                                             <div class="combobox-input-wrap">
-                                                <input type="text" class="form-input" id="sekilIdSearch" placeholder="Şekil ara veya seçin…" autocomplete="off" value="{{ $sekilAd }}" />
+                                                <input type="text" class="form-input" id="sekilIdSearch" placeholder="Şekil ara veya seçin…" autocomplete="off" value="{{ $sekiller->firstWhere('id', old('sekilId', $kitap->sekilId))?->ad ?? '' }}" />
                                                 <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                                 </button>
@@ -1207,7 +1207,7 @@
                                         <label class="form-label" for="ortamIdSearch">Ortam</label>
                                         <div class="combobox-wrapper" id="ortamCombobox">
                                             <div class="combobox-input-wrap">
-                                                <input type="text" class="form-input" id="ortamIdSearch" placeholder="Ortam ara veya seçin…" autocomplete="off" value="{{ $ortamAd }}" />
+                                                <input type="text" class="form-input" id="ortamIdSearch" placeholder="Ortam ara veya seçin…" autocomplete="off" value="{{ $ortamlar->firstWhere('id', old('ortamId', $kitap->ortamId))?->ad ?? '' }}" />
                                                 <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                                 </button>
@@ -1220,13 +1220,8 @@
                                 </div>
 
                                 {{-- Üst Eser --}}
-                                @php
-                                    $ustEserKitap = $kitap->ustEserKatalogId
-                                        ? \App\Models\Katalog::find($kitap->ustEserKatalogId)
-                                        : null;
-                                @endphp
                                 <div style="margin-top:16px;">
-                                    <div class="form-field" id="ustEserSearchField" style="{{ $ustEserKitap ? 'display:none;' : '' }}">
+                                    <div class="form-field" id="ustEserSearchField" style="{{ \App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)) ? 'display:none;' : '' }}">
                                         <label class="form-label" for="ustEserSearch">Üst Eser <small style="font-weight:400;color:var(--muted-foreground);">(varsa bağlı olduğu üst eser)</small></label>
                                         <div class="ue-autocomplete-wrap">
                                             <input type="text" id="ustEserSearch" class="form-input"
@@ -1235,15 +1230,15 @@
                                             <div class="ue-autocomplete-dropdown" id="ustEserDropdown"></div>
                                         </div>
                                     </div>
-                                    <div id="ustEserCard" class="ue-selected-card" style="{{ $ustEserKitap ? 'display:flex;' : 'display:none;' }}">
+                                    <div id="ustEserCard" class="ue-selected-card" style="{{ \App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)) ? 'display:flex;' : 'display:none;' }}">
                                         <div id="ustEserCoverWrap">
-                                            @if($ustEserKitap?->kunyeKapakResmi)
-                                                <img src="{{ asset('storage/' . $ustEserKitap->kunyeKapakResmi) }}" class="ue-selected-cover" />
+                                            @if(optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeKapakResmi)
+                                                <img src="{{ asset('storage/' . optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeKapakResmi) }}" class="ue-selected-cover" />
                                             @endif
                                         </div>
                                         <div class="ue-selected-info">
-                                            <div class="ue-selected-name" id="ustEserName">{{ $ustEserKitap?->kunyeEserAdi ?? '—' }}</div>
-                                            <div class="ue-selected-meta" id="ustEserMeta">{{ $ustEserKitap?->kunyeYazar ?? '' }}{{ $ustEserKitap?->kunyeDemirbasKN ? ' · Demirbaş: ' . $ustEserKitap->kunyeDemirbasKN : '' }}{{ $ustEserKitap?->kunyeISBNISSN ? ' · ISBN: ' . $ustEserKitap->kunyeISBNISSN : '' }}</div>
+                                            <div class="ue-selected-name" id="ustEserName">{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeEserAdi ?? '—' }}</div>
+                                            <div class="ue-selected-meta" id="ustEserMeta">{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeYazar ?? '' }}{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeDemirbasKN ? ' · Demirbaş: ' . optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeDemirbasKN : '' }}{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeISBNISSN ? ' · ISBN: ' . optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeISBNISSN : '' }}</div>
                                         </div>
                                         <button type="button" class="ue-selected-clear" onclick="clearUstEser()" title="Üst Eseri Kaldır">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -1512,16 +1507,11 @@
                                     Stok &amp; Durum
                                 </h3>
                                 <div class="form-grid cols-3">
-                                    @php
-                                        $durumKilitli = in_array($kitap->kunyeDurum, ['Ödünç', 'Rezerve'], true);
-                                        $manuelDurumlar = ['Rafta' => 'Rafta (Müsait)', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'];
-                                        $tumDurumEtiketleri = ['Rafta' => 'Rafta (Müsait)', 'Ödünç' => 'Ödünç Verildi', 'Rezerve' => 'Rezerve Edildi', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'];
-                                    @endphp
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDurum">Durum</label>
-                                        @if($durumKilitli)
+                                        @if(in_array($kitap->kunyeDurum, ['Ödünç', 'Rezerve'], true))
                                             <select class="form-select" id="kunyeDurum" disabled aria-describedby="kunyeDurumKilitAciklama">
-                                                @foreach($tumDurumEtiketleri as $val => $label)
+                                                @foreach(['Rafta' => 'Rafta (Müsait)', 'Ödünç' => 'Ödünç Verildi', 'Rezerve' => 'Rezerve Edildi', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'] as $val => $label)
                                                     <option value="{{ $val }}" {{ old('kunyeDurum', $kitap->kunyeDurum) == $val ? 'selected' : '' }}>{{ $label }}</option>
                                                 @endforeach
                                             </select>
@@ -1531,7 +1521,7 @@
                                             </p>
                                         @else
                                             <select class="form-select" id="kunyeDurum" name="kunyeDurum">
-                                                @foreach($manuelDurumlar as $val => $label)
+                                                @foreach(['Rafta' => 'Rafta (Müsait)', 'Kayıp' => 'Kayıp', 'Bakımda' => 'Bakımda / Onarımda', 'Hurdaya Ayrıldı' => 'Hurdaya Ayrıldı'] as $val => $label)
                                                     <option value="{{ $val }}" {{ old('kunyeDurum', $kitap->kunyeDurum) == $val ? 'selected' : '' }}>{{ $label }}</option>
                                                 @endforeach
                                             </select>
@@ -1587,11 +1577,16 @@
 
                             <!-- Actions -->
                             <div class="form-actions">
-                                <button type="button" class="btn btn-outline" id="resetBtn">
+                                @if($isViewOnly)
+                                    <a href="{{ route('katalog.index') }}" class="btn btn-outline">
+                                        Listeye Dön
+                                    </a>
+                                @endif
+                                <button type="button" class="btn btn-outline" id="resetBtn" style="{{ $isViewOnly ? 'display:none;' : '' }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                                     Değişiklikleri Sıfırla
                                 </button>
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" style="{{ $isViewOnly ? 'display:none;' : '' }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><line x1="12" x2="12" y1="7" y2="7"/></svg>
                                     Güncelle
                                 </button>
@@ -2146,6 +2141,17 @@
                 if (!match) { searchInput.value = ''; hiddenInput.value = ''; }
                 else if (idKey) { hiddenInput.value = match[idKey]; }
             }
+            function syncSearchFromHidden() {
+                var curVal = hiddenInput.value;
+                if (!curVal) {
+                    searchInput.value = '';
+                    return;
+                }
+                var found = rawData.find(function(r) {
+                    return idKey ? String(r[idKey]) === String(curVal) : r[cfg.labelKey].toLowerCase() === String(curVal).toLowerCase();
+                });
+                searchInput.value = found ? found[cfg.labelKey] : (strict ? '' : curVal);
+            }
             function open() {
                 highlightedIndex = -1;
                 searchInput.value = ''; // Her açılışta temizle — tam liste görünür
@@ -2176,6 +2182,8 @@
                 if (!strict) hiddenInput.value = this.value.trim();
                 highlightedIndex = -1; render(this.value); if (!isOpen()) open();
             });
+            hiddenInput.addEventListener('change', syncSearchFromHidden);
+            hiddenInput.addEventListener('input', syncSearchFromHidden);
             searchInput.addEventListener('blur', function() { setTimeout(function() { validateOnBlur(); close(); }, 150); });
             searchInput.addEventListener('keydown', function(e) {
                 if (!isOpen() && (e.key==='ArrowDown'||e.key==='ArrowUp')) { e.preventDefault(); open(); return; }
@@ -2196,6 +2204,7 @@
                 else if (e.key==='Escape') { close(); }
             });
             document.addEventListener('click', function(e) { if (!wrapper.contains(e.target)) close(); });
+            syncSearchFromHidden();
         }
         initDbCombobox({ wrapperId:'authorCombobox',    searchInputId:'kunyeYazarSearch',      hiddenInputId:'kunyeYazar',      dataScriptId:'yazarData',    labelKey:'ad' });
         initDbCombobox({ wrapperId:'publisherCombobox', searchInputId:'kunyeYayinlayanSearch', hiddenInputId:'kunyeYayinlayan', dataScriptId:'yayineviData', labelKey:'ad' });
@@ -2227,10 +2236,16 @@
         var selectedId      = hiddenInput.value || '';
         var selectedTitle   = '';
 
-        // Sayfa yüklenince mevcut kitabın kategorisini göster
-        if (selectedId) {
+        function syncSelectedFromHidden() {
+            selectedId = hiddenInput.value || '';
+            if (!selectedId) {
+                selectedTitle = '';
+                searchInput.value = '';
+                return;
+            }
             var found = rawData.find(function(k) { return String(k.id) === String(selectedId); });
-            if (found) { selectedTitle = found.title; searchInput.value = found.title; }
+            selectedTitle = found ? found.title : '';
+            searchInput.value = selectedTitle;
         }
 
         function escHtml(s) {
@@ -2328,6 +2343,9 @@
             setTimeout(close, 150);
         });
 
+        hiddenInput.addEventListener('change', syncSelectedFromHidden);
+        hiddenInput.addEventListener('input', syncSelectedFromHidden);
+
         searchInput.addEventListener('keydown', function(e) {
             if (!isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
                 e.preventDefault(); open(); return;
@@ -2355,6 +2373,8 @@
         document.addEventListener('click', function(e) {
             if (!wrapper.contains(e.target)) close();
         });
+
+        syncSelectedFromHidden();
     })();
 
     // ============================
@@ -2364,6 +2384,45 @@
         var btn       = document.getElementById('isbnSearchBtn');
         var spinSvg   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.8s linear infinite;display:block"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
         var searchSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+        var excluded  = {
+            girisTuruId: true,
+            kunyeDurum: true,
+            kutuphaneId: true,
+            oduncVerilemez: true,
+            etiketlendi: true
+        };
+
+        function applyDatabasePrefill(prefill) {
+            if (!prefill || typeof prefill !== 'object') return;
+
+            Object.keys(prefill).forEach(function (key) {
+                if (excluded[key]) return;
+
+                var value = prefill[key];
+                if (value === null || typeof value === 'undefined') return;
+
+                var el = document.getElementById(key);
+                if (!el) return;
+
+                if (el.type === 'checkbox') {
+                    el.checked = value === 1 || value === '1' || value === true;
+                } else {
+                    el.value = value;
+                }
+
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            if (prefill.kunyeYazar) {
+                var yazarSearch = document.getElementById('kunyeYazarSearch');
+                if (yazarSearch) yazarSearch.value = prefill.kunyeYazar;
+            }
+            if (prefill.kunyeYayinlayan) {
+                var yayineviSearch = document.getElementById('kunyeYayinlayanSearch');
+                if (yayineviSearch) yayineviSearch.value = prefill.kunyeYayinlayan;
+            }
+        }
 
         btn.addEventListener('click', function () {
             var isbn = document.getElementById('kunyeISBNISSN').value.trim();
@@ -2381,6 +2440,9 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.success) {
+                        if (data.source === 'database' && data.prefill) {
+                            applyDatabasePrefill(data.prefill);
+                        }
                         if (data.title)     document.getElementById('kunyeEserAdi').value   = data.title;
                         if (data.authors)   {
                             document.getElementById('kunyeYazarSearch').value = data.authors;
@@ -2417,7 +2479,9 @@
                             showCoverPreview(data.cover);
                         }
 
-                        showToast('success', 'Başarılı', 'Kitap bilgileri ISBN\'den getirildi.');
+                        showToast('success', 'Başarılı', (data.source === 'database')
+                            ? 'Bu ISBN mevcut katalog kaydından getirildi.'
+                            : 'Kitap bilgileri ISBN\'den getirildi.');
                     } else {
                         showToast('error', 'Bulunamadı', data.message || 'Bu ISBN için kayıt bulunamadı.');
                     }
@@ -2594,6 +2658,31 @@
         document.getElementById('ustEserCard').style.display = 'none';
         document.getElementById('ustEserSearch').value = '';
     }
+
+    // ============================
+    // View Only Mode
+    // ============================
+    (function () {
+        var isViewOnly = @json($isViewOnly);
+        if (!isViewOnly) return;
+
+        var form = document.getElementById('bookForm');
+        if (!form) return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+        });
+
+        form.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+            if (el.type === 'hidden') return;
+            el.disabled = true;
+        });
+
+        // Combobox ve kapak alanlarında etkileşimi tamamen kapat.
+        form.querySelectorAll('.combobox-wrapper, .combobox-dropdown, .cover-upload-area, .ue-autocomplete-wrap, #ustEserSearchField').forEach(function (el) {
+            el.style.pointerEvents = 'none';
+        });
+    })();
 
     // ============================
     // Sidebar active item highlight

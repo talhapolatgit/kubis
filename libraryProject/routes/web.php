@@ -7,14 +7,17 @@ use App\Http\Controllers\SoapController;
 use App\Http\Controllers\UyeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KatalogController;
 use App\Http\Controllers\KutuphaneController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Storage;
 
-// ─── Ana sayfa → katalog'a yönlendir ──────────────────────────────────────────
+// ─── Ana sayfa → girişli kullanıcıya katalog, değilse giriş ───────────────────
 Route::get('/', function () {
-    return redirect()->route('katalog.index');
+    return auth()->check()
+        ? redirect()->route('katalog.index')
+        : redirect()->route('login');
 });
 
 // ─── Auth (giriş/çıkış — misafir) ─────────────────────────────────────────────
@@ -30,6 +33,8 @@ Route::post('/cikis', [AuthController::class, 'logout'])
 // ─── Korumalı alan (giriş gerektirir) ─────────────────────────────────────────
 Route::middleware('auth')->group(function () {
 
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+
     Route::get('/etiket',     [EtiketController::class, 'index'])->name('etiket.index');
     Route::get('/etiket/ara', [EtiketController::class, 'ara'])->name('etiket.ara');
 
@@ -42,6 +47,7 @@ Route::middleware('auth')->group(function () {
     // literal export rotası {kitap} wildcard'dan ÖNCE gelmeli
     Route::get('/katalog/export',       [KatalogController::class, 'export'])->name('katalog.export');
     Route::get('/katalog/{kitap}/copy', [KatalogController::class, 'copy'])->name('katalog.copy');
+    Route::get('/katalog/{kitap}/view', [KatalogController::class, 'view'])->name('katalog.view');
     Route::get('/katalog/{kitap}/edit', [KatalogController::class, 'edit'])->name('katalog.edit');
     Route::put('/katalog/{kitap}',      [KatalogController::class, 'update'])->name('katalog.update');
 
@@ -95,6 +101,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/rezerve',                 [RezerveController::class, 'index'])->name('rezerve.index');
     Route::get('/rezerve/tablo',           [RezerveController::class, 'tableData'])->name('rezerve.tableData');
     Route::post('/rezerve',                [RezerveController::class, 'store'])->name('rezerve.store');
+    Route::post('/rezerve/{rezerve}/iptal',[RezerveController::class, 'cancel'])->name('rezerve.cancel');
 
     Route::get('/odunc/ara/uye',           [OduncController::class, 'uyeAra'])->name('odunc.uyeAra');
     Route::get('/odunc/ara/kitap',         [OduncController::class, 'kitapAra'])->name('odunc.kitapAra');

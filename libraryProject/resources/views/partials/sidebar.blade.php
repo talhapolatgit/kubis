@@ -50,12 +50,23 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
         </div>
         <div>
-            <div class="sidebar-brand-name">Beyoğlu Belediyesi</div>
-            <div class="sidebar-brand-sub">Kütüphane Yönetim Sistemi</div>
+            <div class="sidebar-brand-name">KÜBİS</div>
+            <div class="sidebar-brand-sub">Kütüphane Bilgi Sistemi</div>
         </div>
     </div>
     <div class="sidebar-separator"></div>
     <div class="sidebar-content">
+
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Genel</div>
+            <ul class="sidebar-menu">
+                @if(auth()->user()->hasYetki(21))
+                <li><a href="{{ route('dashboard.index') }}" class="sidebar-menu-item {{ request()->routeIs('dashboard.index') ? 'active' : '' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                        Genel Bakış</a></li>
+                @endif
+            </ul>
+        </div>
 
         <div class="sidebar-group">
             <div class="sidebar-group-label">Katalog</div>

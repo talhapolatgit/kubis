@@ -265,7 +265,7 @@ class UserController extends Controller
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ─── Kullanıcı Yetkileri (20 maddelik izin seti) ────────────────────────────
+    // ─── Kullanıcı Yetkileri (21 maddelik izin seti) ────────────────────────────
     // ════════════════════════════════════════════════════════════════════════════
 
     public function yetkilerForm(User $user)
@@ -295,6 +295,7 @@ class UserController extends Controller
             18 => 'Yeni kütüphane oluşturabilir.',
             19 => 'Kütüphaneleri görebilir ve güncelleyebilir.',
             20 => 'Etiket oluşturabilir.',
+            21 => 'Dashboard ekranı görme yetkisi.',
         ];
 
         return view('users.yetkiler', compact('user', 'row', 'yetkiler'));
@@ -305,7 +306,7 @@ class UserController extends Controller
         abort_unless(Auth::user()?->isAdmin(), 403);
 
         $data = ['user_id' => $user->id, 'updated_at' => now()];
-        for ($i = 1; $i <= 20; $i++) {
+        for ($i = 1; $i <= 21; $i++) {
             $col = 'y' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
             $data[$col] = $request->has($col) ? 1 : 0;
         }

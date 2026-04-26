@@ -233,6 +233,7 @@ class UyeController extends Controller
             'dogum_tarihi'     => ['required', 'date', 'before:today'],
             'ad'               => ['required', 'string', 'max:100'],
             'soyad'            => ['required', 'string', 'max:100'],
+            'cinsiyet'         => ['nullable', 'string', 'in:erkek,kadin,diger'],
             'email'            => ['nullable', 'email', 'max:255'],
             'telefon'          => ['required', 'string', 'max:20'],
             'il'               => ['nullable', 'string', 'max:100'],
@@ -302,6 +303,7 @@ class UyeController extends Controller
             $kisi  = $sonuc['sbsKisiDto'];
             $ad    = $kisi['adi'];
             $soyad = $kisi['soyadi'];
+            $kpsCinsiyet = $this->normalizeKpsCinsiyet($kisi['cinsiyeti'] ?? $kisi['cinsiyet'] ?? null);
         } else {
             $errorText = 'Kimlik doğrulama başarısız: ';
             if ($request->ajax() || $request->wantsJson()) {
@@ -318,6 +320,7 @@ class UyeController extends Controller
             'dogum_tarihi'       => $request->input('dogum_tarihi'),
             'ad'                 => $ad,
             'soyad'              => $soyad,
+            'cinsiyet'           => $kpsCinsiyet ?? ($request->input('cinsiyet') ?: null),
             'email'              => $request->input('email'),
             'telefon'            => $request->input('telefon'),
             'telefon_dogrulandi' => true,
@@ -390,6 +393,7 @@ class UyeController extends Controller
             'mahalle'          => ['nullable', 'string', 'max:150'],
             'acik_adres'       => ['nullable', 'string', 'max:1000'],
             'statu'            => ['required', 'in:aktif,pasif'],
+            'cinsiyet'         => ['nullable', 'string', 'in:erkek,kadin,diger'],
             'uyelik_baslangic' => ['nullable', 'date'],
             'uyelik_bitis'     => ['nullable', 'date', 'after_or_equal:uyelik_baslangic'],
             'notlar'           => ['nullable', 'string', 'max:2000'],
@@ -443,6 +447,7 @@ class UyeController extends Controller
         // ── Güncelle ─────────────────────────────────────────────────────────────
         $uye->update([
             'email'              => $request->input('email'),
+            'cinsiyet'           => $request->input('cinsiyet') ?: null,
             'telefon'            => $request->input('telefon'),
             'telefon_dogrulandi' => $telefonDogrulandi,
             'il'                 => $request->input('il'),
@@ -488,11 +493,20 @@ class UyeController extends Controller
 
             if (isset($sonuc['success']) && $sonuc['success'] === true) {
                 $kisi = $sonuc['sbsKisiDto'];
-                $uye->update(['ad' => $kisi['adi'], 'soyad' => $kisi['soyadi']]);
+                $kpsCinsiyet = $this->normalizeKpsCinsiyet($kisi['cinsiyeti'] ?? $kisi['cinsiyet'] ?? null);
+                $updateData = ['ad' => $kisi['adi'], 'soyad' => $kisi['soyadi']];
+                if ($kpsCinsiyet !== null) {
+                    $updateData['cinsiyet'] = $kpsCinsiyet;
+                }
+                $uye->update($updateData);
                 return response()->json([
                     'success' => true,
                     'message' => 'Kimlik bilgileri başarıyla güncellendi.',
-                    'data'    => ['ad' => $kisi['adi'], 'soyad' => $kisi['soyadi']],
+                    'data'    => [
+                        'ad' => $kisi['adi'],
+                        'soyad' => $kisi['soyadi'],
+                        'cinsiyet' => $kpsCinsiyet,
+                    ],
                 ]);
             }
 
@@ -523,5 +537,20 @@ class UyeController extends Controller
             return substr($clean, 0, 4) . '***' . substr($clean, -3);
         }
         return '***';
+    }
+
+    private function normalizeKpsCinsiyet(?string $raw): ?string
+    {
+        if ($raw === null) {
+            return null;
+        }
+
+        $value = mb_strtoupper(trim($raw), 'UTF-8');
+
+        return match ($value) {
+            'ERKEK' => 'erkek',
+            'KADIN' => 'kadin',
+            default => null,
+        };
     }
 }

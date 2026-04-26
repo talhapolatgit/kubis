@@ -147,6 +147,7 @@ class RezerveController extends Controller
                 && $r->rezerve_bitis->isFuture();
 
             $oduncYapilabilir = $simdiGecerli && $this->canManage();
+            $iptalEdilebilir  = $simdiGecerli && $this->canManage();
 
             return [
                 'id'                  => $r->id,
@@ -174,6 +175,7 @@ class RezerveController extends Controller
                     ?? '—',
                 'durum_etiket'        => $this->durumEtiket($r),
                 'odunc_yapilabilir'   => $oduncYapilabilir,
+                'iptal_edilebilir'    => $iptalEdilebilir,
                 'odunc_new_url'       => $oduncYapilabilir
                     ? route('odunc.new', ['katalog_id' => $r->katalog_id, 'uye_id' => $r->uye_id])
                     : null,
@@ -304,7 +306,7 @@ class RezerveController extends Controller
             $uye = Uye::find($uyeId);
             $result = $this->webhookService->sendBildirim(
                 tcList:  [$uye->tc_kimlik],
-                title:   'Rezervasyonun Oluşturuldu 😊',
+                title:   'Rezervasyonun Oluşturuldu 🎉',
                 message: $katalog->kunyeEserAdi . ' isimli kitabı senin için ayırdık. 24 saat içerisinde ' . $katalog->kutuphane->title . 'ne gelerek ödünç alabilirsin.',
             );
 
@@ -323,5 +325,55 @@ class RezerveController extends Controller
         }
 
         return redirect()->route('rezerve.index')->with('success', 'Rezervasyon kaydı oluşturuldu.');
+    }
+
+    /**
+     * POST /rezerve/{rezerve}/iptal — personel rezervasyon iptali
+     */
+    public function cancel(Request $request, UyeRezerve $rezerve)
+    {
+        abort_unless($this->canManage(), 403);
+
+        $katalog = Katalog::query()
+            ->where('id', $rezerve->katalog_id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (! $katalog) {
+            return response()->json(['success' => false, 'message' => 'Rezervasyona ait kitap bulunamadı.'], 422);
+        }
+
+        if (! $this->canViewAllLibraries()) {
+            $ids = auth()->user()->yetkiliKutuphaneIds();
+            if ($katalog->kutuphaneId && ! in_array((int) $katalog->kutuphaneId, $ids ?: [-1], true)) {
+                return response()->json(['success' => false, 'message' => 'Bu rezervasyonu iptal etme yetkiniz yok.'], 403);
+            }
+        }
+
+        if ($rezerve->iptalMi === 'true') {
+            return response()->json(['success' => false, 'message' => 'Bu rezervasyon zaten iptal edilmiş.'], 422);
+        }
+
+        if ($rezerve->oduncAldiMi === 'true') {
+            return response()->json(['success' => false, 'message' => 'Ödünç verilmiş rezervasyon iptal edilemez.'], 422);
+        }
+
+        if (! $rezerve->rezerve_bitis || $rezerve->rezerve_bitis->isPast()) {
+            return response()->json(['success' => false, 'message' => 'Süresi dolmuş rezervasyon iptal edilemez.'], 422);
+        }
+
+        $rezerve->update([
+            'iptalMi'          => 'true',
+            'iptalEdenUserId'  => auth()->id(),
+        ]);
+
+        if ($katalog->kunyeDurum === 'Rezerve') {
+            $katalog->update(['kunyeDurum' => 'Rafta']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rezervasyon iptal edildi.',
+        ]);
     }
 }

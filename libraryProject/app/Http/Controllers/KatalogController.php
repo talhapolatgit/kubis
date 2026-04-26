@@ -12,6 +12,7 @@ use App\Models\AltTur;
 use App\Models\Sekil;
 use App\Models\Ortam;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -134,6 +135,18 @@ class KatalogController extends Controller
         if ($request->filled('etiketlendi')) {
             $query->where('etiketlendi', $request->input('etiketlendi') === 'evet' ? 1 : 0);
         }
+        if ($request->filled('kayitBaslangic')) {
+            $kayitBaslangic = $request->input('kayitBaslangic');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBaslangic)) {
+                $query->whereDate('created_at', '>=', $kayitBaslangic);
+            }
+        }
+        if ($request->filled('kayitBitis')) {
+            $kayitBitis = $request->input('kayitBitis');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBitis)) {
+                $query->whereDate('created_at', '<=', $kayitBitis);
+            }
+        }
 
         // Yazar filtresi: önce ID ile dene (dropdown), yoksa metin LIKE
         if ($request->filled('yazarId')) {
@@ -198,6 +211,18 @@ class KatalogController extends Controller
         if ($request->filled('etiketlendi')) {
             $query->where('etiketlendi', $request->input('etiketlendi') === 'evet' ? 1 : 0);
         }
+        if ($request->filled('kayitBaslangic')) {
+            $kayitBaslangic = $request->input('kayitBaslangic');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBaslangic)) {
+                $query->whereDate('created_at', '>=', $kayitBaslangic);
+            }
+        }
+        if ($request->filled('kayitBitis')) {
+            $kayitBitis = $request->input('kayitBitis');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBitis)) {
+                $query->whereDate('created_at', '<=', $kayitBitis);
+            }
+        }
         if ($request->filled('yazarId'))      $query->where('yazarId', (int) $request->input('yazarId'));
         elseif ($request->filled('yazar'))    $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
         if ($request->filled('yayineviId'))   $query->where('yayineviId', (int) $request->input('yayineviId'));
@@ -238,11 +263,107 @@ class KatalogController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    /**
+     * ISBN karşılaştırması için yalnızca rakam ve ISBN-10 kontrol hanesi X.
+     */
+    private function normalizeIsbnForMatch(string $isbn): string
+    {
+        return strtoupper(preg_replace('/[^0-9X]/i', '', $isbn));
+    }
+
+    /**
+     * Veritabanında aynı ISBN’ye sahip katalog kaydı (en güncel id).
+     */
+    private function findKatalogByNormalizedIsbn(string $normalized): ?Katalog
+    {
+        if ($normalized === '') {
+            return null;
+        }
+
+        $driver = DB::connection()->getDriverName();
+
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            try {
+                return Katalog::query()
+                    ->whereRaw(
+                        "REGEXP_REPLACE(UPPER(TRIM(COALESCE(kunyeISBNISSN,''))), '[^0-9X]', '') = ?",
+                        [$normalized]
+                    )
+                    ->orderByDesc('id')
+                    ->first();
+            } catch (\Throwable) {
+                // MySQL 8 öncesi vb.: aşağıdaki tarama yoluna düş
+            }
+        }
+
+        foreach (Katalog::query()
+            ->whereNotNull('kunyeISBNISSN')
+            ->where('kunyeISBNISSN', '!=', '')
+            ->orderByDesc('id')
+            ->cursor() as $row) {
+            if ($this->normalizeIsbnForMatch((string) $row->kunyeISBNISSN) === $normalized) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * ISBN'den bulunan mevcut kaydın forma uygulanacak alanları.
+     * GirisTuru, Durum, Kutuphane, OduncVerilemez ve Etiketlendi hariçtir.
+     */
+    private function buildIsbnPrefillData(Katalog $katalog): array
+    {
+        $fields = [
+            'kunyeDemirbasKN', 'kunyeSiniflamaYer', 'kunyeYayinTarihi',
+            'kunyeKopya', 'kunyeCilt', 'kunyeDilKN', 'kunyeDil2', 'kunyeEserAdi',
+            'kunyeEserAdiAlt', 'kunyeYazar', 'kunyeSorumlular',
+            'kunyeYayinYeri', 'kunyeYayinlayan', 'kunyeFizikselTanim',
+            'kunyeISBNISSN', 'kunyeBasimKaydi', 'kunyeDiziKaydi',
+            'kunyeKonuBasligi', 'kunyeKategori', 'kunyeGelisTarihi',
+            'faturaNo', 'faturaTarihi', 'tedarikci', 'tedarikciTelefon',
+            'tedarikciEposta', 'fiyat',
+            'yazarId', 'yayineviId',
+            'turId', 'altTurId', 'sekilId', 'ortamId',
+            'icerik', 'aciklama', 'ozelNotlar', 'ozelNotlar2', 'ozelNotlar3',
+            'ustEserKatalogId',
+        ];
+
+        $prefill = [];
+        foreach ($fields as $field) {
+            $prefill[$field] = $katalog->{$field};
+        }
+
+        return $prefill;
+    }
+
     // ─── ISBN Arama ─────────────────────────────────────────────────────────────
     public function isbnSearch(Request $request)
     {
         $isbn = trim($request->input('isbn', ''));
-        if (!$isbn) return response()->json(['success' => false, 'message' => 'ISBN boş olamaz.'], 422);
+        if (!$isbn) {
+            return response()->json(['success' => false, 'message' => 'ISBN boş olamaz.'], 422);
+        }
+
+        $normalized = $this->normalizeIsbnForMatch($isbn);
+        if ($normalized === '') {
+            return response()->json(['success' => false, 'message' => 'ISBN geçersiz.'], 422);
+        }
+
+        $existing = $this->findKatalogByNormalizedIsbn($normalized);
+        if ($existing) {
+            return response()->json([
+                'success'   => true,
+                'source'    => 'database',
+                'title'     => $existing->kunyeEserAdi ?: null,
+                'cover'     => $existing->kapak_resim_path,
+                'publisher' => $existing->kunyeYayinlayan ?: null,
+                'authors'   => $existing->kunyeYazar ?: null,
+                'prefill'   => $this->buildIsbnPrefillData($existing),
+            ]);
+        }
+
         $isbnClean = preg_replace('/[\s\-]/', '', $isbn);
         $apiKey    = config('services.isbndb.key');
         try {
@@ -251,15 +372,20 @@ class KatalogController extends Controller
             ])->get("https://api2.isbndb.com/book/{$isbnClean}");
             if ($response->successful()) {
                 $book = $response->json('book');
-                if (!$book) return response()->json(['success' => false, 'message' => 'Kitap bulunamadı.']);
+                if (!$book) {
+                    return response()->json(['success' => false, 'message' => 'Kitap bulunamadı.']);
+                }
+
                 return response()->json([
                     'success'   => true,
-                    'title'     => $book['title']     ?? null,
-                    'cover'     => $book['image']     ?? null,
+                    'source'    => 'api',
+                    'title'     => $book['title'] ?? null,
+                    'cover'     => $book['image'] ?? null,
                     'publisher' => $book['publisher'] ?? null,
                     'authors'   => isset($book['authors']) ? implode(', ', (array) $book['authors']) : null,
                 ]);
             }
+
             return response()->json(['success' => false, 'message' => 'Kitap bulunamadı veya API yanıt vermedi.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Sorgu hatası: ' . $e->getMessage()], 500);
@@ -270,7 +396,24 @@ class KatalogController extends Controller
     public function coverSearch(Request $request)
     {
         $isbn = trim($request->input('isbn', ''));
-        if (!$isbn) return response()->json(['success' => false, 'message' => 'ISBN boş olamaz.'], 422);
+        if (!$isbn) {
+            return response()->json(['success' => false, 'message' => 'ISBN boş olamaz.'], 422);
+        }
+
+        $normalized = $this->normalizeIsbnForMatch($isbn);
+        if ($normalized === '') {
+            return response()->json(['success' => false, 'message' => 'ISBN geçersiz.'], 422);
+        }
+
+        $existing = $this->findKatalogByNormalizedIsbn($normalized);
+        if ($existing && $existing->kapak_resim_path) {
+            return response()->json([
+                'success' => true,
+                'source'  => 'database',
+                'cover'   => $existing->kapak_resim_path,
+            ]);
+        }
+
         $isbnClean = preg_replace('/[\s\-]/', '', $isbn);
         $apiKey    = config('services.isbndb.key');
         try {
@@ -279,9 +422,15 @@ class KatalogController extends Controller
             ])->get("https://api2.isbndb.com/book/{$isbnClean}");
             if ($response->successful()) {
                 $book = $response->json('book');
-                if (!$book || empty($book['image']))
+                if (!$book || empty($book['image'])) {
                     return response()->json(['success' => false, 'message' => 'Bu ISBN için kapak görseli bulunamadı.']);
-                return response()->json(['success' => true, 'cover' => $book['image']]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'source'  => 'api',
+                    'cover'   => $book['image'],
+                ]);
             }
             return response()->json(['success' => false, 'message' => 'Kitap bulunamadı veya API yanıt vermedi.']);
         } catch (\Exception $e) {
@@ -452,12 +601,48 @@ class KatalogController extends Controller
         $altturler    = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
         $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $copyPrefill  = $this->buildIsbnPrefillData($kitap);
+        unset($copyPrefill['kunyeDemirbasKN']);
+        $copyKapakFromKatalogId = $kitap->id;
+        $copyCoverPreview = $kitap->kapak_resim_path;
 
         return view('book.copy', compact(
             'kitap',
             'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri', 'demirbasNo',
-            'turler', 'altturler', 'sekiller', 'ortamlar'
+            'turler', 'altturler', 'sekiller', 'ortamlar',
+            'copyPrefill', 'copyKapakFromKatalogId', 'copyCoverPreview'
+        ));
+    }
+
+    // ─── Düzenle Form ───────────────────────────────────────────────────────────
+    public function view(Katalog $kitap)
+    {
+        abort_unless($this->canListAllBooks() || $this->canListScopedBooks(), 403);
+        if (!$this->canListAllBooks()) {
+            $ids = auth()->user()->yetkiliKutuphaneIds();
+            abort_unless(in_array((int) $kitap->kutuphaneId, $ids, true), 403);
+        }
+
+        $kategoriler  = Kategori::aktif()->orderBy('title')->get();
+        $girisTurleri = \App\Models\GirisTuru::where('aktif', 1)->orderBy('sira')->get();
+        $kutuphaneler = Kutuphane::whereNull('deleted_at')
+            ->orderBy('title')->get();
+        $yazarlar     = Yazar::orderBy('ad')->get(['id', 'ad']);
+        $yayinevleri  = Yayinevi::orderBy('ad')->get(['id', 'ad']);
+        $turler       = Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $altturler    = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
+
+        $createdUser = $kitap->created_user ? \App\Models\User::find($kitap->created_user) : null;
+        $updatedUser = $kitap->updated_user ? \App\Models\User::find($kitap->updated_user) : null;
+
+        return view('book.view', compact(
+            'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
+            'yazarlar', 'yayinevleri',
+            'turler', 'altturler', 'sekiller', 'ortamlar',
+            'createdUser', 'updatedUser'
         ));
     }
 

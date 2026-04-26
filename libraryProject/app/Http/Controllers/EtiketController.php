@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Katalog;
+use App\Models\Kutuphane;
 use Illuminate\Http\Request;
 
 class EtiketController extends Controller
@@ -11,7 +12,14 @@ class EtiketController extends Controller
     public function index()
     {
         abort_unless(auth()->user()?->hasYetki(20), 403);
-        return view('book.etiket');
+        $ids = auth()->user()->yetkiliKutuphaneIds();
+        $kutuphaneler = Kutuphane::query()
+            ->whereNull('deleted_at')
+            ->whereIn('id', $ids ?: [-1])
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return view('book.etiket', compact('kutuphaneler'));
     }
 
     // ─── AJAX Kitap Arama (Etiket filtreleriyle) ─────────────────────────────────
@@ -21,6 +29,10 @@ class EtiketController extends Controller
         abort_unless(auth()->user()?->hasYetki(20), 403);
         $perPage = min((int) $request->input('per_page', 50), 200);
         $query   = Katalog::query();
+        $yetkiliKutuphaneIds = auth()->user()->yetkiliKutuphaneIds();
+
+        // Kütüphane seçilmese bile sonuçlar yalnızca yetkili kütüphanelerden gelsin.
+        $query->whereIn('katalog.kutuphaneId', $yetkiliKutuphaneIds ?: [-1]);
 
         // ── Eser adı / ISBN ───────────────────────────────────────────────────
         if ($request->filled('search')) {
@@ -39,6 +51,15 @@ class EtiketController extends Controller
         // ── Özel Notlar ───────────────────────────────────────────────────────
         if ($request->filled('ozelNotlar')) {
             $query->where('ozelNotlar', 'LIKE', '%' . $request->input('ozelNotlar') . '%');
+        }
+
+        // ── Kütüphane (seçmeli) ───────────────────────────────────────────────
+        if ($request->filled('kutuphaneId')) {
+            $kutuphaneId = (int) $request->input('kutuphaneId');
+            if (!in_array($kutuphaneId, $yetkiliKutuphaneIds ?: [], true)) {
+                return response()->json(['rows' => []]);
+            }
+            $query->where('katalog.kutuphaneId', $kutuphaneId);
         }
 
         // ── Kayıt Tarihi Aralığı (created_at) ────────────────────────────────

@@ -10,7 +10,7 @@ class AuthController extends Controller
     // ─── Giriş Sayfası ──────────────────────────────────────────────────────────
     public function loginForm()
     {
-        // Zaten giriş yapmışsa ana sayfaya yönlendir
+        // Zaten giriş yapmışsa katalog sayfasına yönlendir
         if (Auth::check()) {
             return redirect()->route('katalog.index');
         }

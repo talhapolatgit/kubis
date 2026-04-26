@@ -303,6 +303,18 @@
                                     @enderror
                                 </div>
                                 <div class="form-field">
+                                    <label class="form-label" for="cinsiyet">Cinsiyet <span class="hint">(isteğe bağlı)</span></label>
+                                    <select id="cinsiyet" name="cinsiyet" class="form-input {{ $errors->has('cinsiyet') ? 'is-error' : '' }}">
+                                        <option value="" {{ old('cinsiyet') === null || old('cinsiyet') === '' ? 'selected' : '' }}>Belirtilmedi</option>
+                                        <option value="erkek" {{ old('cinsiyet') === 'erkek' ? 'selected' : '' }}>Erkek</option>
+                                        <option value="kadin" {{ old('cinsiyet') === 'kadin' ? 'selected' : '' }}>Kadın</option>
+                                        <option value="diger" {{ old('cinsiyet') === 'diger' ? 'selected' : '' }}>Diğer</option>
+                                    </select>
+                                    @error('cinsiyet')
+                                    <div class="form-error"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="form-field">
                                     <label class="form-label" for="email">E-posta <span class="hint">(isteğe bağlı)</span></label>
                                     <div class="input-wrap">
                                         <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -910,6 +922,7 @@
         var btn = document.getElementById('kimlikSorgulaBtn');
         var adEl    = document.getElementById('ad');
         var soyadEl = document.getElementById('soyad');
+        var cinsiyetEl = document.getElementById('cinsiyet');
 
         btn.disabled = true;
         btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="adres-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
@@ -937,6 +950,10 @@
 
                 if (adEl)    { adEl.value    = data.ad    || ''; adEl.dispatchEvent(new Event('input')); }
                 if (soyadEl) { soyadEl.value = data.soyad || ''; soyadEl.dispatchEvent(new Event('input')); }
+                if (cinsiyetEl && typeof data.cinsiyet !== 'undefined') {
+                    cinsiyetEl.value = data.cinsiyet || '';
+                    cinsiyetEl.dispatchEvent(new Event('change'));
+                }
 
                 showToast('success', 'Kimlik Doğrulandı', (data.ad || '') + ' ' + (data.soyad || '') + ' bilgileri getirildi.');
             })
@@ -1106,11 +1123,11 @@
         var sk = kpsSokakParcasi(data);
         if (sk) parcalar.push(sk);
         if (data.kapi !== undefined && data.kapi !== null && String(data.kapi).trim() !== '') {
-            parcalar.push('No ' + String(data.kapi).trim());
+            parcalar.push('NO ' + String(data.kapi).trim());
         }
         var daireIlce = [];
         if (data.daire !== undefined && data.daire !== null && String(data.daire).trim() !== '') {
-            daireIlce.push('Daire ' + String(data.daire).trim());
+            daireIlce.push('DAİRE ' + String(data.daire).trim());
         }
         if (data.ilceAdi) daireIlce.push(String(data.ilceAdi).trim());
         if (daireIlce.length) parcalar.push(daireIlce.join(' '));
