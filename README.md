@@ -42,6 +42,7 @@ DB_USERNAME=
 
 DB_PASSWORD=
 
+
 8. Migrations
    
 php artisan migrate:fresh --force
