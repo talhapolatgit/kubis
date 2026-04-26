@@ -1,18 +1,23 @@
 1. Sunucuya Bağlan
+   
 ssh root@SUNUCU_IP
 
-2. Sistemi Güncelle
+3. Sistemi Güncelle
+   
 apt update && apt upgrade -y
 
-3. Coolify'ı Kur
+5. Coolify'ı Kur
+   
 curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
 
 URL: http://SUNUCU_IP:8000
 
 4. Veritabanı Kur
+   
 Mysql
 
-5. ENV
+6. ENV
+   
 SERVICE_URL_APP=
 SERVICE_FQDN_APP=
 APP_KEY=
@@ -26,6 +31,6 @@ DB_DATABASE=
 DB_USERNAME=
 DB_PASSWORD=
 
-6. Migrations
+8. Migrations
 php artisan migrate:fresh --force
 php artisan migrate:fresh --seed --force
