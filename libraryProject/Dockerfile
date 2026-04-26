@@ -2,8 +2,11 @@ FROM php:8.3-fpm-alpine
 
 WORKDIR /app
 
-# Gerekli PHP eklentileri
-RUN docker-php-ext-install pdo pdo_mysql
+# Gerekli sistem kütüphaneleri
+RUN apk add --no-cache icu-dev libxml2-dev
+
+# PHP eklentileri
+RUN docker-php-ext-install pdo pdo_mysql soap intl
 
 # Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
