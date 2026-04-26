@@ -11,3 +11,21 @@ URL: http://SUNUCU_IP:8000
 
 4. Veritabanı Kur
 Mysql
+
+5. ENV
+SERVICE_URL_APP=
+SERVICE_FQDN_APP=
+APP_KEY=
+APP_ENV=production
+APP_DEBUG=true
+APP_URL=
+DB_CONNECTION=mysqL
+DB_HOST=
+DB_PORT=3306
+DB_DATABASE=
+DB_USERNAME=
+DB_PASSWORD=
+
+6. Migrations
+php artisan migrate:fresh --force
+php artisan migrate:fresh --seed --force
