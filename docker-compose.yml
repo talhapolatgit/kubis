@@ -18,10 +18,10 @@ services:
     image: mysql:8
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: laravel123
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: laravel123
+      MYSQL_ROOT_PASSWORD: kubis123
+      MYSQL_DATABASE: kubis
+      MYSQL_USER: kubis
+      MYSQL_PASSWORD: kubis123
     volumes:
       - db_data:/var/lib/mysql
 
