@@ -236,7 +236,7 @@
                 </div>
                 <div>
                     <div class="panel-brand-name">Beyoğlu Belediyesi</div>
-                    <div class="panel-brand-sub">Kütüphane Bilgi Sistemi</div>
+                    <div class="panel-brand-sub">Kütüphane Bilgi Sistemii</div>
                 </div>
             </div>
         </div>
