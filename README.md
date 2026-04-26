@@ -32,5 +32,7 @@ DB_USERNAME=
 DB_PASSWORD=
 
 8. Migrations
+   
 php artisan migrate:fresh --force
+
 php artisan migrate:fresh --seed --force
