@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -24,17 +23,6 @@ CREATE TABLE `users` (
   UNIQUE KEY `users_email_unique` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL);
-
-        if (! DB::table('users')->where('email', 'admin@xyz.com')->exists()) {
-            DB::table('users')->insert([
-                'name' => 'Admin',
-                'email' => 'admin@xyz.com',
-                'role' => 'admin',
-                'password' => Hash::make('12345678'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
     }
 
     public function down(): void
