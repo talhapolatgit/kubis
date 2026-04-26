@@ -19,16 +19,27 @@ Mysql
 6. ENV
    
 SERVICE_URL_APP=
+
 SERVICE_FQDN_APP=
+
 APP_KEY=
+
 APP_ENV=production
+
 APP_DEBUG=true
+
 APP_URL=
+
 DB_CONNECTION=mysqL
+
 DB_HOST=
+
 DB_PORT=3306
+
 DB_DATABASE=
+
 DB_USERNAME=
+
 DB_PASSWORD=
 
 8. Migrations
