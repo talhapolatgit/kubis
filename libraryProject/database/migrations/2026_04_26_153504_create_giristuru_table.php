@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::unprepared(<<<'SQL'
-CREATE TABLE `giristuru` (
+CREATE TABLE `girisTuru` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `ad` varchar(100) NOT NULL COMMENT 'Giriş türü adı (Satın alma, Hibe, Bağış, Protokol, Diğer)',
   `sira` int(11) NOT NULL DEFAULT 0 COMMENT 'Sıralama önceliği',
