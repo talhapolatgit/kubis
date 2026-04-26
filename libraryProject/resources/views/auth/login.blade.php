@@ -248,7 +248,7 @@
                 geçer.
             </h2>
             <p class="panel-tagline-sub">
-                Kitap envanteri, ödünç takibi ve kütüphane yönetimini tek ekrandan kolayca yönetin.
+                KUBİS ile kitap envanterini, ödünç takibini ve kütüphane yönetimini tek ekrandan kolayca yönetin.
             </p>
             {{--<div class="panel-stats">
                 <div><div class="stat-num">∞</div><div class="stat-label">Katalog</div></div>
