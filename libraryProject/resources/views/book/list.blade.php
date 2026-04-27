@@ -1142,7 +1142,7 @@
                                 <div class="combobox-dropdown"></div>
                             </div>
                             <input type="hidden" id="filterYazar" value="" />
-                            <script id="filterYazarData" type="application/json">@json($yazarlar->map(fn($y) => ['id' => $y->id, 'ad' => $y->ad]))</script>
+                            <script id="filterYazarData" type="application/json">@json($yazarlar->map(fn($y) => ['id' => $y->id, 'ad' => $y->tam_ad]))</script>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Yayınevi</label>

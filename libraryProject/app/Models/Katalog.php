@@ -14,11 +14,38 @@ class Katalog extends Model
     protected $guarded = [];
 
     /**
-     * İlişkili yazar kaydı.
+     * İlk yazar (geriye dönük uyumluluk — katalog.yazarId).
      */
     public function yazar()
     {
         return $this->belongsTo(Yazar::class, 'yazarId');
+    }
+
+    /**
+     * Kitaba bağlı tüm yazarlar (sıra: pivot.sira).
+     */
+    public function yazarlar()
+    {
+        return $this->belongsToMany(Yazar::class, 'katalog_yazarlar', 'katalog_id', 'yazar_id')
+            ->withPivot('sira')
+            ->orderByPivot('sira')
+            ->withTimestamps();
+    }
+
+    /**
+     * Arayüz / API için birleşik yazar metni (çoklu yazar varsa virgülle).
+     */
+    public function formattedYazarlarAdi(): string
+    {
+        $list = $this->relationLoaded('yazarlar')
+            ? $this->yazarlar
+            : $this->yazarlar()->get();
+
+        if ($list->isNotEmpty()) {
+            return $list->pluck('tam_ad')->filter()->implode(', ');
+        }
+
+        return optional($this->yazar)->tam_ad ?? (string) ($this->kunyeYazar ?? '');
     }
 
     /**
@@ -35,6 +62,11 @@ class Katalog extends Model
     public function kutuphane()
     {
         return $this->belongsTo(Kutuphane::class, 'kutuphaneId');
+    }
+
+    public function koleksiyon()
+    {
+        return $this->belongsTo(Koleksiyon::class, 'koleksiyon_id');
     }
 
     public function tahminiMusaitlik()

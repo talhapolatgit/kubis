@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Katalog;
+use App\Models\Koleksiyon;
 use App\Models\Kategori;
 use App\Models\Kutuphane;
 use App\Models\Yazar;
@@ -68,6 +69,117 @@ class KatalogController extends Controller
         return [];
     }
 
+    private function normalizeKoleksiyonIdInput(Request $request): void
+    {
+        $raw = $request->input('koleksiyon_id');
+        $request->merge([
+            'koleksiyon_id' => ($raw === '' || $raw === null) ? null : (int) $raw,
+        ]);
+    }
+
+    /**
+     * @return array<int, \Illuminate\Contracts\Validation\ValidationRule|string>
+     */
+    private function koleksiyonIdValidationRule(): array
+    {
+        return [
+            'nullable',
+            'integer',
+            Rule::exists('koleksiyon', 'id')->where(function ($q) {
+                $q->where('statu', 'aktif')->whereNull('deleted_at');
+            }),
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function normalizeYazarIdsFromRequest(Request $request): array
+    {
+        $raw = $request->input('yazar_ids');
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $v) {
+            $id = (int) $v;
+            if ($id > 0 && !in_array($id, $out, true)) {
+                $out[] = $id;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<int> $orderedYazarIds
+     */
+    private function syncKatalogYazarlar(Katalog $katalog, array $orderedYazarIds): void
+    {
+        $sync = [];
+        foreach (array_values($orderedYazarIds) as $i => $id) {
+            $sync[$id] = ['sira' => $i];
+        }
+        $katalog->yazarlar()->sync($sync);
+    }
+
+    private function applyYazarIdFilter($query, int $yazarId): void
+    {
+        $query->where(function ($q) use ($yazarId) {
+            $q->where('yazarId', $yazarId)
+                ->orWhereHas('yazarlar', function ($q2) use ($yazarId) {
+                    $q2->where('yazarlar.id', $yazarId);
+                });
+        });
+    }
+
+    /**
+     * Kayıtlı / manuel yazar girişine göre sıralı yazar id listesi ve kunyeYazar alanını üretir.
+     *
+     * @param  array<string, mixed>  $data  katalog mass-assign verisi (kunyeYazar güncellenir)
+     * @return list<int>
+     */
+    private function resolveOrderedYazarIdsForSave(Request $request, array &$data): array
+    {
+        $tip = $request->input('yazar_giris_tipi', 'kayitli');
+
+        if ($tip === 'manuel') {
+            $ads = (array) $request->input('yazar_manuel_ad', []);
+            $soyads = (array) $request->input('yazar_manuel_soyad', []);
+            $ordered = [];
+            $names = [];
+            $n = max(count($ads), count($soyads));
+            for ($i = 0; $i < $n; $i++) {
+                $ad = isset($ads[$i]) ? trim((string) $ads[$i]) : '';
+                $soyad = isset($soyads[$i]) ? trim((string) $soyads[$i]) : '';
+                if ($ad === '' && $soyad === '') {
+                    continue;
+                }
+                if ($ad === '') {
+                    continue;
+                }
+                $y = Yazar::findOrCreateByAdSoyad($ad, $soyad);
+                $ordered[] = $y->id;
+                $names[] = $y->tam_ad;
+            }
+            $data['kunyeYazar'] = $names !== [] ? implode(' ; ', $names) : null;
+
+            return $ordered;
+        }
+
+        $ordered = $this->normalizeYazarIdsFromRequest($request);
+        if ($ordered !== []) {
+            $data['kunyeYazar'] = Yazar::whereIn('id', $ordered)->get()
+                ->sortBy(fn ($y) => array_search($y->id, $ordered, true))
+                ->pluck('tam_ad')
+                ->implode(' ; ');
+        } else {
+            $data['kunyeYazar'] = null;
+        }
+
+        return $ordered;
+    }
+
     // ─── Liste ──────────────────────────────────────────────────────────────────
     public function index(Request $request)
     {
@@ -86,9 +198,12 @@ class KatalogController extends Controller
                     ->orderBy('title')
                     ->get(['id', 'title']);
             }
-            // Sadece en az bir kitabı olan yazarları getir
-            $yazarIds    = Katalog::whereNotNull('yazarId')->distinct()->pluck('yazarId');
-            $yazarlar    = Yazar::whereIn('id', $yazarIds)->orderBy('ad')->get(['id', 'ad']);
+            // Sadece en az bir kitabı olan yazarları getir (pivot + eski yazarId)
+            $pivotYazarIds = DB::table('katalog_yazarlar')->distinct()->pluck('yazar_id');
+            $legacyYazarIds = Katalog::whereNotNull('yazarId')->distinct()->pluck('yazarId');
+            $yazarIds      = $pivotYazarIds->merge($legacyYazarIds)->unique()->values();
+            $yazarlar      = Yazar::whereIn('id', $yazarIds->isEmpty() ? [-1] : $yazarIds->all())
+                ->orderBy('siralama_adi')->orderBy('ad')->orderBy('soyad')->get(['id', 'ad', 'soyad']);
             // Sadece en az bir kitabı olan yayınevlerini getir
             $yayineviIds = Katalog::whereNotNull('yayineviId')->distinct()->pluck('yayineviId');
             $yayinevleri = Yayinevi::whereIn('id', $yayineviIds)->orderBy('ad')->get(['id', 'ad']);
@@ -101,7 +216,9 @@ class KatalogController extends Controller
 
         abort_unless($this->canListAllBooks() || $this->canListScopedBooks(), 403);
 
-        $query = Katalog::query();
+        $query = Katalog::query()->with([
+            'yazarlar:id,ad,soyad',
+        ]);
 
         if (!$this->canListAllBooks()) {
             $ids = auth()->user()->yetkiliKutuphaneIds();
@@ -150,7 +267,7 @@ class KatalogController extends Controller
 
         // Yazar filtresi: önce ID ile dene (dropdown), yoksa metin LIKE
         if ($request->filled('yazarId')) {
-            $query->where('yazarId', (int) $request->input('yazarId'));
+            $this->applyYazarIdFilter($query, (int) $request->input('yazarId'));
         } elseif ($request->filled('yazar')) {
             $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
         }
@@ -223,8 +340,11 @@ class KatalogController extends Controller
                 $query->whereDate('created_at', '<=', $kayitBitis);
             }
         }
-        if ($request->filled('yazarId'))      $query->where('yazarId', (int) $request->input('yazarId'));
-        elseif ($request->filled('yazar'))    $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
+        if ($request->filled('yazarId')) {
+            $this->applyYazarIdFilter($query, (int) $request->input('yazarId'));
+        } elseif ($request->filled('yazar')) {
+            $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
+        }
         if ($request->filled('yayineviId'))   $query->where('yayineviId', (int) $request->input('yayineviId'));
         elseif ($request->filled('yayinevi')) $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
 
@@ -328,12 +448,20 @@ class KatalogController extends Controller
             'turId', 'altTurId', 'sekilId', 'ortamId',
             'icerik', 'aciklama', 'ozelNotlar', 'ozelNotlar2', 'ozelNotlar3',
             'ustEserKatalogId',
+            'koleksiyon_id',
         ];
 
         $prefill = [];
         foreach ($fields as $field) {
             $prefill[$field] = $katalog->{$field};
         }
+
+        $yRel = $katalog->yazarlar()->getRelated();
+        $prefill['yazar_ids'] = $katalog->yazarlar()
+            ->orderByPivot('sira')
+            ->pluck($yRel->getQualifiedKeyName())
+            ->values()
+            ->all();
 
         return $prefill;
     }
@@ -353,14 +481,18 @@ class KatalogController extends Controller
 
         $existing = $this->findKatalogByNormalizedIsbn($normalized);
         if ($existing) {
+            $coverPath = $existing->kunyeKapakResmi;
+
             return response()->json([
-                'success'   => true,
-                'source'    => 'database',
-                'title'     => $existing->kunyeEserAdi ?: null,
-                'cover'     => $existing->kapak_resim_path,
-                'publisher' => $existing->kunyeYayinlayan ?: null,
-                'authors'   => $existing->kunyeYazar ?: null,
-                'prefill'   => $this->buildIsbnPrefillData($existing),
+                'success'          => true,
+                'source'           => 'database',
+                'title'            => $existing->kunyeEserAdi ?: null,
+                'cover'            => $coverPath,
+                'coverPreviewUrl'  => $coverPath ? asset('storage/' . $coverPath) : null,
+                'sourceKatalogId'  => (int) $existing->id,
+                'publisher'        => $existing->kunyeYayinlayan ?: null,
+                'authors'          => $existing->kunyeYazar ?: null,
+                'prefill'          => $this->buildIsbnPrefillData($existing),
             ]);
         }
 
@@ -470,18 +602,19 @@ class KatalogController extends Controller
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
             ->whereIn('id', $allowedIds ?: [-1])
             ->orderBy('title')->get();
-        $yazarlar     = Yazar::orderBy('ad')->get(['id', 'ad']);
+        $yazarlar     = Yazar::orderBy('siralama_adi')->orderBy('ad')->orderBy('soyad')->get(['id', 'ad', 'soyad']);
         $yayinevleri  = Yayinevi::orderBy('ad')->get(['id', 'ad']);
         $demirbasNo   = $this->nextDemirbasNo();
         $turler       = Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $altturler    = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
         $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $koleksiyonlar = Koleksiyon::aktif()->orderBy('title')->get();
 
         return view('book.new', compact(
             'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri', 'demirbasNo',
-            'turler', 'altturler', 'sekiller', 'ortamlar'
+            'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar'
         ));
     }
 
@@ -490,13 +623,23 @@ class KatalogController extends Controller
     {
         abort_unless($this->canSaveBooks(), 403);
 
+        $this->normalizeKoleksiyonIdInput($request);
+
         $allowedKutuphaneIds = $this->allowedKutuphaneIdsForSave();
         $request->validate([
             'kunyeEserAdi'  => 'required|string|max:500',
-            'kunyeYazar'    => 'nullable|string|max:255',
+            'kunyeYazar'    => 'nullable|string|max:500',
             'kunyeISBNISSN' => 'nullable|string|max:50',
             'kunyeSayfaSayisi' => 'nullable|integer|min:1',
             'kutuphaneId'   => ['required', 'integer', Rule::in($allowedKutuphaneIds)],
+            'koleksiyon_id' => $this->koleksiyonIdValidationRule(),
+            'yazar_giris_tipi' => 'nullable|in:kayitli,manuel',
+            'yazar_ids'        => 'nullable|array',
+            'yazar_ids.*'      => 'integer|exists:yazarlar,id',
+            'yazar_manuel_ad'   => 'nullable|array',
+            'yazar_manuel_ad.*' => 'nullable|string|max:255',
+            'yazar_manuel_soyad'   => 'nullable|array',
+            'yazar_manuel_soyad.*' => 'nullable|string|max:255',
         ], [
             'kutuphaneId.required' => 'Lütfen bir kütüphane seçin.',
             'kutuphaneId.in'       => 'Seçilen kütüphane geçerli değil veya bu kütüphaneye kayıt yetkiniz yok.',
@@ -517,6 +660,7 @@ class KatalogController extends Controller
             // Yeni alanlar
             'turId', 'altTurId', 'sekilId', 'ortamId',
             'icerik', 'aciklama', 'ozelNotlar', 'ozelNotlar2', 'ozelNotlar3', 'ustEserKatalogId',
+            'koleksiyon_id',
         ]);
 
         // ── Checkbox alanları (işaretli değilse form göndermez → 0 olarak kaydet) ─
@@ -530,13 +674,9 @@ class KatalogController extends Controller
         // DB'ye kayıt sırasında her zaman güncel ve benzersiz numara garantilensin.
         $data['kunyeDemirbasKN'] = $this->nextDemirbasNo();
 
-        // ── Yazar: DB'de bul veya oluştur ─────────────────────────────────────
-        $yazarAd = trim($request->input('kunyeYazar', ''));
-        if ($yazarAd !== '') {
-            $yazar              = Yazar::findOrCreateByAd($yazarAd);
-            $data['yazarId']    = $yazar->id;
-            $data['kunyeYazar'] = $yazar->ad; // normalize edilmiş
-        }
+        // ── Yazar: kayıtlı (yazar_ids[]) veya manuel (ad/soyad dizileri) ───────────
+        $orderedYazarIds = $this->resolveOrderedYazarIdsForSave($request, $data);
+        $data['yazarId'] = $orderedYazarIds[0] ?? null;
 
         // ── Alt Tür: serbest metinden DB'de bul/oluştur ─────────────────────
         $altTurAd = trim($request->input('altTurAd', ''));
@@ -585,7 +725,8 @@ class KatalogController extends Controller
             }
         }
 
-        Katalog::create($data);
+        $katalog = Katalog::create($data);
+        $this->syncKatalogYazarlar($katalog, $orderedYazarIds);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => '"' . $data['kunyeEserAdi'] . '" başarıyla kütüphaneye eklendi.']);
@@ -605,13 +746,14 @@ class KatalogController extends Controller
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
             ->whereIn('id', $allowedIds ?: [-1])
             ->orderBy('title')->get();
-        $yazarlar     = Yazar::orderBy('ad')->get(['id', 'ad']);
+        $yazarlar     = Yazar::orderBy('siralama_adi')->orderBy('ad')->orderBy('soyad')->get(['id', 'ad', 'soyad']);
         $yayinevleri  = Yayinevi::orderBy('ad')->get(['id', 'ad']);
         $demirbasNo   = $this->nextDemirbasNo();
         $turler       = Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $altturler    = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
         $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $koleksiyonlar = Koleksiyon::aktif()->orderBy('title')->get();
         $copyPrefill  = $this->buildIsbnPrefillData($kitap);
         unset($copyPrefill['kunyeDemirbasKN']);
         $copyKapakFromKatalogId = $kitap->id;
@@ -621,7 +763,7 @@ class KatalogController extends Controller
             'kitap',
             'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri', 'demirbasNo',
-            'turler', 'altturler', 'sekiller', 'ortamlar',
+            'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
             'copyPrefill', 'copyKapakFromKatalogId', 'copyCoverPreview'
         ));
     }
@@ -639,20 +781,23 @@ class KatalogController extends Controller
         $girisTurleri = \App\Models\GirisTuru::where('aktif', 1)->orderBy('sira')->get();
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
             ->orderBy('title')->get();
-        $yazarlar     = Yazar::orderBy('ad')->get(['id', 'ad']);
+        $yazarlar     = Yazar::orderBy('siralama_adi')->orderBy('ad')->orderBy('soyad')->get(['id', 'ad', 'soyad']);
         $yayinevleri  = Yayinevi::orderBy('ad')->get(['id', 'ad']);
         $turler       = Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $altturler    = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
         $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $koleksiyonlar = Koleksiyon::aktif()->orderBy('title')->get();
 
         $createdUser = $kitap->created_user ? \App\Models\User::find($kitap->created_user) : null;
         $updatedUser = $kitap->updated_user ? \App\Models\User::find($kitap->updated_user) : null;
 
+        $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
+
         return view('book.view', compact(
             'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri',
-            'turler', 'altturler', 'sekiller', 'ortamlar',
+            'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
             'createdUser', 'updatedUser'
         ));
     }
@@ -671,20 +816,23 @@ class KatalogController extends Controller
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
             //->whereIn('id', $allowedIds ?: [-1])
             ->orderBy('title')->get();
-        $yazarlar     = Yazar::orderBy('ad')->get(['id', 'ad']);
+        $yazarlar     = Yazar::orderBy('siralama_adi')->orderBy('ad')->orderBy('soyad')->get(['id', 'ad', 'soyad']);
         $yayinevleri  = Yayinevi::orderBy('ad')->get(['id', 'ad']);
         $turler       = Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $altturler    = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
         $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
         $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
+        $koleksiyonlar = Koleksiyon::aktif()->orderBy('title')->get();
 
         $createdUser = $kitap->created_user ? \App\Models\User::find($kitap->created_user) : null;
         $updatedUser = $kitap->updated_user ? \App\Models\User::find($kitap->updated_user) : null;
 
+        $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
+
         return view('book.edit', compact(
             'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri',
-            'turler', 'altturler', 'sekiller', 'ortamlar',
+            'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
             'createdUser', 'updatedUser'
         ));
     }
@@ -699,11 +847,21 @@ class KatalogController extends Controller
         }
         $durumKilitli = in_array($kitap->kunyeDurum, ['Ödünç', 'Rezerve'], true);
 
+        $this->normalizeKoleksiyonIdInput($request);
+
         $validateRules = [
             'kunyeEserAdi'  => 'required|string|max:500',
-            'kunyeYazar'    => 'nullable|string|max:255',
+            'kunyeYazar'    => 'nullable|string|max:500',
             'kunyeISBNISSN' => 'nullable|string|max:100',
             'kunyeSayfaSayisi' => 'nullable|integer|min:1',
+            'koleksiyon_id' => $this->koleksiyonIdValidationRule(),
+            'yazar_giris_tipi' => 'nullable|in:kayitli,manuel',
+            'yazar_ids'        => 'nullable|array',
+            'yazar_ids.*'      => 'integer|exists:yazarlar,id',
+            'yazar_manuel_ad'   => 'nullable|array',
+            'yazar_manuel_ad.*' => 'nullable|string|max:255',
+            'yazar_manuel_soyad'   => 'nullable|array',
+            'yazar_manuel_soyad.*' => 'nullable|string|max:255',
         ];
         if (!$durumKilitli) {
             $validateRules['kunyeDurum'] = ['required', Rule::in(['Rafta', 'Kayıp', 'Bakımda', 'Hurdaya Ayrıldı'])];
@@ -725,6 +883,7 @@ class KatalogController extends Controller
             // Yeni alanlar
             'turId', 'altTurId', 'sekilId', 'ortamId',
             'icerik', 'aciklama', 'ozelNotlar', 'ozelNotlar2', 'ozelNotlar3', 'ustEserKatalogId',
+            'koleksiyon_id',
         ]);
         // kunyeDemirbasKN güncellenmez — ne formdan gelirse gelsin yoksayılır
 
@@ -752,15 +911,9 @@ class KatalogController extends Controller
             unset($data['kutuphaneId']);
         }
 
-        // ── Yazar ─────────────────────────────────────────────────────────────
-        $yazarAd = trim($request->input('kunyeYazar', ''));
-        if ($yazarAd !== '') {
-            $yazar              = Yazar::findOrCreateByAd($yazarAd);
-            $data['yazarId']    = $yazar->id;
-            $data['kunyeYazar'] = $yazar->ad;
-        } else {
-            $data['yazarId'] = null;
-        }
+        // ── Yazar: kayıtlı (yazar_ids[]) veya manuel (ad/soyad dizileri) ───────────
+        $orderedYazarIds = $this->resolveOrderedYazarIdsForSave($request, $data);
+        $data['yazarId'] = $orderedYazarIds[0] ?? null;
 
         // ── Alt Tür: serbest metinden DB'de bul/oluştur ─────────────────────
         $altTurAd = trim($request->input('altTurAd', ''));
@@ -811,12 +964,21 @@ class KatalogController extends Controller
                 Storage::disk('public')->put($filename, $imageContents);
                 $data['kunyeKapakResmi'] = $filename;
             } catch (\Exception $e) {}
+        } elseif ($request->filled('copy_kapak_from_katalog_id')) {
+            $copied = $this->duplicateKunyeKapakFromKatalog((int) $request->input('copy_kapak_from_katalog_id'));
+            if ($copied !== null) {
+                if ($kitap->kunyeKapakResmi) {
+                    Storage::disk('public')->delete($kitap->kunyeKapakResmi);
+                }
+                $data['kunyeKapakResmi'] = $copied;
+            }
         } elseif ($request->input('kapak_sil') === '1') {
             if ($kitap->kunyeKapakResmi) Storage::disk('public')->delete($kitap->kunyeKapakResmi);
             $data['kunyeKapakResmi'] = null;
         }
 
         $kitap->update($data);
+        $this->syncKatalogYazarlar($kitap, $orderedYazarIds);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => '"' . $data['kunyeEserAdi'] . '" başarıyla güncellendi.']);

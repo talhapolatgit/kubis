@@ -39,7 +39,8 @@ class CatalogApiController extends Controller
 
         $query = Katalog::query()
             ->with([
-                'yazar:id,ad',
+                'yazarlar:id,ad,soyad',
+                'yazar:id,ad,soyad',
                 'yayinevi:id,ad',
                 'kutuphane:id,title',
             ]);
@@ -72,9 +73,15 @@ class CatalogApiController extends Controller
             $query->where('kutuphaneId', (int) $request->input('kutuphane_id'));
         }
 
-        // Yazar filtreleri: önce ID, yoksa isim ile LIKE
+        // Yazar filtreleri: önce ID (pivot veya eski yazarId), yoksa isim ile LIKE
         if ($request->filled('yazar_id')) {
-            $query->where('yazarId', (int) $request->input('yazar_id'));
+            $yid = (int) $request->input('yazar_id');
+            $query->where(function ($q) use ($yid) {
+                $q->where('yazarId', $yid)
+                    ->orWhereHas('yazarlar', function ($q2) use ($yid) {
+                        $q2->where('yazarlar.id', $yid);
+                    });
+            });
         } elseif ($request->filled('yazar_adi')) {
             $y = $request->input('yazar_adi');
             $query->where(function ($q) use ($y) {
@@ -105,7 +112,7 @@ class CatalogApiController extends Controller
                 'eser_adi'       => $k->kunyeEserAdi,
                 // 'eser_adi_alt'   => $k->kunyeEserAdiAlt,
                 // 'isbn_issn'      => $k->kunyeISBNISSN,
-                'yazar_adi'      => optional($k->yazar)->ad ?? $k->kunyeYazar,
+                'yazar_adi'      => $k->formattedYazarlarAdi(),
                 // 'yayinevi_adi'   => optional($k->yayinevi)->ad ?? $k->kunyeYayinlayan,
                 'kutuphane_adi'  => optional($k->kutuphane)->title,
                 // 'yayin_yeri'     => $k->kunyeYayinYeri,
@@ -153,7 +160,8 @@ class CatalogApiController extends Controller
 
             if ($k != null) {
                 $katalog = $k->with([
-                    'yazar:id,ad',
+                    'yazarlar:id,ad,soyad',
+                    'yazar:id,ad,soyad',
                     'yayinevi:id,ad',
                     'kutuphane:id,title',
                 ])
@@ -180,7 +188,7 @@ class CatalogApiController extends Controller
                 'eser_adi'       => $katalog->kunyeEserAdi,
                 'eser_adi_alt'   => $katalog->kunyeEserAdiAlt,
                 'isbn_issn'      => $katalog->kunyeISBNISSN,
-                'yazar_adi'      => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
+                'yazar_adi'      => $katalog->formattedYazarlarAdi(),
                 'yayinevi_adi'   => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                 'kutuphane_adi'  => optional($katalog->kutuphane)->title,
                 'yayin_yeri'     => $katalog->kunyeYayinYeri,
@@ -268,7 +276,8 @@ class CatalogApiController extends Controller
             ->with([
                 'katalog:id,kunyeEserAdi,kunyeEserAdiAlt,kunyeISBNISSN,kunyeYazar,kunyeYayinlayan,'
                     . 'kunyeYayinTarihi,kunyeKapakResmi,kunyeDurum,kunyeDemirbasKN,yazarId,yayineviId,kutuphaneId',
-                'katalog.yazar:id,ad',
+                'katalog.yazarlar:id,ad,soyad',
+                'katalog.yazar:id,ad,soyad',
                 'katalog.yayinevi:id,ad',
                 'katalog.kutuphane:id,title',
                 'kutuphane:id,title',
@@ -314,7 +323,7 @@ class CatalogApiController extends Controller
                     'eser_adi'      => $katalog->kunyeEserAdi,
                     'eser_adi_alt'  => $katalog->kunyeEserAdiAlt,
                     'isbn_issn'     => $katalog->kunyeISBNISSN,
-                    'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
+                    'yazar_adi'     => $katalog->formattedYazarlarAdi(),
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
                     'kapak'         => $katalog->kapak_resim_path,
@@ -363,7 +372,8 @@ class CatalogApiController extends Controller
             ->with([
                 'katalog:id,kunyeEserAdi,kunyeEserAdiAlt,kunyeISBNISSN,kunyeYazar,kunyeYayinlayan,kunyeKategori,kunyeSiniflamaYer,kunyeDilKN,'
                     . 'kunyeYayinTarihi,kunyeKapakResmi,kunyeDurum,kunyeDemirbasKN,yazarId,yayineviId,kutuphaneId,aciklama',
-                'katalog.yazar:id,ad',
+                'katalog.yazarlar:id,ad,soyad',
+                'katalog.yazar:id,ad,soyad',
                 'katalog.yayinevi:id,ad',
                 'katalog.kutuphane:id,title',
                 'kutuphane:id,title',
@@ -399,7 +409,7 @@ class CatalogApiController extends Controller
                     'eser_adi'      => $katalog->kunyeEserAdi,
                     'eser_adi_alt'  => $katalog->kunyeEserAdiAlt,
                     'isbn_issn'     => $katalog->kunyeISBNISSN,
-                    'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
+                    'yazar_adi'     => $katalog->formattedYazarlarAdi(),
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
                     'kapak'         => $katalog->kapak_resim_path,
@@ -571,7 +581,8 @@ class CatalogApiController extends Controller
             ->with([
                 'katalog:id,kunyeEserAdi,kunyeEserAdiAlt,kunyeISBNISSN,kunyeYazar,kunyeYayinlayan,'
                     . 'kunyeYayinTarihi,kunyeKapakResmi,kunyeDurum,kunyeDemirbasKN,yazarId,yayineviId,kutuphaneId',
-                'katalog.yazar:id,ad',
+                'katalog.yazarlar:id,ad,soyad',
+                'katalog.yazar:id,ad,soyad',
                 'katalog.yayinevi:id,ad',
                 'katalog.kutuphane:id,title',
                 'kutuphane:id,title',
@@ -607,7 +618,7 @@ class CatalogApiController extends Controller
                     'eser_adi'      => $katalog->kunyeEserAdi,
                     'eser_adi_alt'  => $katalog->kunyeEserAdiAlt,
                     'isbn_issn'     => $katalog->kunyeISBNISSN,
-                    'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
+                    'yazar_adi'     => $katalog->formattedYazarlarAdi(),
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
                     'kapak'         => $katalog->kapak_resim_path,
@@ -840,7 +851,8 @@ class CatalogApiController extends Controller
             ->with([
                 'katalog:id,kunyeEserAdi,kunyeEserAdiAlt,kunyeISBNISSN,kunyeYazar,kunyeYayinlayan,'
                     . 'kunyeYayinTarihi,kunyeKapakResmi,kunyeDurum,kunyeDemirbasKN,yazarId,yayineviId,kutuphaneId',
-                'katalog.yazar:id,ad',
+                'katalog.yazarlar:id,ad,soyad',
+                'katalog.yazar:id,ad,soyad',
                 'katalog.yayinevi:id,ad',
                 'katalog.kutuphane:id,title',
                 'kutuphane:id,title',
@@ -881,7 +893,7 @@ class CatalogApiController extends Controller
                     'eser_adi'      => $katalog->kunyeEserAdi,
                     'eser_adi_alt'  => $katalog->kunyeEserAdiAlt,
                     'isbn_issn'     => $katalog->kunyeISBNISSN,
-                    'yazar_adi'     => optional($katalog->yazar)->ad ?? $katalog->kunyeYazar,
+                    'yazar_adi'     => $katalog->formattedYazarlarAdi(),
                     'yayinevi_adi'  => optional($katalog->yayinevi)->ad ?? $katalog->kunyeYayinlayan,
                     'yayin_tarihi'  => $katalog->kunyeYayinTarihi,
                     'kapak'         => $katalog->kapak_resim_path,

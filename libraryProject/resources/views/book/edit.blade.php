@@ -1167,6 +1167,7 @@
                             {{-- Mevcut kapak yolunu sakla, silme durumunda controller'a bildir --}}
                             <input type="hidden" name="mevcut_kapak" value="{{ $kitap->kunyeKapakResmi }}" />
                             <input type="hidden" name="kapak_sil" id="kapakSilInput" value="0" />
+                            <input type="hidden" name="copy_kapak_from_katalog_id" id="copyKapakFromId" value="" />
                             @if(!$isViewOnly)
                             <p class="cover-change-hint" id="coverChangeHint" style="{{ $kitap->kunyeKapakResmi ? '' : 'display:none' }}">Değiştirmek için resme tıklayin</p>
                             @endif
@@ -1190,22 +1191,68 @@
                                         <label class="form-label" for="kunyeEserAdiAlt">Alt Başlık</label>
                                         <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci Kısım" rows="1">{{ old('kunyeEserAdiAlt', $kitap->kunyeEserAdiAlt) }}</textarea>
                                     </div>
-                                    <div class="form-field">
-                                        <label class="form-label" for="kunyeYazarSearch">Yazar</label>
-                                        <div class="combobox-wrapper" id="authorCombobox">
-                                            <div class="combobox-input-wrap">
-                                                <input type="text" class="form-input" id="kunyeYazarSearch" placeholder="Yazar adı yazın veya seçin" autocomplete="off" value="{{ old('kunyeYazar', $kitap->kunyeYazar) }}" />
-                                                <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                                                </button>
-                                            </div>
-                                            <div class="combobox-dropdown"></div>
+                                    @if($isViewOnly)
+                                    <div class="form-field" style="grid-column: span 2;">
+                                        <span class="form-label">Yazar(lar)</span>
+                                        <div class="form-input" style="min-height:40px;display:flex;align-items:center;background:var(--secondary);color:var(--foreground);">{{ $kitap->formattedYazarlarAdi() ?: '—' }}</div>
+                                    </div>
+                                    @else
+                                    <div class="form-field" style="grid-column: span 2;">
+                                        <span class="form-label">Yazar(lar)</span>
+                                        <div class="yazar-giris-tip-row" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:6px;margin-bottom:10px;">
+                                            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                                                <input type="radio" name="yazar_giris_tipi" id="yazarGirisKayitli" value="kayitli" {{ old('yazar_giris_tipi', 'kayitli') === 'kayitli' ? 'checked' : '' }} />
+                                                <span>Kayıtlı Yazarlardan Seç</span>
+                                            </label>
+                                            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+                                                <input type="radio" name="yazar_giris_tipi" id="yazarGirisManuel" value="manuel" {{ old('yazar_giris_tipi') === 'manuel' ? 'checked' : '' }} />
+                                                <span>Manuel Giriş</span>
+                                            </label>
                                         </div>
-                                        <input type="hidden" id="kunyeYazar" name="kunyeYazar" value="{{ old('kunyeYazar', $kitap->kunyeYazar) }}" />
+
+                                        <fieldset id="yazarKayitliFieldset" style="border:none;padding:0;margin:0;min-width:0;">
+                                            <div id="yazarKayitliPickArea" style="{{ old('yazar_giris_tipi') === 'manuel' ? 'display:none;' : '' }}">
+                                                <p class="form-hint" style="margin:0 0 8px;font-size:12px;color:var(--muted-foreground);">Listeden arayıp seçin; birden fazla yazar ekleyebilirsiniz. Yalnızca listedeki kayıtlar seçilebilir.</p>
+                                                <div class="combobox-wrapper" id="authorCombobox">
+                                                    <div class="combobox-input-wrap">
+                                                        <input type="text" class="form-input" id="kunyeYazarSearch" placeholder="Yazar ara…" autocomplete="off" />
+                                                        <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                                        </button>
+                                                    </div>
+                                                    <div class="combobox-dropdown"></div>
+                                                </div>
+                                                <input type="hidden" name="kunyeYazar" id="kunyeYazar" value="{{ old('kunyeYazar', $kitap->kunyeYazar) }}" />
+                                                <div id="yazarKayitliChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;min-height:28px;"></div>
+                                                <div id="yazarKayitliHiddenIds"></div>
+                                            </div>
+                                        </fieldset>
+
+                                        <fieldset id="yazarManuelFieldset" disabled style="border:none;padding:0;margin:0;margin-top:12px;min-width:0;{{ old('yazar_giris_tipi') === 'manuel' ? '' : 'display:none;' }}">
+                                            <p class="form-hint" style="margin:0 0 8px;font-size:12px;color:var(--muted-foreground);">Ad ve soyadı girin, «Ekle» ile listeye ekleyin.</p>
+                                            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;max-width:720px;">
+                                                <div class="form-field" style="margin:0;">
+                                                    <label class="form-label" for="yazarManuelAdEntry">Yazar Adı</label>
+                                                    <input type="text" class="form-input" id="yazarManuelAdEntry" autocomplete="given-name" />
+                                                </div>
+                                                <div class="form-field" style="margin:0;">
+                                                    <label class="form-label" for="yazarManuelSoyadEntry">Yazar Soyadı</label>
+                                                    <input type="text" class="form-input" id="yazarManuelSoyadEntry" autocomplete="family-name" />
+                                                </div>
+                                                <button type="button" class="btn btn-outline" id="yazarManuelEkleBtn" style="height:38px;white-space:nowrap;">Ekle</button>
+                                            </div>
+                                            <div id="yazarManuelChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;min-height:28px;"></div>
+                                            <div id="yazarManuelHiddenPairs"></div>
+                                        </fieldset>
+
                                         <script id="yazarData" type="application/json">
-                                            @json($yazarlar->map(fn($y) => ['id' => $y->id, 'ad' => $y->ad]))
+                                            @json($yazarlar->map(fn($y) => ['id' => $y->id, 'ad' => $y->tam_ad]))
+                                        </script>
+                                        <script>
+                                            window.__initialYazarIds = @json($kitap->yazarlar->pluck('id')->values()->all());
                                         </script>
                                     </div>
+                                    @endif
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeISBNISSN">ISBN / ISSN</label>
                                         <div class="input-with-icon" style="position:relative;">
@@ -1403,6 +1450,15 @@
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSiniflamaYer">Sınıflama / Yer Kodu</label>
                                         <textarea class="form-textarea auto-grow-textarea" id="kunyeSiniflamaYer" name="kunyeSiniflamaYer" placeholder="Örnek: 603.41/FER" rows="1">{{ old('kunyeSiniflamaYer', $kitap->kunyeSiniflamaYer) }}</textarea>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="koleksiyon_id">Koleksiyon</label>
+                                        <select class="form-select" id="koleksiyon_id" name="koleksiyon_id" {{ $isViewOnly ? 'disabled' : '' }}>
+                                            <option value="">— Seçiniz —</option>
+                                            @foreach($koleksiyonlar as $kol)
+                                                <option value="{{ $kol->id }}" {{ (string) old('koleksiyon_id', $kitap->koleksiyon_id ?? '') === (string) $kol->id ? 'selected' : '' }}>{{ $kol->title }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeKonuBasligi">Konu Başlığı</label>
@@ -1891,9 +1947,11 @@
         coverUploadArea.classList.remove('has-image');
         if (coverChangeHint) coverChangeHint.style.display = 'none';
         coverInput.value = '';
-        // ISBN URL'yi de temizle
+        // ISBN URL ve başka kayıttan kopya referansını temizle
         var isbnHidden = document.getElementById('isbnCoverUrl');
         if (isbnHidden) isbnHidden.value = '';
+        var copyKap = document.getElementById('copyKapakFromId');
+        if (copyKap) copyKap.value = '';
     }
 
     // ============================
@@ -1977,15 +2035,13 @@
         e.preventDefault();
 
         var title  = document.getElementById('kunyeEserAdi').value.trim();
-        var author = document.getElementById('kunyeYazarSearch').value.trim();
 
         if (!title) {
             showToast('error', 'Zorunlu alanlar eksik', 'Eser adı zorunludur.');
             return;
         }
 
-        // hidden alanları senkronize et
-        document.getElementById('kunyeYazar').value = author;
+        if (window.syncKunyeYazarHiddenForSubmit) window.syncKunyeYazarHiddenForSubmit();
         var altTurSearch = document.getElementById('altTurIdSearch');
         if (altTurSearch) document.getElementById('altTurAd').value = altTurSearch.value.trim();
         var publisherSearch = document.getElementById('kunyeYayinlayanSearch');
@@ -2056,6 +2112,7 @@
         'kunyeSorumlular'   => $kitap->kunyeSorumlular,
         'kunyeDiziKaydi'    => $kitap->kunyeDiziKaydi,
         'kunyeSiniflamaYer' => $kitap->kunyeSiniflamaYer,
+        'koleksiyon_id'     => $kitap->koleksiyon_id !== null && $kitap->koleksiyon_id !== '' ? (string) $kitap->koleksiyon_id : '',
         'kunyeKategori'     => $kitap->kunyeKategori,
         'kunyeKonuBasligi'  => $kitap->kunyeKonuBasligi,
         'kunyeFizikselTanim'=> $kitap->kunyeFizikselTanim,
@@ -2083,10 +2140,12 @@
             if (el) el.value = originalValues[key];
         });
 
-        // Yazar ve yayınevi search alanlarını senkronize et
-        var yazarSearch    = document.getElementById('kunyeYazarSearch');
+        // Yazar çoklu seçim + yayınevi search alanlarını senkronize et
+        if (window.resetYazarFormToKayitli) window.resetYazarFormToKayitli();
+        if (typeof window.__initialYazarIds !== 'undefined' && window.__initialYazarIds.length && window.setYazarKayitliChipsFromIds) {
+            window.setYazarKayitliChipsFromIds(window.__initialYazarIds);
+        }
         var yayineviSearch = document.getElementById('kunyeYayinlayanSearch');
-        if (yazarSearch)    yazarSearch.value    = originalValues.kunyeYazar       || '';
         if (yayineviSearch) yayineviSearch.value = originalValues.kunyeYayinlayan  || '';
 
         // Tür / Alt Tür / Şekil / Ortam search inputlarını da sıfırla
@@ -2143,6 +2202,10 @@
             removeBtn = null;
         }
         coverInput.value = '';
+        var copyKapReset = document.getElementById('copyKapakFromId');
+        if (copyKapReset) copyKapReset.value = '';
+        var isbnReset = document.getElementById('isbnCoverUrl');
+        if (isbnReset) isbnReset.value = '';
 
         // Placeholder görünürlüğü
         var hasExisting = document.getElementById('existingCoverImg') !== null;
@@ -2181,6 +2244,7 @@
             var wrapper     = document.getElementById(cfg.wrapperId);
             var searchInput = document.getElementById(cfg.searchInputId);
             var hiddenInput = document.getElementById(cfg.hiddenInputId);
+            if (!wrapper || !searchInput || !hiddenInput) return;
             var dropdown    = wrapper.querySelector('.combobox-dropdown');
             var toggle      = wrapper.querySelector('.combobox-toggle');
             var inputWrap   = wrapper.querySelector('.combobox-input-wrap');
@@ -2335,7 +2399,334 @@
             syncSearchFromHidden();
             updateClearButton();
         }
-        initDbCombobox({ wrapperId:'authorCombobox',    searchInputId:'kunyeYazarSearch',      hiddenInputId:'kunyeYazar',      dataScriptId:'yazarData',    labelKey:'ad' });
+        function initYazarMultiAuthorBlock() {
+            var wrapper     = document.getElementById('authorCombobox');
+            var searchInput = document.getElementById('kunyeYazarSearch');
+            var chipsKay    = document.getElementById('yazarKayitliChips');
+            var hiddensKay  = document.getElementById('yazarKayitliHiddenIds');
+            var hiddenKunye = document.getElementById('kunyeYazar');
+            var fieldKay    = document.getElementById('yazarKayitliFieldset');
+            var fieldMan    = document.getElementById('yazarManuelFieldset');
+            var pickArea    = document.getElementById('yazarKayitliPickArea');
+            var radKay      = document.getElementById('yazarGirisKayitli');
+            var radMan      = document.getElementById('yazarGirisManuel');
+            var chipsMan    = document.getElementById('yazarManuelChips');
+            var hiddensMan  = document.getElementById('yazarManuelHiddenPairs');
+            var adEntry     = document.getElementById('yazarManuelAdEntry');
+            var soyEntry    = document.getElementById('yazarManuelSoyadEntry');
+            var btnEkle     = document.getElementById('yazarManuelEkleBtn');
+            if (!wrapper || !searchInput || !chipsKay || !hiddensKay || !hiddenKunye) return;
+
+            var rawData = [];
+            try { rawData = JSON.parse(document.getElementById('yazarData').textContent || '[]'); } catch (e) {}
+
+            var selectedKay = [];
+
+            function esc(s) {
+                var d = document.createElement('div');
+                d.appendChild(document.createTextNode(s || ''));
+                return d.innerHTML;
+            }
+
+            function syncKunyeHiddenFromKayitli() {
+                hiddenKunye.value = selectedKay.map(function (x) { return x.label; }).join(' ; ');
+            }
+
+            function renderKayitliChips() {
+                chipsKay.innerHTML = '';
+                hiddensKay.innerHTML = '';
+                selectedKay.forEach(function (item) {
+                    var chip = document.createElement('span');
+                    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;background:var(--secondary);font-size:13px;border:1px solid var(--border);';
+                    chip.innerHTML = esc(item.label) + ' <button type="button" class="yazar-chip-x" data-id="' + String(item.id) + '" style="border:none;background:transparent;cursor:pointer;padding:0 2px;line-height:1;font-size:16px;" aria-label="Kaldır">&times;</button>';
+                    chip.querySelector('.yazar-chip-x').addEventListener('click', function () {
+                        var rid = parseInt(this.getAttribute('data-id'), 10);
+                        selectedKay = selectedKay.filter(function (x) { return x.id !== rid; });
+                        renderKayitliChips();
+                    });
+                    chipsKay.appendChild(chip);
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'yazar_ids[]';
+                    inp.value = String(item.id);
+                    hiddensKay.appendChild(inp);
+                });
+                syncKunyeHiddenFromKayitli();
+            }
+
+            function addKayitliId(idStr, label) {
+                var id = parseInt(idStr, 10);
+                if (!id || isNaN(id)) return;
+                if (selectedKay.some(function (x) { return x.id === id; })) return;
+                selectedKay.push({ id: id, label: label });
+                renderKayitliChips();
+                searchInput.value = '';
+            }
+
+            window.setYazarKayitliChipsFromIds = function (ids) {
+                if (!Array.isArray(ids)) return;
+                if (radKay) radKay.checked = true;
+                toggleMode();
+                selectedKay = [];
+                ids.forEach(function (rid) {
+                    var id = parseInt(rid, 10);
+                    if (!id) return;
+                    var row = rawData.find(function (r) { return parseInt(r.id, 10) === id; });
+                    if (row) selectedKay.push({ id: id, label: row.ad });
+                });
+                renderKayitliChips();
+                searchInput.value = '';
+            };
+
+            window.clearYazarKayitliChips = function () {
+                selectedKay = [];
+                renderKayitliChips();
+            };
+
+            window.syncKunyeYazarHiddenForSubmit = function () {
+                if (radMan && radMan.checked) return;
+                syncKunyeHiddenFromKayitli();
+            };
+
+            function parseTamMetinJs(full) {
+                full = String(full || '').replace(/\s+/g, ' ').trim();
+                if (!full) return { ad: '', soyad: '' };
+                var m = full.match(/^([^,]+),\s*(.+)$/);
+                if (m) {
+                    var soyad = m[1].trim();
+                    var ad = m[2].trim();
+                    if (ad === '' && soyad !== '') {
+                        ad = soyad;
+                        soyad = '';
+                    }
+                    return { ad: ad, soyad: soyad };
+                }
+                var parts = full.split(/\s+/).filter(Boolean);
+                if (parts.length >= 2) {
+                    var soy = parts.pop();
+                    return { ad: parts.join(' '), soyad: soy };
+                }
+                return { ad: full, soyad: '' };
+            }
+
+            window.applyIsbnApiAuthorsString = function (authorsStr) {
+                var s = String(authorsStr || '').trim();
+                if (!s) return;
+                var pieces = s.split(/\s*,\s*|\s*&\s*|\s+ve\s+|\s+and\s+/i).map(function (p) { return p.trim(); }).filter(Boolean);
+                if (pieces.length === 0) pieces = [s];
+
+                function findRowExact(token) {
+                    var t = String(token || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                    if (!t) return null;
+                    return rawData.find(function (r) {
+                        var a = String(r.ad || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                        return a === t;
+                    }) || null;
+                }
+
+                var allMatched = true;
+                var matchedIds = [];
+                for (var i = 0; i < pieces.length; i++) {
+                    var row = findRowExact(pieces[i]);
+                    if (!row) {
+                        allMatched = false;
+                        break;
+                    }
+                    matchedIds.push(parseInt(row.id, 10));
+                }
+
+                if (allMatched && matchedIds.length > 0) {
+                    window.setYazarKayitliChipsFromIds(matchedIds);
+                    return;
+                }
+
+                if (radMan) radMan.checked = true;
+                if (radKay) radKay.checked = false;
+                toggleMode();
+                var first = pieces[0] || s;
+                var parsed = parseTamMetinJs(first);
+                if (adEntry) adEntry.value = parsed.ad;
+                if (soyEntry) soyEntry.value = parsed.soyad;
+                if (searchInput) searchInput.value = '';
+                var kh = document.getElementById('kunyeYazar');
+                if (kh) kh.value = s;
+            };
+
+            var manuelRows = [];
+
+            function renderManuel() {
+                chipsMan.innerHTML = '';
+                hiddensMan.innerHTML = '';
+                manuelRows.forEach(function (row) {
+                    var lab = (row.ad + ' ' + row.soyad).trim();
+                    var chip = document.createElement('span');
+                    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;background:var(--secondary);font-size:13px;border:1px solid var(--border);';
+                    chip.innerHTML = esc(lab) + ' <button type="button" class="y-man-chip-x" style="border:none;background:transparent;cursor:pointer;padding:0 2px;line-height:1;font-size:16px;" aria-label="Kaldır">&times;</button>';
+                    chip.querySelector('.y-man-chip-x').addEventListener('click', function () {
+                        manuelRows = manuelRows.filter(function (x) { return x !== row; });
+                        renderManuel();
+                    });
+                    chipsMan.appendChild(chip);
+                    var i1 = document.createElement('input');
+                    i1.type = 'hidden';
+                    i1.name = 'yazar_manuel_ad[]';
+                    i1.value = row.ad;
+                    var i2 = document.createElement('input');
+                    i2.type = 'hidden';
+                    i2.name = 'yazar_manuel_soyad[]';
+                    i2.value = row.soyad;
+                    hiddensMan.appendChild(i1);
+                    hiddensMan.appendChild(i2);
+                });
+            }
+
+            function toggleMode() {
+                var man = radMan && radMan.checked;
+                if (fieldKay) fieldKay.disabled = !!man;
+                if (fieldMan) fieldMan.disabled = !man;
+                if (pickArea) pickArea.style.display = man ? 'none' : '';
+                if (fieldMan) fieldMan.style.display = man ? '' : 'none';
+                if (man) {
+                    selectedKay = [];
+                    renderKayitliChips();
+                    searchInput.value = '';
+                } else {
+                    manuelRows = [];
+                    renderManuel();
+                    if (adEntry) adEntry.value = '';
+                    if (soyEntry) soyEntry.value = '';
+                }
+            }
+
+            if (radKay) radKay.addEventListener('change', toggleMode);
+            if (radMan) radMan.addEventListener('change', toggleMode);
+
+            if (btnEkle) {
+                btnEkle.addEventListener('click', function () {
+                    var a = (adEntry && adEntry.value) ? adEntry.value.trim() : '';
+                    var s = (soyEntry && soyEntry.value) ? soyEntry.value.trim() : '';
+                    if (!a) {
+                        if (typeof showToast === 'function') showToast('error', 'Uyarı', 'Yazar adı zorunludur.');
+                        return;
+                    }
+                    manuelRows.push({ ad: a, soyad: s });
+                    renderManuel();
+                    adEntry.value = '';
+                    soyEntry.value = '';
+                });
+            }
+
+            window.resetYazarFormToKayitli = function () {
+                if (radKay) radKay.checked = true;
+                if (radMan) radMan.checked = false;
+                toggleMode();
+                selectedKay = [];
+                renderKayitliChips();
+                if (searchInput) searchInput.value = '';
+                if (adEntry) adEntry.value = '';
+                if (soyEntry) soyEntry.value = '';
+                manuelRows = [];
+                renderManuel();
+            };
+
+            var dropdown = wrapper.querySelector('.combobox-dropdown');
+            var toggle = wrapper.querySelector('.combobox-toggle');
+            var highlightedIndex = -1;
+            var filtered = rawData.slice();
+
+            function highlight(text, term) {
+                if (!term) return esc(text);
+                var idx = text.toLowerCase().indexOf(term.toLowerCase());
+                if (idx === -1) return esc(text);
+                return esc(text.substring(0, idx)) + '<strong style="color:var(--primary)">' + esc(text.substring(idx, idx + term.length)) + '</strong>' + esc(text.substring(idx + term.length));
+            }
+
+            function render(filter) {
+                var term = (filter || '').toLowerCase();
+                filtered = rawData.filter(function (r) { return r.ad.toLowerCase().indexOf(term) !== -1; });
+                var html = '';
+                if (filtered.length === 0) {
+                    html = '<div class="combobox-no-result">Bulunamadı</div>';
+                } else {
+                    filtered.forEach(function (r, i) {
+                        var high = (i === highlightedIndex);
+                        html += '<div class="combobox-option' + (high ? ' highlighted' : '') + '" data-val="' + esc(r.ad) + '" data-id="' + esc(String(r.id)) + '">';
+                        html += '<svg class="check-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                        html += '<span>' + highlight(r.ad, filter) + '</span></div>';
+                    });
+                }
+                dropdown.innerHTML = html;
+                dropdown.querySelectorAll('.combobox-option').forEach(function (el) {
+                    el.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        addKayitliId(this.getAttribute('data-id'), this.getAttribute('data-val'));
+                        close();
+                    });
+                });
+            }
+
+            function open() {
+                highlightedIndex = -1;
+                searchInput.value = '';
+                render('');
+                dropdown.classList.add('visible');
+                toggle.classList.add('open');
+                searchInput.focus();
+            }
+            function close() {
+                dropdown.classList.remove('visible');
+                if (toggle) toggle.classList.remove('open');
+                highlightedIndex = -1;
+                searchInput.value = '';
+            }
+            function isOpen() { return dropdown.classList.contains('visible'); }
+
+            if (toggle) toggle.addEventListener('mousedown', function (e) { e.preventDefault(); isOpen() ? close() : open(); });
+            searchInput.addEventListener('focus', function () { if (!isOpen()) open(); });
+            searchInput.addEventListener('input', function () {
+                highlightedIndex = -1;
+                render(this.value);
+                if (!isOpen()) open();
+            });
+            searchInput.addEventListener('blur', function () {
+                setTimeout(function () { searchInput.value = ''; close(); }, 150);
+            });
+            searchInput.addEventListener('keydown', function (e) {
+                if (!isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    e.preventDefault();
+                    open();
+                    return;
+                }
+                if (!isOpen()) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    highlightedIndex = Math.min(highlightedIndex + 1, filtered.length - 1);
+                    render(searchInput.value);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    highlightedIndex = Math.max(highlightedIndex - 1, 0);
+                    render(searchInput.value);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (highlightedIndex >= 0 && filtered[highlightedIndex]) {
+                        var r = filtered[highlightedIndex];
+                        addKayitliId(String(r.id), r.ad);
+                        close();
+                    }
+                } else if (e.key === 'Escape') {
+                    close();
+                }
+            });
+            document.addEventListener('click', function (e) { if (!wrapper.contains(e.target)) close(); });
+
+            toggleMode();
+            renderKayitliChips();
+            if (typeof window.__initialYazarIds !== 'undefined' && window.__initialYazarIds.length && window.setYazarKayitliChipsFromIds) {
+                window.setYazarKayitliChipsFromIds(window.__initialYazarIds);
+            }
+        }
+
+        initYazarMultiAuthorBlock();
         initDbCombobox({ wrapperId:'publisherCombobox', searchInputId:'kunyeYayinlayanSearch', hiddenInputId:'kunyeYayinlayan', dataScriptId:'yayineviData', labelKey:'ad' });
         initDbCombobox({ wrapperId:'turCombobox',    searchInputId:'turIdSearch',    hiddenInputId:'turId',    dataScriptId:'turData',    labelKey:'ad', idKey:'id', strict: true });
         initDbCombobox({ wrapperId:'altTurCombobox', searchInputId:'altTurIdSearch', hiddenInputId:'altTurAd', dataScriptId:'altTurData', labelKey:'ad' });
@@ -2552,7 +2943,8 @@
             kunyeDurum: true,
             kutuphaneId: true,
             oduncVerilemez: true,
-            etiketlendi: true
+            etiketlendi: true,
+            yazar_ids: true
         };
 
         function applyDatabasePrefill(prefill) {
@@ -2577,7 +2969,10 @@
                 el.dispatchEvent(new Event('change', { bubbles: true }));
             });
 
-            if (prefill.kunyeYazar) {
+            if (Array.isArray(prefill.yazar_ids) && window.setYazarKayitliChipsFromIds) {
+                window.setYazarKayitliChipsFromIds(prefill.yazar_ids);
+            }
+            if ((!Array.isArray(prefill.yazar_ids) || prefill.yazar_ids.length === 0) && prefill.kunyeYazar) {
                 var yazarSearch = document.getElementById('kunyeYazarSearch');
                 if (yazarSearch) yazarSearch.value = prefill.kunyeYazar;
             }
@@ -2603,13 +2998,21 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.success) {
+                        if (window.resetYazarFormToKayitli) window.resetYazarFormToKayitli();
                         if (data.source === 'database' && data.prefill) {
                             applyDatabasePrefill(data.prefill);
                         }
                         if (data.title)     document.getElementById('kunyeEserAdi').value   = data.title;
-                        if (data.authors)   {
-                            document.getElementById('kunyeYazarSearch').value = data.authors;
-                            document.getElementById('kunyeYazar').value       = data.authors;
+                        if (data.authors) {
+                            if (data.source === 'api' && window.applyIsbnApiAuthorsString) {
+                                window.applyIsbnApiAuthorsString(data.authors);
+                            }
+                        } else {
+                            var ys = document.getElementById('kunyeYazarSearch');
+                            var kh = document.getElementById('kunyeYazar');
+                            if (ys) ys.value = '';
+                            if (kh) kh.value = '';
+                            if (window.syncKunyeYazarHiddenForSubmit) window.syncKunyeYazarHiddenForSubmit();
                         }
                         if (data.publisher) {
                             document.getElementById('kunyeYayinlayanSearch').value = data.publisher;
@@ -2617,29 +3020,33 @@
                         }
 
                         if (data.cover) {
-                            // Mevcut DB kapağını gizle, silme flag'ini kaldır (ISBN kapağı alacak)
                             var existingImg    = document.getElementById('existingCoverImg');
                             var existingRmBtn  = document.getElementById('coverRemoveBtn');
                             if (existingImg)   existingImg.style.display   = 'none';
                             if (existingRmBtn) existingRmBtn.style.display = 'none';
                             document.getElementById('kapakSilInput').value = '0';
 
-                            // file input'u sıfırla
                             coverInput.value = '';
 
-                            // Hidden input ile URL'yi forma ekle
+                            var copyKapakHidden = document.getElementById('copyKapakFromId');
                             var hidden = document.getElementById('isbnCoverUrl');
-                            if (!hidden) {
-                                hidden      = document.createElement('input');
-                                hidden.type = 'hidden';
-                                hidden.id   = 'isbnCoverUrl';
-                                hidden.name = 'isbn_cover_url';
-                                document.getElementById('bookForm').appendChild(hidden);
+                            var previewSrc = data.coverPreviewUrl || data.cover;
+                            if (data.source === 'database' && data.sourceKatalogId) {
+                                if (hidden) hidden.value = '';
+                                if (copyKapakHidden) copyKapakHidden.value = String(data.sourceKatalogId);
+                                if (data.coverPreviewUrl) previewSrc = data.coverPreviewUrl;
+                            } else {
+                                if (copyKapakHidden) copyKapakHidden.value = '';
+                                if (!hidden) {
+                                    hidden      = document.createElement('input');
+                                    hidden.type = 'hidden';
+                                    hidden.id   = 'isbnCoverUrl';
+                                    hidden.name = 'isbn_cover_url';
+                                    document.getElementById('bookForm').appendChild(hidden);
+                                }
+                                hidden.value = data.cover;
                             }
-                            hidden.value = data.cover;
-
-                            // Mevcut preview sistemini kullan (removeBtn & currentPreviewImg takip edilir)
-                            showCoverPreview(data.cover);
+                            showCoverPreview(previewSrc);
                         }
 
                         showToast('success', 'Başarılı', (data.source === 'database')
