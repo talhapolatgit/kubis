@@ -209,26 +209,53 @@ class UserController extends Controller
     {
         abort_unless(Auth::user()?->hasYetki(15), 403);
         $request->validate([
-            'name'            => ['required', 'string', 'max:255'],
+            'tc_kimlik'        => ['required', 'digits:11', 'unique:users,tc_kimlik'],
+            'dogum_tarihi'     => ['required', 'date', 'before:today'],
+            'ad'               => ['required', 'string', 'max:100'],
+            'soyad'            => ['required', 'string', 'max:100'],
+            'cinsiyet'         => ['nullable', 'string', 'in:erkek,kadin,diger'],
             'email'           => ['required', 'email', 'max:255', 'unique:users,email'],
+            'telefon'         => ['required', 'string', 'max:20'],
+            'il'              => ['nullable', 'string', 'max:100'],
+            'ilce'            => ['nullable', 'string', 'max:100'],
+            'mahalle'         => ['nullable', 'string', 'max:150'],
+            'acik_adres'      => ['nullable', 'string', 'max:1000'],
             'password'        => ['required', 'confirmed', Password::min(8)],
             'role'            => ['required', 'in:admin,personel,okuyucu'],
             'kutuphane_ids'   => ['nullable', 'array'],
             'kutuphane_ids.*' => ['integer', 'exists:kutuphane,id'],
         ], [
-            'name.required'      => 'Ad Soyad zorunludur.',
+            'tc_kimlik.required' => 'TC Kimlik No zorunludur.',
+            'tc_kimlik.digits'   => 'TC Kimlik No 11 rakamdan oluşmalıdır.',
+            'tc_kimlik.unique'   => 'Bu TC Kimlik No zaten kayıtlı.',
+            'dogum_tarihi.required' => 'Doğum tarihi zorunludur.',
+            'dogum_tarihi.before' => 'Doğum tarihi geçmişte olmalıdır.',
+            'ad.required'        => 'Ad zorunludur.',
+            'soyad.required'     => 'Soyad zorunludur.',
             'email.required'     => 'E-posta adresi zorunludur.',
             'email.email'        => 'Geçerli bir e-posta adresi girin.',
             'email.unique'       => 'Bu e-posta adresi zaten kayıtlı.',
+            'telefon.required'   => 'Telefon numarası zorunludur.',
             'password.required'  => 'Şifre zorunludur.',
             'password.confirmed' => 'Şifre tekrarı uyuşmuyor.',
             'password.min'       => 'Şifre en az 8 karakter olmalıdır.',
             'role.required'      => 'Kullanıcı rolü seçilmelidir.',
         ]);
 
+        $adSoyad = trim($request->input('ad') . ' ' . $request->input('soyad'));
         $user = User::create([
-            'name'     => $request->input('name'),
+            'name'     => $adSoyad,
+            'tc_kimlik' => $request->input('tc_kimlik'),
+            'dogum_tarihi' => $request->input('dogum_tarihi'),
+            'ad'       => $request->input('ad'),
+            'soyad'    => $request->input('soyad'),
+            'cinsiyet' => $request->input('cinsiyet'),
             'email'    => $request->input('email'),
+            'telefon'  => $request->input('telefon'),
+            'il'       => $request->input('il'),
+            'ilce'     => $request->input('ilce'),
+            'mahalle'  => $request->input('mahalle'),
+            'acik_adres' => $request->input('acik_adres'),
             'password' => Hash::make($request->input('password')),
             'role'     => $request->input('role'),
         ]);
@@ -331,20 +358,47 @@ class UserController extends Controller
     {
         abort_unless(Auth::user()?->hasYetki(16), 403);
         $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
+            'tc_kimlik' => ['required', 'digits:11', 'unique:users,tc_kimlik,' . $user->id],
+            'dogum_tarihi' => ['required', 'date', 'before:today'],
+            'ad' => ['required', 'string', 'max:100'],
+            'soyad' => ['required', 'string', 'max:100'],
+            'cinsiyet' => ['nullable', 'string', 'in:erkek,kadin,diger'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'telefon' => ['required', 'string', 'max:20'],
+            'il' => ['nullable', 'string', 'max:100'],
+            'ilce' => ['nullable', 'string', 'max:100'],
+            'mahalle' => ['nullable', 'string', 'max:150'],
+            'acik_adres' => ['nullable', 'string', 'max:1000'],
             'role'  => ['required', 'in:admin,personel,okuyucu'],
         ], [
-            'name.required'  => 'Ad Soyad zorunludur.',
+            'tc_kimlik.required' => 'TC Kimlik No zorunludur.',
+            'tc_kimlik.digits' => 'TC Kimlik No 11 rakamdan oluşmalıdır.',
+            'tc_kimlik.unique' => 'Bu TC Kimlik No başka bir kullanıcıya ait.',
+            'dogum_tarihi.required' => 'Doğum tarihi zorunludur.',
+            'dogum_tarihi.before' => 'Doğum tarihi geçmişte olmalıdır.',
+            'ad.required' => 'Ad zorunludur.',
+            'soyad.required' => 'Soyad zorunludur.',
             'email.required' => 'E-posta adresi zorunludur.',
             'email.email'    => 'Geçerli bir e-posta adresi girin.',
             'email.unique'   => 'Bu e-posta adresi başka bir kullanıcıya ait.',
+            'telefon.required' => 'Telefon numarası zorunludur.',
             'role.required'  => 'Kullanıcı rolü seçilmelidir.',
         ]);
 
+        $adSoyad = trim($request->input('ad') . ' ' . $request->input('soyad'));
         $data = [
-            'name'  => $request->input('name'),
+            'name' => $adSoyad,
+            'tc_kimlik' => $request->input('tc_kimlik'),
+            'dogum_tarihi' => $request->input('dogum_tarihi'),
+            'ad' => $request->input('ad'),
+            'soyad' => $request->input('soyad'),
+            'cinsiyet' => $request->input('cinsiyet'),
             'email' => $request->input('email'),
+            'telefon' => $request->input('telefon'),
+            'il' => $request->input('il'),
+            'ilce' => $request->input('ilce'),
+            'mahalle' => $request->input('mahalle'),
+            'acik_adres' => $request->input('acik_adres'),
             'role'  => $request->input('role'),
         ];
 

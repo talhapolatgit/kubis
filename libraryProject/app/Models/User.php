@@ -20,7 +20,17 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'tc_kimlik',
+        'dogum_tarihi',
+        'ad',
+        'soyad',
+        'cinsiyet',
         'email',
+        'telefon',
+        'il',
+        'ilce',
+        'mahalle',
+        'acik_adres',
         'password',
         'role',
     ];
@@ -44,6 +54,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'dogum_tarihi'      => 'date',
             'password'          => 'hashed',
         ];
     }

@@ -106,9 +106,11 @@
         /* Form */
         .form-grid { display: grid; gap: 16px; }
         .form-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
         .form-field { display: flex; flex-direction: column; }
         .form-label { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
         .form-label .req { color: var(--destructive); }
+        .form-label .hint{font-weight:400;color:var(--muted-foreground);font-size:12px;margin-left:4px}
         .input-wrap { position: relative; }
         .input-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted-foreground); pointer-events: none; }
         .form-input, .form-select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); background: var(--card); color: var(--foreground); font-size: 14px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
@@ -118,6 +120,21 @@
         .form-input:focus, .form-select:focus { border-color: var(--ring); box-shadow: 0 0 0 2px rgba(122,92,60,0.14); }
         .form-input.is-error { border-color: var(--destructive); }
         .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7060' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer; }
+        .form-textarea{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--foreground);font-size:14px;line-height:1.5;transition:border-color .15s,box-shadow .15s;outline:none;resize:vertical;min-height:80px}
+        .form-textarea:focus{border-color:var(--ring);box-shadow:0 0 0 2px rgba(122,92,60,.15)}
+        .adres-sorgu-btn{width:22px;height:22px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);border-radius:4px;padding:0;flex-shrink:0;transition:color .15s,background .15s}
+        .adres-sorgu-btn:hover{color:var(--primary);background:rgba(122,92,60,.08)}
+        .adres-sorgu-btn:disabled{pointer-events:none;opacity:.5}
+        .adres-ikamet-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:13px;font-weight:600;border-radius:calc(var(--radius) - 2px)}
+        .adres-ikamet-badge.ediyor{background:rgba(34,197,94,.1);color:#15803d;border:1px solid rgba(34,197,94,.25)}
+        .adres-ikamet-badge.etmiyor{background:rgba(239,68,68,.08);color:#b91c1c;border:1px solid rgba(239,68,68,.2)}
+        .adres-ikamet-badge.bulunamadi{background:rgba(245,158,11,.08);color:#92400e;border:1px solid rgba(245,158,11,.25)}
+        .adres-ikamet-badge svg{width:15px;height:15px;flex-shrink:0}
+        .adres-readonly-wrap{margin-top:8px}
+        .adres-readonly-label{font-size:12px;font-weight:600;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+        .adres-readonly-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--secondary);color:var(--foreground);font-size:14px;line-height:1.5;cursor:default;outline:none}
+        @keyframes adres-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        .adres-spin{animation:adres-spin .7s linear infinite}
         .form-hint { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
         .form-error { font-size: 12px; color: var(--destructive); margin-top: 4px; }
 
@@ -261,7 +278,7 @@
             .sidebar.open { transform: translateX(0); }
             .main-content { margin-left: 0; }
             .content-area { padding: 16px; }
-            .form-grid.cols-2, .meta-grid, .role-cards { grid-template-columns: 1fr; }
+            .form-grid.cols-2, .form-grid.cols-3, .meta-grid, .role-cards { grid-template-columns: 1fr; }
             .form-actions { flex-direction: column-reverse; }
             .user-hero { flex-direction: column; align-items: flex-start; }
         }
@@ -365,16 +382,66 @@
 
                             <!-- Bölüm 1: Kimlik Bilgileri -->
                             <div>
-                                <p class="section-label"><span class="section-num">1</span> Kimlik Bilgileri</p>
+                                <div class="section-label" style="justify-content:space-between;">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <span class="section-num">1</span> Kimlik Bilgileri
+                                    </div>
+                                    <button type="button" id="kimlikSorgulaBtn" class="adres-sorgu-btn" onclick="kimlikSorgula()" title="KPS üzerinden kimlik sorgula">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                    </button>
+                                </div>
                                 <div class="form-grid cols-2">
-                                    <div class="form-field" style="grid-column:span 2;">
-                                        <label class="form-label" for="name">Ad Soyad <span class="req">*</span></label>
+                                    <div class="form-field">
+                                        <label class="form-label" for="tc_kimlik">TC Kimlik No <span class="req">*</span></label>
+                                        <input type="text" id="tc_kimlik" name="tc_kimlik" class="form-input @error('tc_kimlik') is-error @enderror"
+                                               value="{{ old('tc_kimlik', $user->tc_kimlik) }}" maxlength="11" inputmode="numeric" pattern="\d{11}" autocomplete="off" />
+                                        @error('tc_kimlik')<span class="form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="dogum_tarihi">Doğum Tarihi <span class="req">*</span></label>
+                                        <input type="date" id="dogum_tarihi" name="dogum_tarihi" class="form-input @error('dogum_tarihi') is-error @enderror"
+                                               value="{{ old('dogum_tarihi', optional($user->dogum_tarihi)->format('Y-m-d')) }}" max="{{ date('Y-m-d') }}" />
+                                        @error('dogum_tarihi')<span class="form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section-sep"></div>
+
+                            <!-- Bölüm 2: Kişisel Bilgiler -->
+                            <div>
+                                <p class="section-label"><span class="section-num">2</span> Kişisel Bilgiler</p>
+                                <div class="form-grid cols-2">
+                                    <div class="form-field">
+                                        <label class="form-label" for="ad">Ad <span class="req">*</span></label>
+                                        <input type="text" id="ad" name="ad" class="form-input @error('ad') is-error @enderror"
+                                               value="{{ old('ad', $user->ad) }}" autocomplete="given-name" />
+                                        @error('ad')<span class="form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="soyad">Soyad <span class="req">*</span></label>
+                                        <input type="text" id="soyad" name="soyad" class="form-input @error('soyad') is-error @enderror"
+                                               value="{{ old('soyad', $user->soyad) }}" autocomplete="family-name" />
+                                        @error('soyad')<span class="form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="cinsiyet">Cinsiyet <span class="hint">(isteğe bağlı)</span></label>
+                                        <select id="cinsiyet" name="cinsiyet" class="form-select @error('cinsiyet') is-error @enderror">
+                                            <option value="" {{ old('cinsiyet', $user->cinsiyet) === null || old('cinsiyet', $user->cinsiyet) === '' ? 'selected' : '' }}>Belirtilmedi</option>
+                                            <option value="erkek" {{ old('cinsiyet', $user->cinsiyet) === 'erkek' ? 'selected' : '' }}>Erkek</option>
+                                            <option value="kadin" {{ old('cinsiyet', $user->cinsiyet) === 'kadin' ? 'selected' : '' }}>Kadın</option>
+                                            <option value="diger" {{ old('cinsiyet', $user->cinsiyet) === 'diger' ? 'selected' : '' }}>Diğer</option>
+                                        </select>
+                                        @error('cinsiyet')<span class="form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="telefon">Telefon <span class="req">*</span></label>
                                         <div class="input-wrap">
-                                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
-                                            <input type="text" class="form-input has-icon @error('name') is-error @enderror"
-                                                   id="name" name="name" value="{{ old('name', $user->name) }}" />
+                                            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.68 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 8 8l.92-.92a2 2 0 0 1 2.11-.45c.91.32 1.85.55 2.81.68A2 2 0 0 1 22 16.92z"/></svg>
+                                            <input type="tel" id="telefon" name="telefon" class="form-input has-icon @error('telefon') is-error @enderror"
+                                                   value="{{ old('telefon', $user->telefon) }}" maxlength="11" inputmode="tel" />
                                         </div>
-                                        @error('name')<span class="form-error">{{ $message }}</span>@enderror
+                                        @error('telefon')<span class="form-error">{{ $message }}</span>@enderror
                                     </div>
                                     <div class="form-field" style="grid-column:span 2;">
                                         <label class="form-label" for="email">E-posta Adresi <span class="req">*</span></label>
@@ -390,9 +457,48 @@
 
                             <div class="section-sep"></div>
 
-                            <!-- Bölüm 2: Şifre -->
+                            <!-- Bölüm 3: Adres Bilgileri -->
                             <div>
-                                <p class="section-label"><span class="section-num">2</span> Şifre Değiştir</p>
+                                <div class="section-label" style="justify-content:space-between;">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <span class="section-num">3</span> Adres Bilgileri
+                                    </div>
+                                    <button type="button" id="adresSorgulaBtn" class="adres-sorgu-btn" onclick="adresSorgula()" title="KPS üzerinden adres sorgula">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                    </button>
+                                </div>
+                                <div id="adresSonucPanel" style="display:none;margin-bottom:14px;">
+                                    <div id="adresIkametBadge" class="adres-ikamet-badge"></div>
+                                    <div id="adresReadonlyWrap" class="adres-readonly-wrap" style="display:none;">
+                                        <p class="adres-readonly-label">İkamet Adresi</p>
+                                        <input type="text" id="adresReadonlyInput" class="adres-readonly-input" readonly tabindex="-1" />
+                                    </div>
+                                </div>
+                                <div class="form-grid cols-3">
+                                    <div class="form-field">
+                                        <label class="form-label" for="il">İl</label>
+                                        <input type="text" id="il" name="il" class="form-input @error('il') is-error @enderror" value="{{ old('il', $user->il) }}" />
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="ilce">İlçe</label>
+                                        <input type="text" id="ilce" name="ilce" class="form-input @error('ilce') is-error @enderror" value="{{ old('ilce', $user->ilce) }}" />
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="mahalle">Mahalle</label>
+                                        <input type="text" id="mahalle" name="mahalle" class="form-input @error('mahalle') is-error @enderror" value="{{ old('mahalle', $user->mahalle) }}" />
+                                    </div>
+                                    <div class="form-field" style="grid-column:span 2;">
+                                        <label class="form-label" for="acik_adres">Açık Adres</label>
+                                        <textarea id="acik_adres" name="acik_adres" class="form-textarea">{{ old('acik_adres', $user->acik_adres) }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section-sep"></div>
+
+                            <!-- Bölüm 4: Şifre -->
+                            <div>
+                                <p class="section-label"><span class="section-num">4</span> Şifre Değiştir</p>
                                 <div class="form-grid cols-2">
                                     <div class="form-field">
                                         <label class="form-label" for="password">Yeni Şifre</label>
@@ -432,9 +538,9 @@
 
                             <div class="section-sep"></div>
 
-                            <!-- Bölüm 3: Rol -->
+                            <!-- Bölüm 5: Rol -->
                             <div>
-                                <p class="section-label"><span class="section-num">3</span> Kullanıcı Rolü</p>
+                                <p class="section-label"><span class="section-num">5</span> Kullanıcı Rolü</p>
                                 <div class="role-cards" id="roleCards">
                                     <label class="role-card {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}" id="card-admin">
                                         <input type="radio" name="role" value="admin" {{ old('role', $user->role) === 'admin' ? 'checked' : '' }} />
@@ -469,9 +575,9 @@
 
                             <div class="section-sep"></div>
 
-                            <!-- Bölüm 4: Kayıt Bilgileri -->
+                            <!-- Bölüm 6: Kayıt Bilgileri -->
                             <div>
-                                <p class="section-label"><span class="section-num">4</span> Kayıt Bilgileri</p>
+                                <p class="section-label"><span class="section-num">6</span> Kayıt Bilgileri</p>
                                 <div class="meta-grid">
                                     <div class="meta-item">
                                         <div class="meta-label">Kullanıcı ID</div>
@@ -574,12 +680,34 @@
     }
 
     // Orijinal değerler
-    var origValues = { name: @json($user->name), email: @json($user->email), role: @json($user->role) };
+    var origValues = {
+        tc_kimlik: @json($user->tc_kimlik),
+        dogum_tarihi: @json(optional($user->dogum_tarihi)->format('Y-m-d')),
+        ad: @json($user->ad),
+        soyad: @json($user->soyad),
+        cinsiyet: @json($user->cinsiyet),
+        telefon: @json($user->telefon),
+        email: @json($user->email),
+        il: @json($user->il),
+        ilce: @json($user->ilce),
+        mahalle: @json($user->mahalle),
+        acik_adres: @json($user->acik_adres),
+        role: @json($user->role)
+    };
 
     // Sıfırla
     document.getElementById('resetBtn').addEventListener('click', function() {
-        document.getElementById('name').value  = origValues.name;
+        document.getElementById('tc_kimlik').value  = origValues.tc_kimlik || '';
+        document.getElementById('dogum_tarihi').value = origValues.dogum_tarihi || '';
+        document.getElementById('ad').value  = origValues.ad || '';
+        document.getElementById('soyad').value  = origValues.soyad || '';
+        document.getElementById('cinsiyet').value  = origValues.cinsiyet || '';
+        document.getElementById('telefon').value  = origValues.telefon || '';
         document.getElementById('email').value = origValues.email;
+        document.getElementById('il').value = origValues.il || '';
+        document.getElementById('ilce').value = origValues.ilce || '';
+        document.getElementById('mahalle').value = origValues.mahalle || '';
+        document.getElementById('acik_adres').value = origValues.acik_adres || '';
         document.getElementById('password').value = '';
         document.getElementById('password_confirmation').value = '';
         document.getElementById('pwStrength').style.display = 'none';
@@ -629,6 +757,114 @@
         label.textContent = l.text; label.style.color = l.color;
     }
 
+    // TC kimlik sadece rakam
+    document.getElementById('tc_kimlik').addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '').slice(0, 11);
+    });
+
+    function kimlikSorgula() {
+        var tcKimlik = document.getElementById('tc_kimlik').value.trim();
+        var dogumTarihi = document.getElementById('dogum_tarihi').value.trim();
+        if (!tcKimlik || tcKimlik.length !== 11) return showToast('error', 'TC Kimlik gerekli', 'Kimlik sorgulama için 11 haneli TC Kimlik girin.');
+        if (!dogumTarihi) return showToast('error', 'Doğum Tarihi gerekli', 'Kimlik sorgulama için doğum tarihi girin.');
+
+        var btn = document.getElementById('kimlikSorgulaBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="adres-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+
+        fetch('{{ route("kps.kimlikSorgula") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ tc_kimlik: tcKimlik, dogum_tarihi: dogumTarihi }),
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+                if (!data.success) return showToast('error', 'Kimlik Sorgu Hatası', data.message || 'Kimlik doğrulaması başarısız.');
+                document.getElementById('ad').value = data.ad || '';
+                document.getElementById('soyad').value = data.soyad || '';
+                if (typeof data.cinsiyet !== 'undefined') document.getElementById('cinsiyet').value = data.cinsiyet || '';
+                showToast('success', 'Kimlik Doğrulandı', (data.ad || '') + ' ' + (data.soyad || '') + ' bilgileri getirildi.');
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+                showToast('error', 'Bağlantı Hatası', 'Sunucuya bağlanılamadı.');
+            });
+    }
+
+    function buildAcikAdresKpsLine(data) {
+        var parcalar = [];
+        if (data.mahalleAdi) parcalar.push(String(data.mahalleAdi).trim());
+        var sokak = (data.caddesokakAdi || data.sokakAdi || data.caddeAdi || '').trim();
+        if (sokak) parcalar.push(sokak);
+        if (data.kapi !== undefined && data.kapi !== null && String(data.kapi).trim() !== '') parcalar.push('NO ' + String(data.kapi).trim());
+        var daireIlce = [];
+        if (data.daire !== undefined && data.daire !== null && String(data.daire).trim() !== '') daireIlce.push('DAİRE ' + String(data.daire).trim());
+        if (data.ilceAdi) daireIlce.push(String(data.ilceAdi).trim());
+        if (daireIlce.length) parcalar.push(daireIlce.join(' '));
+        if (data.ilAdi) parcalar.push(String(data.ilAdi).trim());
+        return parcalar.filter(Boolean).join(' ');
+    }
+
+    function applyAdresSorguToForm(data) {
+        if (!data || !data.success) return;
+        if (data.ilAdi) document.getElementById('il').value = String(data.ilAdi).trim();
+        if (data.ilceAdi) document.getElementById('ilce').value = String(data.ilceAdi).trim();
+        if (data.mahalleAdi) document.getElementById('mahalle').value = String(data.mahalleAdi).trim();
+        var satir = buildAcikAdresKpsLine(data);
+        if (satir) document.getElementById('acik_adres').value = satir;
+    }
+
+    function adresSorgula() {
+        var tcKimlik = document.getElementById('tc_kimlik').value.trim();
+        var dogumTarihi = document.getElementById('dogum_tarihi').value.trim();
+        if (!tcKimlik || tcKimlik.length !== 11) return showToast('error', 'TC Kimlik gerekli', 'Adres sorgulama için 11 haneli TC Kimlik girin.');
+        if (!dogumTarihi) return showToast('error', 'Doğum Tarihi gerekli', 'Adres sorgulama için doğum tarihi girin.');
+
+        var btn = document.getElementById('adresSorgulaBtn');
+        var panel = document.getElementById('adresSonucPanel');
+        var badge = document.getElementById('adresIkametBadge');
+        var wrap = document.getElementById('adresReadonlyWrap');
+        var input = document.getElementById('adresReadonlyInput');
+        btn.disabled = true;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="adres-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
+        panel.style.display = 'none';
+
+        fetch('{{ route("kps.adresSorgula") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ tc_kimlik: tcKimlik, dogum_tarihi: dogumTarihi }),
+        })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+                if (!data.success) return showToast('error', 'Sorgu Hatası', data.message || 'Adres sorgulaması başarısız.');
+                applyAdresSorguToForm(data);
+                panel.style.display = 'block';
+                if (data.ikametEdiyor) {
+                    badge.className = 'adres-ikamet-badge ediyor';
+                    badge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>İlçede İkamet Ediyor';
+                    wrap.style.display = 'block'; input.value = data.adres || '';
+                } else if (data.adres) {
+                    badge.className = 'adres-ikamet-badge etmiyor';
+                    badge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>İlçede İkamet Etmiyor';
+                    wrap.style.display = 'block'; input.value = data.adres;
+                } else {
+                    badge.className = 'adres-ikamet-badge bulunamadi';
+                    badge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Kayıtlı adres bulunamadı';
+                    wrap.style.display = 'none'; input.value = '';
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
+                showToast('error', 'Bağlantı Hatası', 'Sunucuya bağlanılamadı.');
+            });
+    }
+
     // AJAX Submit
     var form = document.getElementById('editUserForm');
     var submitBtn = document.getElementById('submitBtn');
@@ -653,8 +889,17 @@
             .then(function(result) {
                 if (result.status === 200 && result.data.success) {
                     showToast('success', 'Güncelleme Başarılı', result.data.message);
-                    origValues.name  = document.getElementById('name').value.trim();
+                    origValues.tc_kimlik = document.getElementById('tc_kimlik').value.trim();
+                    origValues.dogum_tarihi = document.getElementById('dogum_tarihi').value;
+                    origValues.ad  = document.getElementById('ad').value.trim();
+                    origValues.soyad  = document.getElementById('soyad').value.trim();
+                    origValues.cinsiyet  = document.getElementById('cinsiyet').value;
+                    origValues.telefon  = document.getElementById('telefon').value.trim();
                     origValues.email = document.getElementById('email').value.trim();
+                    origValues.il = document.getElementById('il').value.trim();
+                    origValues.ilce = document.getElementById('ilce').value.trim();
+                    origValues.mahalle = document.getElementById('mahalle').value.trim();
+                    origValues.acik_adres = document.getElementById('acik_adres').value.trim();
                     var checkedRole = document.querySelector('#roleCards input[type=radio]:checked');
                     if (checkedRole) origValues.role = checkedRole.value;
                     document.getElementById('password').value = '';
