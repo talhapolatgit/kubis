@@ -493,8 +493,9 @@ class KatalogController extends Controller
         $allowedKutuphaneIds = $this->allowedKutuphaneIdsForSave();
         $request->validate([
             'kunyeEserAdi'  => 'required|string|max:500',
-            'kunyeYazar'    => 'required|string|max:255',
-            'kunyeISBNISSN' => 'required|string|max:50',
+            'kunyeYazar'    => 'nullable|string|max:255',
+            'kunyeISBNISSN' => 'nullable|string|max:50',
+            'kunyeSayfaSayisi' => 'nullable|integer|min:1',
             'kutuphaneId'   => ['required', 'integer', Rule::in($allowedKutuphaneIds)],
         ], [
             'kutuphaneId.required' => 'Lütfen bir kütüphane seçin.',
@@ -506,6 +507,7 @@ class KatalogController extends Controller
             'kunyeKopya', 'kunyeCilt', 'kunyeDilKN', 'kunyeDil2', 'kunyeEserAdi',
             'kunyeEserAdiAlt', 'kunyeYazar', 'kunyeSorumlular',
             'kunyeYayinYeri', 'kunyeYayinlayan', 'kunyeFizikselTanim',
+            'kunyeSayfaSayisi',
             'kunyeISBNISSN', 'kunyeBasimKaydi', 'kunyeDiziKaydi',
             'kunyeKonuBasligi', 'kunyeKategori', 'kunyeGelisTarihi',
             'kunyeDurum',
@@ -534,6 +536,15 @@ class KatalogController extends Controller
             $yazar              = Yazar::findOrCreateByAd($yazarAd);
             $data['yazarId']    = $yazar->id;
             $data['kunyeYazar'] = $yazar->ad; // normalize edilmiş
+        }
+
+        // ── Alt Tür: serbest metinden DB'de bul/oluştur ─────────────────────
+        $altTurAd = trim($request->input('altTurAd', ''));
+        if ($altTurAd !== '') {
+            $altTur = AltTur::findOrCreateByAd($altTurAd);
+            $data['altTurId'] = $altTur->id;
+        } else {
+            $data['altTurId'] = null;
         }
 
         // ── Yayınevi: DB'de bul veya oluştur ──────────────────────────────────
@@ -690,8 +701,9 @@ class KatalogController extends Controller
 
         $validateRules = [
             'kunyeEserAdi'  => 'required|string|max:500',
-            'kunyeYazar'    => 'required|string|max:255',
-            'kunyeISBNISSN' => 'required|string|max:100',
+            'kunyeYazar'    => 'nullable|string|max:255',
+            'kunyeISBNISSN' => 'nullable|string|max:100',
+            'kunyeSayfaSayisi' => 'nullable|integer|min:1',
         ];
         if (!$durumKilitli) {
             $validateRules['kunyeDurum'] = ['required', Rule::in(['Rafta', 'Kayıp', 'Bakımda', 'Hurdaya Ayrıldı'])];
@@ -703,6 +715,7 @@ class KatalogController extends Controller
             'kunyeKopya', 'kunyeCilt', 'kunyeDilKN', 'kunyeDil2', 'kunyeEserAdi',
             'kunyeEserAdiAlt', 'kunyeYazar', 'kunyeSorumlular',
             'kunyeYayinYeri', 'kunyeYayinlayan', 'kunyeFizikselTanim',
+            'kunyeSayfaSayisi',
             'kunyeISBNISSN', 'kunyeBasimKaydi', 'kunyeDiziKaydi',
             'kunyeKonuBasligi', 'kunyeGelisTarihi',
             'kunyeKategori',
@@ -747,6 +760,15 @@ class KatalogController extends Controller
             $data['kunyeYazar'] = $yazar->ad;
         } else {
             $data['yazarId'] = null;
+        }
+
+        // ── Alt Tür: serbest metinden DB'de bul/oluştur ─────────────────────
+        $altTurAd = trim($request->input('altTurAd', ''));
+        if ($altTurAd !== '') {
+            $altTur = AltTur::findOrCreateByAd($altTurAd);
+            $data['altTurId'] = $altTur->id;
+        } else {
+            $data['altTurId'] = null;
         }
 
         // ── Yayınevi ──────────────────────────────────────────────────────────

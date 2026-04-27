@@ -829,7 +829,34 @@
         }
 
         .combobox-input-wrap .form-input {
-            padding-right: 36px;
+            padding-right: 68px;
+        }
+
+        .combobox-clear {
+            position: absolute;
+            right: 35px;
+            top: 1px;
+            bottom: 1px;
+            width: 30px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--muted-foreground);
+            border-radius: 0;
+            transition: color 0.15s, background 0.15s;
+        }
+
+        .combobox-clear:hover {
+            color: var(--foreground);
+            background: var(--muted);
+        }
+
+        .combobox-clear svg {
+            width: 14px;
+            height: 14px;
         }
 
         .combobox-toggle {
@@ -1113,10 +1140,10 @@
                                         <input type="text" class="form-input" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci kısım" required />
                                     </div>
                                     <div class="form-field">
-                                        <label class="form-label" for="kunyeYazarSearch">Yazar <span class="required">*</span></label>
+                                        <label class="form-label" for="kunyeYazarSearch">Yazar</label>
                                         <div class="combobox-wrapper" id="authorCombobox">
                                             <div class="combobox-input-wrap">
-                                                <input type="text" class="form-input" id="kunyeYazarSearch" placeholder="Yazar adı yazın veya seçin" autocomplete="off" required />
+                                                <input type="text" class="form-input" id="kunyeYazarSearch" placeholder="Yazar adı yazın veya seçin" autocomplete="off" />
                                                 <button type="button" class="combobox-toggle" tabindex="-1" aria-label="Seçenekleri aç">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                                                 </button>
@@ -1131,9 +1158,9 @@
                                         </script>
                                     </div>
                                     <div class="form-field">
-                                        <label class="form-label" for="kunyeISBNISSN">ISBN / ISSN <span class="required">*</span></label>
+                                        <label class="form-label" for="kunyeISBNISSN">ISBN / ISSN</label>
                                         <div class="input-with-icon" style="position:relative;">
-                                            <input type="text" class="form-input" id="kunyeISBNISSN" name="kunyeISBNISSN" placeholder="978-3-16-148410-0" required style="padding-right:40px;" />
+                                            <input type="text" class="form-input" id="kunyeISBNISSN" name="kunyeISBNISSN" placeholder="978-3-16-148410-0" style="padding-right:40px;" />
                                             <button type="button" class="isbn-search-btn" id="isbnSearchBtn" title="ISBN ile kitap bilgilerini getir" aria-label="ISBN ara">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                                             </button>
@@ -1189,7 +1216,8 @@
                                             </div>
                                             <div class="combobox-dropdown"></div>
                                         </div>
-                                        <input type="hidden" id="altTurId" name="altTurId" value="{{ old('altTurId') }}" />
+                                        <input type="hidden" id="altTurId" value="{{ old('altTurId') }}" />
+                                        <input type="hidden" id="altTurAd" name="altTurAd" value="{{ old('altTurAd', optional($altturler->firstWhere('id', old('altTurId')))->ad ?? '') }}" />
                                         <script id="altTurData" type="application/json">@json($altturler->map(fn($t) => ['id' => $t->id, 'ad' => $t->ad]))</script>
                                     </div>
                                     <div class="form-field">
@@ -1364,6 +1392,10 @@
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeFizikselTanim">Fiziksel Tanım</label>
                                         <input type="text" class="form-input" id="kunyeFizikselTanim" name="kunyeFizikselTanim" placeholder="Örnek: 350 s. ; 21 cm." />
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="form-label" for="kunyeSayfaSayisi">Sayfa Sayısı</label>
+                                        <input type="number" class="form-input" id="kunyeSayfaSayisi" name="kunyeSayfaSayisi" placeholder="Örnek: 350" min="1" value="{{ old('kunyeSayfaSayisi') }}" />
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeGelisTarihi">Geliş Tarihi</label>
@@ -1939,8 +1971,8 @@
         var kutuphaneEl = document.getElementById('kutuphaneId');
         var kutuphaneId = kutuphaneEl ? String(kutuphaneEl.value).trim() : '';
 
-        if (!title || !author || !isbn) {
-            showToast('error', 'Zorunlu alanlar eksik', 'Eser adı, yazar ve ISBN zorunludur.');
+        if (!title) {
+            showToast('error', 'Zorunlu alanlar eksik', 'Eser adı zorunludur.');
             return;
         }
         if (!kutuphaneId) {
@@ -1951,6 +1983,9 @@
 
         // kunyeYazar hidden alanını doldur (controller find-or-create için)
         document.getElementById('kunyeYazar').value = author;
+        // altTurAd hidden alanını doldur (controller find-or-create için)
+        var altTurSearch = document.getElementById('altTurIdSearch');
+        if (altTurSearch) document.getElementById('altTurAd').value = altTurSearch.value.trim();
         // kunyeYayinlayan hidden alanını doldur
         var publisherSearch = document.getElementById('kunyeYayinlayanSearch');
         if (publisherSearch) document.getElementById('kunyeYayinlayan').value = publisherSearch.value.trim();
@@ -2030,6 +2065,8 @@
             var el = document.getElementById(id);
             if (el) el.value = '';
         });
+        var altTurAdEl = document.getElementById('altTurAd');
+        if (altTurAdEl) altTurAdEl.value = '';
         // Arama inputlarını da temizle
         ['turIdSearch','altTurIdSearch','sekilIdSearch','ortamIdSearch'].forEach(function(id) {
             var el = document.getElementById(id);
@@ -2073,6 +2110,16 @@
             var hiddenInput = document.getElementById(cfg.hiddenInputId);
             var dropdown    = wrapper.querySelector('.combobox-dropdown');
             var toggle      = wrapper.querySelector('.combobox-toggle');
+            var inputWrap   = wrapper.querySelector('.combobox-input-wrap');
+            var clearBtn    = inputWrap ? inputWrap.querySelector('.combobox-clear') : null;
+            if (!clearBtn && inputWrap) {
+                clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'combobox-clear';
+                clearBtn.setAttribute('aria-label', 'Seçimi temizle');
+                clearBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+                inputWrap.appendChild(clearBtn);
+            }
 
             var rawData = [];
             try { rawData = JSON.parse(document.getElementById(cfg.dataScriptId).textContent || '[]'); } catch(e) {}
@@ -2124,6 +2171,7 @@
             function selectOption(label, id) {
                 searchInput.value  = label;
                 hiddenInput.value  = (idKey && id !== null && id !== undefined) ? id : label;
+                updateClearButton();
                 close();
                 searchInput.focus();
             }
@@ -2146,12 +2194,20 @@
                 var curVal = hiddenInput.value;
                 if (!curVal) {
                     searchInput.value = '';
+                    updateClearButton();
                     return;
                 }
                 var found = rawData.find(function(r) {
                     return idKey ? String(r[idKey]) === String(curVal) : r[cfg.labelKey].toLowerCase() === String(curVal).toLowerCase();
                 });
                 searchInput.value = found ? found[cfg.labelKey] : (strict ? '' : curVal);
+                updateClearButton();
+            }
+
+            function updateClearButton() {
+                if (!clearBtn) return;
+                var hasValue = String(hiddenInput.value || '').trim() !== '' || String(searchInput.value || '').trim() !== '';
+                clearBtn.style.display = hasValue ? 'flex' : 'none';
             }
 
             function open() {
@@ -2185,6 +2241,7 @@
                 if (!strict) hiddenInput.value = this.value.trim(); // serbest giriş sadece strict olmayan modda
                 highlightedIndex = -1;
                 render(this.value);
+                updateClearButton();
                 if (!isOpen()) open();
             });
             hiddenInput.addEventListener('change', syncSearchFromHidden);
@@ -2192,6 +2249,18 @@
             searchInput.addEventListener('blur', function() {
                 setTimeout(function() { validateOnBlur(); close(); }, 150);
             });
+            if (clearBtn) {
+                clearBtn.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hiddenInput.value = '';
+                    searchInput.value = '';
+                    highlightedIndex = -1;
+                    updateClearButton();
+                    close();
+                    searchInput.focus();
+                });
+            }
             searchInput.addEventListener('keydown', function(e) {
                 if (!isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); open(); return; }
                 if (!isOpen()) return;
@@ -2217,12 +2286,13 @@
             });
             document.addEventListener('click', function(e) { if (!wrapper.contains(e.target)) close(); });
             syncSearchFromHidden();
+            updateClearButton();
         }
 
         initDbCombobox({ wrapperId: 'authorCombobox',    searchInputId: 'kunyeYazarSearch',       hiddenInputId: 'kunyeYazar',       dataScriptId: 'yazarData',    labelKey: 'ad' });
         initDbCombobox({ wrapperId: 'publisherCombobox', searchInputId: 'kunyeYayinlayanSearch',  hiddenInputId: 'kunyeYayinlayan', dataScriptId: 'yayineviData', labelKey: 'ad' });
         initDbCombobox({ wrapperId: 'turCombobox',    searchInputId: 'turIdSearch',    hiddenInputId: 'turId',    dataScriptId: 'turData',    labelKey: 'ad', idKey: 'id', strict: true });
-        initDbCombobox({ wrapperId: 'altTurCombobox', searchInputId: 'altTurIdSearch', hiddenInputId: 'altTurId', dataScriptId: 'altTurData', labelKey: 'ad', idKey: 'id', strict: true });
+        initDbCombobox({ wrapperId: 'altTurCombobox', searchInputId: 'altTurIdSearch', hiddenInputId: 'altTurAd', dataScriptId: 'altTurData', labelKey: 'ad' });
         initDbCombobox({ wrapperId: 'sekilCombobox',  searchInputId: 'sekilIdSearch',  hiddenInputId: 'sekilId',  dataScriptId: 'sekilData',  labelKey: 'ad', idKey: 'id', strict: true });
         initDbCombobox({ wrapperId: 'ortamCombobox',  searchInputId: 'ortamIdSearch',  hiddenInputId: 'ortamId',  dataScriptId: 'ortamData',  labelKey: 'ad', idKey: 'id', strict: true });
     })();
@@ -2238,6 +2308,16 @@
         var hiddenInput = document.getElementById('kunyeKategori');
         var toggle      = wrapper.querySelector('.combobox-toggle');
         var dropdown    = wrapper.querySelector('.combobox-dropdown');
+        var inputWrap   = wrapper.querySelector('.combobox-input-wrap');
+        var clearBtn    = inputWrap ? inputWrap.querySelector('.combobox-clear') : null;
+        if (!clearBtn && inputWrap) {
+            clearBtn = document.createElement('button');
+            clearBtn.type = 'button';
+            clearBtn.className = 'combobox-clear';
+            clearBtn.setAttribute('aria-label', 'Seçimi temizle');
+            clearBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+            inputWrap.appendChild(clearBtn);
+        }
 
         var rawData = [];
         try {
@@ -2254,11 +2334,18 @@
             if (!selectedId) {
                 selectedTitle = '';
                 searchInput.value = '';
+                updateClearButton();
                 return;
             }
             var found = rawData.find(function(k) { return String(k.id) === String(selectedId); });
             selectedTitle = found ? found.title : '';
             searchInput.value = selectedTitle;
+            updateClearButton();
+        }
+
+        function updateClearButton() {
+            if (!clearBtn) return;
+            clearBtn.style.display = String(selectedId || '').trim() !== '' ? 'flex' : 'none';
         }
 
         function escHtml(s) {
@@ -2311,6 +2398,7 @@
             selectedTitle = title;
             hiddenInput.value  = id;
             searchInput.value  = title;
+            updateClearButton();
             close();
             searchInput.focus();
         }
@@ -2355,6 +2443,20 @@
         searchInput.addEventListener('blur', function() {
             setTimeout(close, 150);
         });
+        if (clearBtn) {
+            clearBtn.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectedId = '';
+                selectedTitle = '';
+                hiddenInput.value = '';
+                searchInput.value = '';
+                highlightedIdx = -1;
+                updateClearButton();
+                close();
+                searchInput.focus();
+            });
+        }
 
         hiddenInput.addEventListener('change', syncSelectedFromHidden);
         hiddenInput.addEventListener('input', syncSelectedFromHidden);
@@ -2393,9 +2495,11 @@
             selectedTitle = '';
             hiddenInput.value  = '';
             searchInput.value  = '';
+            updateClearButton();
         };
 
         syncSelectedFromHidden();
+        updateClearButton();
     })();
 
     // ============================

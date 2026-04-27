@@ -1445,10 +1445,11 @@
                     var coverSrc = k.kunyeKapakResmi
                         ? k.kunyeKapakResmi
                         : ('https://ui-avatars.com/api/?name=' + encodeURIComponent(k.kunyeEserAdi || '') + '&background=7a5c3c&color=fff');
+                    var viewUrl = '/katalog/' + k.id + '/view';
                     return '<tr style="border-bottom:1px solid var(--border);transition:background 0.2s;" onmouseover="this.style.background=\'var(--card)\'" onmouseout="this.style.background=\'transparent\'">' +
-                        '<td style="padding:12px 24px;"><div style="width:45px;height:65px;background:#ddd;border-radius:4px;overflow:hidden;border:1px solid var(--border);">' +
-                        '<img src="' + coverSrc + '" alt="Kapak" style="width:100%;height:100%;object-fit:cover;"></div></td>' +
-                        '<td style="padding:12px;"><div style="font-weight:600;color:var(--foreground);">' + (k.kunyeEserAdi || '') + '</div>' +
+                        '<td style="padding:12px 24px;"><a href="' + viewUrl + '" style="display:inline-block;width:45px;height:65px;background:#ddd;border-radius:4px;overflow:hidden;border:1px solid var(--border);">' +
+                        '<img src="' + coverSrc + '" alt="Kapak" style="width:100%;height:100%;object-fit:cover;"></a></td>' +
+                        '<td style="padding:12px;"><a href="' + viewUrl + '" style="font-weight:600;color:var(--foreground);text-decoration:none;">' + (k.kunyeEserAdi || '') + '</a>' +
                         '<div style="font-size:12px;color:var(--muted-foreground);">' + (k.kunyeYazar || '') + (k.kunyeYayinlayan ? ' &middot; ' + k.kunyeYayinlayan : '') + '</div></td>' +
                         '<td style="padding:12px;color:var(--muted-foreground);">' + (k.kunyeDemirbasKN || '') + '</td>' +
                         '<td style="padding:12px;color:var(--muted-foreground);">' + (k.kunyeISBNISSN || '') + '</td>' +
