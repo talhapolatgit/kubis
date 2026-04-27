@@ -596,6 +596,24 @@
                                 Değişiklikleri Kaydet
                             </button>
                         </div>
+
+                        {{-- Kaydeden & Güncelleyen Bilgileri (kitap edit ile aynı düzen) --}}
+                        <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
+                            <div style="font-size:13px; color:var(--muted-foreground);">
+                                <span style="font-weight:600; color:var(--foreground);">Kaydeden:</span>
+                                {{ $createdUser ? $createdUser->name : ($uye->created_user ? '#'.$uye->created_user : '—') }}
+                                @if($uye->created_at)
+                                    <span style="opacity:0.6; margin-left:6px;">{{ \Carbon\Carbon::parse($uye->created_at)->format('d.m.Y H:i') }}</span>
+                                @endif
+                            </div>
+                            <div style="font-size:13px; color:var(--muted-foreground);">
+                                <span style="font-weight:600; color:var(--foreground);">Son Güncelleyen:</span>
+                                {{ $updatedUser ? $updatedUser->name : ($uye->updated_user ? '#'.$uye->updated_user : '—') }}
+                                @if($uye->updated_at && $uye->updated_at != $uye->created_at)
+                                    <span style="opacity:0.6; margin-left:6px;">{{ \Carbon\Carbon::parse($uye->updated_at)->format('d.m.Y H:i') }}</span>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
             </form>

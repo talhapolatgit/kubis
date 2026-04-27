@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Uye;
+use App\Models\User;
 use App\Services\OtpService;
 use App\Services\BeyogluWebhookService;
 use Carbon\Carbon;
@@ -332,6 +333,7 @@ class UyeController extends Controller
             'uyelik_baslangic'   => $request->input('uyelik_baslangic') ?: now()->toDateString(),
             'uyelik_bitis'       => $request->input('uyelik_bitis'),
             'notlar'             => $request->input('notlar'),
+            'created_user'       => auth()->id(),
             // Veli bilgileri — sadece reşit olmayan üyelerde dolu olur
             'veli_ad'            => $isMinor ? $request->input('veli_ad')           : null,
             'veli_soyad'         => $isMinor ? $request->input('veli_soyad')        : null,
@@ -377,7 +379,10 @@ class UyeController extends Controller
     {
         abort_unless(auth()->user()?->hasYetki(13), 403);
         $isMinor = Carbon::parse($uye->dogum_tarihi)->age < 18;
-        return view('uye.edit', compact('uye', 'isMinor'));
+        $createdUser = $uye->created_user ? User::find($uye->created_user) : null;
+        $updatedUser = $uye->updated_user ? User::find($uye->updated_user) : null;
+
+        return view('uye.edit', compact('uye', 'isMinor', 'createdUser', 'updatedUser'));
     }
 
     // ─── Güncelle ───────────────────────────────────────────────────────────────
@@ -458,6 +463,7 @@ class UyeController extends Controller
             'uyelik_baslangic'   => $request->input('uyelik_baslangic'),
             'uyelik_bitis'       => $request->input('uyelik_bitis'),
             'notlar'             => $request->input('notlar'),
+            'updated_user'       => auth()->id(),
             // Veli bilgileri — sadece reşit olmayan üyelerde güncellenir
             'veli_ad'            => $isMinor ? $request->input('veli_ad')           : null,
             'veli_soyad'         => $isMinor ? $request->input('veli_soyad')        : null,
@@ -498,7 +504,7 @@ class UyeController extends Controller
                 if ($kpsCinsiyet !== null) {
                     $updateData['cinsiyet'] = $kpsCinsiyet;
                 }
-                $uye->update($updateData);
+                $uye->update(array_merge($updateData, ['updated_user' => auth()->id()]));
                 return response()->json([
                     'success' => true,
                     'message' => 'Kimlik bilgileri başarıyla güncellendi.',

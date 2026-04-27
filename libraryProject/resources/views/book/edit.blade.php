@@ -267,6 +267,33 @@
 
         .header-actions { margin-left: auto; }
 
+        .form-card-header-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .form-card-edit-btn {
+            flex-shrink: 0;
+            height: 32px;
+            padding: 0 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--foreground);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .form-card-edit-btn:hover {
+            background: var(--muted);
+            border-color: var(--muted-foreground);
+        }
+
         .notification-btn {
             position: relative;
             width: 32px;
@@ -360,6 +387,11 @@
 
         .form-card-header {
             padding: 24px 24px 16px;
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
         }
 
         .form-card-title {
@@ -594,6 +626,10 @@
         }
 
         .form-textarea { resize: none; }
+        .auto-grow-textarea {
+            overflow-y: hidden;
+            min-height: 38px; /* input ile ayni baslangic yuksekligi */
+        }
 
         /* ============= Checkbox Toggle ============= */
         .checkbox-group { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
@@ -1070,16 +1106,21 @@
                     @method('PUT')
                 @endif
                 <div class="form-card-header">
-                    <h1 class="form-card-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><line x1="12" x2="12" y1="7" y2="7"/></svg>
-                        {{ $isViewOnly ? 'Kitap Detayı' : 'Kitap Güncelle' }}
-                    </h1>
-                    <p class="form-card-desc">
-                        {{ $isViewOnly
-                            ? ($kitap->kunyeEserAdi . ' kitabının bilgileri görüntüleniyor.')
-                            : ($kitap->kunyeEserAdi . ' kitabının bilgilerini güncelleyebilirsiniz.')
-                        }}
-                    </p>
+                    <div class="form-card-header-main">
+                        <h1 class="form-card-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><line x1="12" x2="12" y1="7" y2="7"/></svg>
+                            {{ $isViewOnly ? 'Kitap Detayı' : 'Kitap Güncelle' }}
+                        </h1>
+                        <p class="form-card-desc">
+                            {{ $isViewOnly
+                                ? ($kitap->kunyeEserAdi . ' kitabının bilgileri görüntüleniyor.')
+                                : ($kitap->kunyeEserAdi . ' kitabının bilgilerini güncelleyebilirsiniz.')
+                            }}
+                        </p>
+                    </div>
+                    @if($isViewOnly && (auth()->user()->hasYetki(2) || auth()->user()->hasYetki(5)))
+                        <a href="{{ route('katalog.edit', $kitap->id) }}" class="form-card-edit-btn">Düzenle</a>
+                    @endif
                 </div>
 
                 <div class="form-card-separator"></div>
@@ -1091,9 +1132,11 @@
                         <div class="cover-section">
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <h3 class="cover-section-title">Kapak Görseli</h3>
+                                @if(!$isViewOnly)
                                 <button type="button" id="coverSearchBtn" title="ISBN ile kapak görselini getir" aria-label="Kapak görselini ara" style="width:24px;height:24px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);border-radius:4px;padding:0;flex-shrink:0;transition:color 0.15s,background 0.15s;" onmouseover="this.style.color='var(--primary)';this.style.background='rgba(122,92,60,0.08)'" onmouseout="this.style.color='var(--muted-foreground)';this.style.background='transparent'">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                                 </button>
+                                @endif
                             </div>
                             <div class="cover-upload-area {{ $kitap->kunyeKapakResmi ? 'has-image' : '' }}" id="coverUploadArea" role="button" tabindex="0" aria-label="Kitap kapak resmi yukle">
                                 <div class="cover-placeholder" id="coverPlaceholder" style="{{ $kitap->kunyeKapakResmi ? 'display:none' : '' }}">
@@ -1112,9 +1155,11 @@
                                 </div>
                                 @if($kitap->kunyeKapakResmi)
                                     <img id="existingCoverImg" src="{{ asset('storage/' . $kitap->kunyeKapakResmi) }}" alt="Kapak" style="width:100%;height:100%;object-fit:cover;">
+                                    @if(!$isViewOnly)
                                     <button type="button" class="cover-remove-btn" id="coverRemoveBtn" aria-label="Resmi kaldır">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                     </button>
+                                    @endif
                                 @endif
                                 <!-- New preview will be injected here -->
                             </div>
@@ -1122,7 +1167,9 @@
                             {{-- Mevcut kapak yolunu sakla, silme durumunda controller'a bildir --}}
                             <input type="hidden" name="mevcut_kapak" value="{{ $kitap->kunyeKapakResmi }}" />
                             <input type="hidden" name="kapak_sil" id="kapakSilInput" value="0" />
+                            @if(!$isViewOnly)
                             <p class="cover-change-hint" id="coverChangeHint" style="{{ $kitap->kunyeKapakResmi ? '' : 'display:none' }}">Değiştirmek için resme tıklayin</p>
+                            @endif
                         </div>
 
                         <!-- RIGHT: Form Fields -->
@@ -1137,11 +1184,11 @@
                                 <div class="form-grid cols-2">
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeEserAdi">Eser Adı <span class="required">*</span></label>
-                                        <input type="text" class="form-input" id="kunyeEserAdi" name="kunyeEserAdi" placeholder="Örnek: Sefiller" required value="{{ old('kunyeEserAdi', $kitap->kunyeEserAdi) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdi" name="kunyeEserAdi" placeholder="Örnek: Sefiller" rows="1" required>{{ old('kunyeEserAdi', $kitap->kunyeEserAdi) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeEserAdiAlt">Alt Başlık</label>
-                                        <input type="text" class="form-input" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci Kısım" value="{{ old('kunyeEserAdiAlt', $kitap->kunyeEserAdiAlt) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci Kısım" rows="1">{{ old('kunyeEserAdiAlt', $kitap->kunyeEserAdiAlt) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeYazarSearch">Yazar</label>
@@ -1162,10 +1209,12 @@
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeISBNISSN">ISBN / ISSN</label>
                                         <div class="input-with-icon" style="position:relative;">
-                                            <input type="text" class="form-input" id="kunyeISBNISSN" name="kunyeISBNISSN" placeholder="978-3-16-148410-0" value="{{ old('kunyeISBNISSN', $kitap->kunyeISBNISSN) }}" style="padding-right:40px;" />
+                                            <input type="text" class="form-input" id="kunyeISBNISSN" name="kunyeISBNISSN" placeholder="978-3-16-148410-0" value="{{ old('kunyeISBNISSN', $kitap->kunyeISBNISSN) }}" style="padding-right:{{ $isViewOnly ? '12px' : '40px' }};" />
+                                            @if(!$isViewOnly)
                                             <button type="button" class="isbn-search-btn" id="isbnSearchBtn" title="ISBN ile kitap bilgilerini getir" aria-label="ISBN ara">
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                                             </button>
+                                            @endif
                                         </div>
                                     </div>
                                     <div class="form-field">
@@ -1178,7 +1227,7 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeCilt">Cilt</label>
-                                        <input type="text" class="form-input" id="kunyeCilt" name="kunyeCilt" placeholder="Örnek: 1. Cilt" value="{{ old('kunyeCilt', $kitap->kunyeCilt) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeCilt" name="kunyeCilt" placeholder="Örnek: 1. Cilt" rows="1">{{ old('kunyeCilt', $kitap->kunyeCilt) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeKopya">Kopya Sayısı</label>
@@ -1303,23 +1352,23 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeYayinTarihi">Yayın Tarihi</label>
-                                        <input type="text" class="form-input" id="kunyeYayinTarihi" name="kunyeYayinTarihi" placeholder="Örnek: 2024 veya Mart 2024" value="{{ old('kunyeYayinTarihi', $kitap->kunyeYayinTarihi) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeYayinTarihi" name="kunyeYayinTarihi" placeholder="Örnek: 2024 veya Mart 2024" rows="1">{{ old('kunyeYayinTarihi', $kitap->kunyeYayinTarihi) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeBasimKaydi">Basım Kaydı</label>
-                                        <input type="text" class="form-input" id="kunyeBasimKaydi" name="kunyeBasimKaydi" placeholder="Örnek: 3. baskı" value="{{ old('kunyeBasimKaydi', $kitap->kunyeBasimKaydi) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeBasimKaydi" name="kunyeBasimKaydi" placeholder="Örnek: 3. baskı" rows="1">{{ old('kunyeBasimKaydi', $kitap->kunyeBasimKaydi) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeYayinYeri">Yayın Yeri</label>
-                                        <input type="text" class="form-input" id="kunyeYayinYeri" name="kunyeYayinYeri" placeholder="Örnek: İstanbul" value="{{ old('kunyeYayinYeri', $kitap->kunyeYayinYeri) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeYayinYeri" name="kunyeYayinYeri" placeholder="Örnek: İstanbul" rows="1">{{ old('kunyeYayinYeri', $kitap->kunyeYayinYeri) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSorumlular">Sorumlular <small style="font-weight:400; color:var(--muted-foreground);">(Çevirmen, editör vb.)</small></label>
-                                        <input type="text" class="form-input" id="kunyeSorumlular" name="kunyeSorumlular" placeholder="Örnek: Çev. Ahmet Yılmaz ; Ed. Mehmet Demir" value="{{ old('kunyeSorumlular', $kitap->kunyeSorumlular) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeSorumlular" name="kunyeSorumlular" placeholder="Örnek: Çev. Ahmet Yılmaz ; Ed. Mehmet Demir" rows="1">{{ old('kunyeSorumlular', $kitap->kunyeSorumlular) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDiziKaydi">Dizi Kaydı</label>
-                                        <input type="text" class="form-input" id="kunyeDiziKaydi" name="kunyeDiziKaydi" placeholder="Örnek: Dünya Klasikleri ; 12" value="{{ old('kunyeDiziKaydi', $kitap->kunyeDiziKaydi) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeDiziKaydi" name="kunyeDiziKaydi" placeholder="Örnek: Dünya Klasikleri ; 12" rows="1">{{ old('kunyeDiziKaydi', $kitap->kunyeDiziKaydi) }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -1353,11 +1402,11 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSiniflamaYer">Sınıflama / Yer Kodu</label>
-                                        <input type="text" class="form-input" id="kunyeSiniflamaYer" name="kunyeSiniflamaYer" placeholder="Örnek: 603.41/FER"  value="{{ old('kunyeSiniflamaYer', $kitap->kunyeSiniflamaYer) }}"/>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeSiniflamaYer" name="kunyeSiniflamaYer" placeholder="Örnek: 603.41/FER" rows="1">{{ old('kunyeSiniflamaYer', $kitap->kunyeSiniflamaYer) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeKonuBasligi">Konu Başlığı</label>
-                                        <textarea class="form-textarea" id="kunyeKonuBasligi" name="kunyeKonuBasligi" placeholder="Örnek: Roman -- Fransız edebiyatı" rows="3">{{ old('kunyeKonuBasligi', $kitap->kunyeKonuBasligi) }}</textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeKonuBasligi" name="kunyeKonuBasligi" placeholder="Örnek: Roman -- Fransız edebiyatı" rows="1">{{ old('kunyeKonuBasligi', $kitap->kunyeKonuBasligi) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDilKN">Dil</label>
@@ -1379,7 +1428,7 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeFizikselTanim">Fiziksel Tanım</label>
-                                        <input type="text" class="form-input" id="kunyeFizikselTanim" name="kunyeFizikselTanim" placeholder="Örnek: 350 s. ; 21 cm." value="{{ old('kunyeFizikselTanim', $kitap->kunyeFizikselTanim) }}" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeFizikselTanim" name="kunyeFizikselTanim" placeholder="Örnek: 350 s. ; 21 cm." rows="1">{{ old('kunyeFizikselTanim', $kitap->kunyeFizikselTanim) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSayfaSayisi">Sayfa Sayısı</label>
@@ -1391,23 +1440,23 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="icerik">İçindekiler</label>
-                                        <textarea class="form-textarea" id="icerik" name="icerik" placeholder="Kitabın içindekiler bilgisi…" rows="3">{{ old('icerik', $kitap->icerik) }}</textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="icerik" name="icerik" placeholder="Kitabın içindekiler bilgisi…" rows="1">{{ old('icerik', $kitap->icerik) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="aciklama">Açıklama</label>
-                                        <textarea class="form-textarea" id="aciklama" name="aciklama" placeholder="Kitap hakkında açıklama…" rows="3">{{ old('aciklama', $kitap->aciklama) }}</textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="aciklama" name="aciklama" placeholder="Kitap hakkında açıklama…" rows="1">{{ old('aciklama', $kitap->aciklama) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar">Özel Notlar</label>
-                                        <textarea class="form-textarea" id="ozelNotlar" name="ozelNotlar" placeholder="Kütüphaneye özel notlar…" rows="3">{{ old('ozelNotlar', $kitap->ozelNotlar) }}</textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar" name="ozelNotlar" placeholder="Kütüphaneye özel notlar…" rows="1">{{ old('ozelNotlar', $kitap->ozelNotlar) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar2">Özel Notlar 2</label>
-                                        <textarea class="form-textarea" id="ozelNotlar2" name="ozelNotlar2" placeholder="Ek özel notlar…" rows="3">{{ old('ozelNotlar2', $kitap->ozelNotlar2) }}</textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar2" name="ozelNotlar2" placeholder="Ek özel notlar…" rows="1">{{ old('ozelNotlar2', $kitap->ozelNotlar2) }}</textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar3">Özel Notlar 3</label>
-                                        <textarea class="form-textarea" id="ozelNotlar3" name="ozelNotlar3" placeholder="Ek özel notlar…" rows="3">{{ old('ozelNotlar3', $kitap->ozelNotlar3) }}</textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar3" name="ozelNotlar3" placeholder="Ek özel notlar…" rows="1">{{ old('ozelNotlar3', $kitap->ozelNotlar3) }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -1447,9 +1496,8 @@
                                     <div id="satin-alma-fields" class="form-grid cols-3" style="display:none;margin-top:16px;">
                                         <div class="form-field">
                                             <label class="form-label" for="faturaNo">Fatura No</label>
-                                            <input type="text" class="form-input" id="faturaNo" name="faturaNo"
-                                                   placeholder="Örnek: FTR-2024-001"
-                                                   value="{{ old('faturaNo', $kitap->faturaNo) }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="faturaNo" name="faturaNo"
+                                                   placeholder="Örnek: FTR-2024-001" rows="1">{{ old('faturaNo', $kitap->faturaNo) }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="faturaTarihi">Fatura Tarihi</label>
@@ -1458,15 +1506,13 @@
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikci">Firma Adı</label>
-                                            <input type="text" class="form-input" id="tedarikci"
-                                                   placeholder="Örnek: Kitapsan A.Ş."
-                                                   value="{{ old('tedarikci', $kitap->tedarikci) }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikci"
+                                                   placeholder="Örnek: Kitapsan A.Ş." rows="1">{{ old('tedarikci', $kitap->tedarikci) }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciTelefon">Telefon</label>
-                                            <input type="text" class="form-input" id="tedarikciTelefon"
-                                                   placeholder="Örnek: 0212 555 00 00"
-                                                   value="{{ old('tedarikciTelefon', $kitap->tedarikciTelefon) }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikciTelefon"
+                                                   placeholder="Örnek: 0212 555 00 00" rows="1">{{ old('tedarikciTelefon', $kitap->tedarikciTelefon) }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciEposta">E-posta Adresi</label>
@@ -1732,7 +1778,8 @@
             existingRemoveBtn.style.display = 'none';
             coverPlaceholder.style.display = 'flex';
             coverUploadArea.classList.remove('has-image');
-            document.getElementById('coverChangeHint').style.display = 'none';
+            var hintEl = document.getElementById('coverChangeHint');
+            if (hintEl) hintEl.style.display = 'none';
             document.getElementById('kapakSilInput').value = '1';
         });
     }
@@ -1828,7 +1875,7 @@
             coverUploadArea.appendChild(removeBtn);
         }
 
-        coverChangeHint.style.display = 'block';
+        if (coverChangeHint) coverChangeHint.style.display = 'block';
     }
 
     function removeCoverImage() {
@@ -1842,7 +1889,7 @@
         }
         coverPlaceholder.style.display = 'flex';
         coverUploadArea.classList.remove('has-image');
-        coverChangeHint.style.display = 'none';
+        if (coverChangeHint) coverChangeHint.style.display = 'none';
         coverInput.value = '';
         // ISBN URL'yi de temizle
         var isbnHidden = document.getElementById('isbnCoverUrl');
@@ -1854,6 +1901,7 @@
     // ============================
     (function () {
         var btn       = document.getElementById('coverSearchBtn');
+        if (!btn) return;
         var spinSvg   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block;animation:spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
         var searchSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:block"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
 
@@ -1912,6 +1960,18 @@
     var resetBtn = document.getElementById('resetBtn');
     var submitBtn = bookForm.querySelector('button[type="submit"]');
     var submitBtnOriginalHtml = submitBtn.innerHTML;
+    var autoGrowEls = Array.prototype.slice.call(document.querySelectorAll('.auto-grow-textarea'));
+
+    function autoGrowTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
+    autoGrowEls.forEach(function(el) {
+        autoGrowTextarea(el);
+        el.addEventListener('input', function() { autoGrowTextarea(el); });
+    });
 
     bookForm.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -2089,7 +2149,8 @@
         if (hasExisting) {
             coverPlaceholder.style.display = 'none';
             coverUploadArea.classList.add('has-image');
-            document.getElementById('coverChangeHint').style.display = 'block';
+            var hintReset = document.getElementById('coverChangeHint');
+            if (hintReset) hintReset.style.display = 'block';
         }
 
         // Combobox dropdownları kapat
@@ -2099,6 +2160,8 @@
         document.querySelectorAll('.combobox-toggle').forEach(function(t) {
             t.classList.remove('open');
         });
+
+        autoGrowEls.forEach(autoGrowTextarea);
 
         showToast('success', 'Sıfırlandı', 'Alanlar orijinal değerlerine döndürüldü.');
     }
@@ -2481,6 +2544,7 @@
     // ============================
     (function () {
         var btn       = document.getElementById('isbnSearchBtn');
+        if (!btn) return;
         var spinSvg   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.8s linear infinite;display:block"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>';
         var searchSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>';
         var excluded  = {

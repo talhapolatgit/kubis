@@ -593,6 +593,10 @@
         }
 
         .form-textarea { resize: none; }
+        .auto-grow-textarea {
+            overflow-y: hidden;
+            min-height: 38px; /* input ile ayni baslangic yuksekligi */
+        }
 
         /* ============= Checkbox Toggle ============= */
         .checkbox-group {
@@ -1133,11 +1137,11 @@
                                 <div class="form-grid cols-2">
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeEserAdi">Eser Adı <span class="required">*</span></label>
-                                        <input type="text" class="form-input" id="kunyeEserAdi" name="kunyeEserAdi" placeholder="Örnek: Sefiller" required />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdi" name="kunyeEserAdi" placeholder="Örnek: Sefiller" rows="1" required></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeEserAdiAlt">Alt Başlık</label>
-                                        <input type="text" class="form-input" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci kısım" required />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci kısım" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeYazarSearch">Yazar</label>
@@ -1176,7 +1180,7 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeCilt">Cilt</label>
-                                        <input type="text" class="form-input" id="kunyeCilt" name="kunyeCilt" placeholder="Örnek: 1. Cilt" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeCilt" name="kunyeCilt" placeholder="Örnek: 1. Cilt" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeKopya">Kopya Sayısı</label>
@@ -1302,23 +1306,23 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeYayinTarihi">Yayın Tarihi</label>
-                                        <input type="text" class="form-input" id="kunyeYayinTarihi" name="kunyeYayinTarihi" placeholder="Örnek: 2024 veya Mart 2024" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeYayinTarihi" name="kunyeYayinTarihi" placeholder="Örnek: 2024 veya Mart 2024" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeBasimKaydi">Basım Kaydı</label>
-                                        <input type="text" class="form-input" id="kunyeBasimKaydi" name="kunyeBasimKaydi" placeholder="Örnek: 3. baskı" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeBasimKaydi" name="kunyeBasimKaydi" placeholder="Örnek: 3. baskı" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeYayinYeri">Yayın Yeri</label>
-                                        <input type="text" class="form-input" id="kunyeYayinYeri" name="kunyeYayinYeri" placeholder="Örnek: İstanbul" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeYayinYeri" name="kunyeYayinYeri" placeholder="Örnek: İstanbul" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSorumlular">Sorumlular <small style="font-weight:400; color:var(--muted-foreground);">(Çevirmen, editör vb.)</small></label>
-                                        <input type="text" class="form-input" id="kunyeSorumlular" name="kunyeSorumlular" placeholder="Örnek: Çev. Ahmet Yılmaz ; Ed. Mehmet Demir" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeSorumlular" name="kunyeSorumlular" placeholder="Örnek: Çev. Ahmet Yılmaz ; Ed. Mehmet Demir" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDiziKaydi">Dizi Kaydı</label>
-                                        <input type="text" class="form-input" id="kunyeDiziKaydi" name="kunyeDiziKaydi" placeholder="Örnek: Dünya Klasikleri ; 12" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeDiziKaydi" name="kunyeDiziKaydi" placeholder="Örnek: Dünya Klasikleri ; 12" rows="1"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -1352,11 +1356,11 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSiniflamaYer">Sınıflama / Yer Kodu</label>
-                                        <input type="text" class="form-input" id="kunyeSiniflamaYer" name="kunyeSiniflamaYer" placeholder="Örnek: 603.41/FER" />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeSiniflamaYer" name="kunyeSiniflamaYer" placeholder="Örnek: 603.41/FER" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeKonuBasligi">Konu Başlığı</label>
-                                        <textarea class="form-textarea" id="kunyeKonuBasligi" name="kunyeKonuBasligi" placeholder="Örnek: Roman -- Fransız edebiyatı" rows="3"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeKonuBasligi" name="kunyeKonuBasligi" placeholder="Örnek: Roman -- Fransız edebiyatı" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDilKN">Dil</label>
@@ -1391,7 +1395,7 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeFizikselTanim">Fiziksel Tanım</label>
-                                        <input type="text" class="form-input" id="kunyeFizikselTanim" name="kunyeFizikselTanim" placeholder="Örnek: 350 s. ; 21 cm." />
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeFizikselTanim" name="kunyeFizikselTanim" placeholder="Örnek: 350 s. ; 21 cm." rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeSayfaSayisi">Sayfa Sayısı</label>
@@ -1403,23 +1407,23 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="icerik">İçindekiler</label>
-                                        <textarea class="form-textarea" id="icerik" name="icerik" placeholder="Kitabın içindekiler bilgisi…" rows="3"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="icerik" name="icerik" placeholder="Kitabın içindekiler bilgisi…" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="aciklama">Açıklama</label>
-                                        <textarea class="form-textarea" id="aciklama" name="aciklama" placeholder="Kitap hakkında açıklama…" rows="3"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="aciklama" name="aciklama" placeholder="Kitap hakkında açıklama…" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar">Özel Notlar</label>
-                                        <textarea class="form-textarea" id="ozelNotlar" name="ozelNotlar" placeholder="Kütüphaneye özel notlar…" rows="3"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar" name="ozelNotlar" placeholder="Kütüphaneye özel notlar…" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar2">Özel Notlar 2</label>
-                                        <textarea class="form-textarea" id="ozelNotlar2" name="ozelNotlar2" placeholder="Ek özel notlar…" rows="3"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar2" name="ozelNotlar2" placeholder="Ek özel notlar…" rows="1"></textarea>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar3">Özel Notlar 3</label>
-                                        <textarea class="form-textarea" id="ozelNotlar3" name="ozelNotlar3" placeholder="Ek özel notlar…" rows="3"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar3" name="ozelNotlar3" placeholder="Ek özel notlar…" rows="1"></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -1457,7 +1461,7 @@
                                     <div id="satin-alma-fields" class="form-grid cols-3" style="display:none;margin-top:16px;">
                                         <div class="form-field">
                                             <label class="form-label" for="faturaNo">Fatura No</label>
-                                            <input type="text" class="form-input" id="faturaNo" name="faturaNo" placeholder="Örnek: FTR-2024-001" value="{{ old('faturaNo') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="faturaNo" name="faturaNo" placeholder="Örnek: FTR-2024-001" rows="1">{{ old('faturaNo') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="faturaTarihi">Fatura Tarihi</label>
@@ -1465,11 +1469,11 @@
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikci">Firma Adı</label>
-                                            <input type="text" class="form-input" id="tedarikci" name="tedarikci" placeholder="Örnek: Kitapsan A.Ş." value="{{ old('tedarikci') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikci" name="tedarikci" placeholder="Örnek: Kitapsan A.Ş." rows="1">{{ old('tedarikci') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciTelefon">Telefon</label>
-                                            <input type="text" class="form-input" id="tedarikciTelefon" name="tedarikciTelefon" placeholder="Örnek: 0212 555 00 00" value="{{ old('tedarikciTelefon') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikciTelefon" name="tedarikciTelefon" placeholder="Örnek: 0212 555 00 00" rows="1">{{ old('tedarikciTelefon') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciEposta">E-posta Adresi</label>
@@ -1485,11 +1489,11 @@
                                     <div id="hibe-fields" class="form-grid cols-3" style="display:none;margin-top:16px;">
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikci_hibe">Hibe Eden</label>
-                                            <input type="text" class="form-input" id="tedarikci_hibe" placeholder="Kurum veya kişi adı" value="{{ old('tedarikci') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikci_hibe" placeholder="Kurum veya kişi adı" rows="1">{{ old('tedarikci') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciTelefon_hibe">Telefon</label>
-                                            <input type="text" class="form-input" id="tedarikciTelefon_hibe" placeholder="Örnek: 0212 555 00 00" value="{{ old('tedarikciTelefon') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikciTelefon_hibe" placeholder="Örnek: 0212 555 00 00" rows="1">{{ old('tedarikciTelefon') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciEposta_hibe">E-posta Adresi</label>
@@ -1501,11 +1505,11 @@
                                     <div id="bagis-fields" class="form-grid cols-3" style="display:none;margin-top:16px;">
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikci_bagis">Bağışlayan</label>
-                                            <input type="text" class="form-input" id="tedarikci_bagis" placeholder="Bağışlayan kişi veya kurum" value="{{ old('tedarikci') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikci_bagis" placeholder="Bağışlayan kişi veya kurum" rows="1">{{ old('tedarikci') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciTelefon_bagis">Telefon</label>
-                                            <input type="text" class="form-input" id="tedarikciTelefon_bagis" placeholder="Örnek: 0212 555 00 00" value="{{ old('tedarikciTelefon') }}" />
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikciTelefon_bagis" placeholder="Örnek: 0212 555 00 00" rows="1">{{ old('tedarikciTelefon') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciEposta_bagis">E-posta Adresi</label>
@@ -1961,6 +1965,18 @@
     var resetBtn = document.getElementById('resetBtn');
     var submitBtn = bookForm.querySelector('button[type="submit"]');
     var submitBtnOriginalHtml = submitBtn.innerHTML;
+    var autoGrowEls = Array.prototype.slice.call(document.querySelectorAll('.auto-grow-textarea'));
+
+    function autoGrowTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
+    autoGrowEls.forEach(function(el) {
+        autoGrowTextarea(el);
+        el.addEventListener('input', function() { autoGrowTextarea(el); });
+    });
 
     bookForm.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -2043,6 +2059,7 @@
 
     function resetForm() {
         bookForm.reset();
+        autoGrowEls.forEach(autoGrowTextarea);
         document.getElementById('kunyeKopya').value = '1';
 
         // Reset dil select

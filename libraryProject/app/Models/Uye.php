@@ -32,6 +32,8 @@ class Uye extends Model
         'uyelik_baslangic',
         'uyelik_bitis',
         'notlar',
+        'created_user',
+        'updated_user',
         'veli_ad',
         'veli_soyad',
         'veli_tc_kimlik',
