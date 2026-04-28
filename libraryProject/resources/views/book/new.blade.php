@@ -1135,11 +1135,11 @@
                                     Temel Bilgiler
                                 </h3>
                                 <div class="form-grid cols-2">
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeEserAdi">Eser Adı <span class="required">*</span></label>
                                         <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdi" name="kunyeEserAdi" placeholder="Örnek: Sefiller" rows="1" required></textarea>
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeEserAdiAlt">Alt Başlık</label>
                                         <textarea class="form-textarea auto-grow-textarea" id="kunyeEserAdiAlt" name="kunyeEserAdiAlt" placeholder="Örnek: Birinci kısım" rows="1"></textarea>
                                     </div>
@@ -1195,7 +1195,7 @@
                                             @json($yazarlar->map(fn($y) => ['id' => $y->id, 'ad' => $y->tam_ad]))
                                         </script>
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeISBNISSN">ISBN / ISSN</label>
                                         <div class="input-with-icon" style="position:relative;">
                                             <input type="text" class="form-input" id="kunyeISBNISSN" name="kunyeISBNISSN" placeholder="978-3-16-148410-0" style="padding-right:40px;" />
@@ -1346,17 +1346,38 @@
                                         <label class="form-label" for="kunyeBasimKaydi">Basım Kaydı</label>
                                         <textarea class="form-textarea auto-grow-textarea" id="kunyeBasimKaydi" name="kunyeBasimKaydi" placeholder="Örnek: 3. baskı" rows="1"></textarea>
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeYayinYeri">Yayın Yeri</label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeYayinYeri" name="kunyeYayinYeri" placeholder="Örnek: İstanbul" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeYayinYeri" name="kunyeYayinYeri" placeholder="Örnek: İstanbul" rows="1">{{ old('kunyeYayinYeri') }}</textarea>
+                                        @if(isset($yayinYeriOneriler) && $yayinYeriOneriler->isNotEmpty())
+                                            <div id="kunyeYayinYeriOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($yayinYeriOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="kunyeYayinYeri" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeSorumlular">Sorumlular <small style="font-weight:400; color:var(--muted-foreground);">(Çevirmen, editör vb.)</small></label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeSorumlular" name="kunyeSorumlular" placeholder="Örnek: Çev. Ahmet Yılmaz ; Ed. Mehmet Demir" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeSorumlular" name="kunyeSorumlular" placeholder="Örnek: Çev. Ahmet Yılmaz ; Ed. Mehmet Demir" rows="1">{{ old('kunyeSorumlular') }}</textarea>
+                                        @if(isset($sorumluOneriler) && $sorumluOneriler->isNotEmpty())
+                                            <div id="kunyeSorumlularOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($sorumluOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="kunyeSorumlular" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeDiziKaydi">Dizi Kaydı</label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeDiziKaydi" name="kunyeDiziKaydi" placeholder="Örnek: Dünya Klasikleri ; 12" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeDiziKaydi" name="kunyeDiziKaydi" placeholder="Örnek: Dünya Klasikleri ; 12" rows="1">{{ old('kunyeDiziKaydi') }}</textarea>
+                                        @if(isset($diziKaydiOneriler) && $diziKaydiOneriler->isNotEmpty())
+                                            <div id="kunyeDiziKaydiOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($diziKaydiOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="kunyeDiziKaydi" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -1860,6 +1881,17 @@
                 var yayineviSearch = document.getElementById('kunyeYayinlayanSearch');
                 if (yayineviSearch) yayineviSearch.value = prefill.kunyeYayinlayan;
             }
+            if (prefill.altTurId) {
+                var altData = [];
+                try { altData = JSON.parse(document.getElementById('altTurData').textContent || '[]'); } catch (e) {}
+                var altFound = altData.find(function (r) { return String(r.id) === String(prefill.altTurId); });
+                if (altFound) {
+                    var altSearch = document.getElementById('altTurIdSearch');
+                    var altAd = document.getElementById('altTurAd');
+                    if (altSearch) altSearch.value = altFound.ad;
+                    if (altAd) altAd.value = altFound.ad;
+                }
+            }
         }
 
         if (initialCopyPrefill) {
@@ -2037,6 +2069,44 @@
     autoGrowEls.forEach(function(el) {
         autoGrowTextarea(el);
         el.addEventListener('input', function() { autoGrowTextarea(el); });
+    });
+    (function initKunyeOneriVisibility() {
+        var pairs = [
+            { inputId: 'kunyeYayinYeri', boxId: 'kunyeYayinYeriOnerilerBox' },
+            { inputId: 'kunyeSorumlular', boxId: 'kunyeSorumlularOnerilerBox' },
+            { inputId: 'kunyeDiziKaydi', boxId: 'kunyeDiziKaydiOnerilerBox' }
+        ];
+        pairs.forEach(function (cfg) {
+            var input = document.getElementById(cfg.inputId);
+            var box = document.getElementById(cfg.boxId);
+            if (!input || !box) return;
+
+            input.addEventListener('focus', function () {
+                box.style.display = 'block';
+            });
+            input.addEventListener('blur', function () {
+                setTimeout(function () {
+                    box.style.display = 'none';
+                }, 120);
+            });
+            box.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+            });
+        });
+    })();
+    document.querySelectorAll('.kunye-oneri-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var targetId = this.getAttribute('data-target');
+            var value = this.getAttribute('data-value') || '';
+            var el = targetId ? document.getElementById(targetId) : null;
+            if (!el) return;
+            el.value = value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.focus();
+            var box = document.getElementById(targetId + 'OnerilerBox');
+            if (box) box.style.display = 'none';
+        });
     });
 
     bookForm.addEventListener('submit', function(e) {

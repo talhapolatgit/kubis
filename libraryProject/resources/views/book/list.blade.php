@@ -1395,6 +1395,19 @@
                 };
             }
 
+            function getFilterQueryForView() {
+                var f = getFilters();
+                var params = new URLSearchParams();
+                Object.keys(f).forEach(function (k) {
+                    var v = f[k];
+                    if (v === null || typeof v === 'undefined') return;
+                    var s = String(v).trim();
+                    if (s === '') return;
+                    params.set(k, s);
+                });
+                return params.toString();
+            }
+
             // ============================
             // SVG sabitler
             // ============================
@@ -1446,6 +1459,8 @@
                         ? k.kunyeKapakResmi
                         : ('https://ui-avatars.com/api/?name=' + encodeURIComponent(k.kunyeEserAdi || '') + '&background=7a5c3c&color=fff');
                     var viewUrl = '/katalog/' + k.id + '/view';
+                    var fq = getFilterQueryForView();
+                    if (fq) viewUrl += '?' + fq;
                     return '<tr style="border-bottom:1px solid var(--border);transition:background 0.2s;" onmouseover="this.style.background=\'var(--card)\'" onmouseout="this.style.background=\'transparent\'">' +
                         '<td style="padding:12px 24px;"><a href="' + viewUrl + '" style="display:inline-block;width:45px;height:65px;background:#ddd;border-radius:4px;overflow:hidden;border:1px solid var(--border);">' +
                         '<img src="' + coverSrc + '" alt="Kapak" style="width:100%;height:100%;object-fit:cover;"></a></td>' +
@@ -1970,21 +1985,22 @@
         if (openRowMenuBtn === btn) { closeRowMenu(); return; }
 
         // Menü bağlantılarını güncelle
-        var editEl = document.getElementById('kfmDuzenle');
+                var listCtxQuery = getFilterQueryForView();
+                var editEl = document.getElementById('kfmDuzenle');
         if (editEl) {
             if (canEditBook) {
                 editEl.style.display = '';
-                editEl.href = '/katalog/' + id + '/edit';
+                        editEl.href = '/katalog/' + id + '/edit' + (listCtxQuery ? ('?' + listCtxQuery) : '');
             } else {
                 editEl.style.display = 'none';
                 editEl.href = '#';
             }
         }
-        var viewEl = document.getElementById('kfmGoruntule');
+                var viewEl = document.getElementById('kfmGoruntule');
         if (viewEl) {
             if (canViewBook) {
                 viewEl.style.display = '';
-                viewEl.href = '/katalog/' + id + '/view';
+                        viewEl.href = '/katalog/' + id + '/view' + (listCtxQuery ? ('?' + listCtxQuery) : '');
             } else {
                 viewEl.style.display = 'none';
                 viewEl.href = '#';

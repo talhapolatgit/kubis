@@ -92,6 +92,82 @@ class KatalogController extends Controller
     }
 
     /**
+     * Katalog sorgusunu kullanıcı yetkisine göre daraltır.
+     */
+    private function scopeKatalogForUser($query, $requestUser): void
+    {
+        if (!$requestUser) {
+            $query->whereRaw('1=0');
+            return;
+        }
+        if ($requestUser->hasYetki(4) || $requestUser->hasYetki(5)) {
+            return;
+        }
+        if ($requestUser->hasYetki(1) || $requestUser->hasYetki(2)) {
+            $ids = $requestUser->yetkiliKutuphaneIds();
+            $query->whereIn('kutuphaneId', $ids ?: [-1]);
+            return;
+        }
+        $query->whereRaw('1=0');
+    }
+
+    /**
+     * Katalog liste ekranındaki filtreleri sorguya uygular.
+     */
+    private function applyListFiltersToKatalogQuery($query, Request $request): void
+    {
+        if ($request->filled('search')) {
+            $s = $request->input('search');
+            $query->where(function ($q) use ($s) {
+                $q->where('kunyeEserAdi',  'LIKE', "%{$s}%")
+                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%")
+                    ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$s}%");
+            });
+        }
+        if ($request->filled('kategori'))     $query->where('kunyeKategori', (int) $request->input('kategori'));
+        if ($request->filled('siniflamaYer')) $query->where('kunyeSiniflamaYer', 'LIKE', '%' . $request->input('siniflamaYer') . '%');
+        if ($request->filled('kutuphaneId'))  $query->where('kutuphaneId', (int) $request->input('kutuphaneId'));
+        if ($request->filled('turId'))        $query->where('turId', (int) $request->input('turId'));
+        if ($request->filled('durum'))        $query->where('kunyeDurum', $request->input('durum'));
+        if ($request->filled('dil'))          $query->where('kunyeDilKN', $request->input('dil'));
+        if ($request->filled('konuBasligi'))  $query->where('kunyeKonuBasligi', 'LIKE', '%' . $request->input('konuBasligi') . '%');
+        if ($request->filled('ozelNotlar'))   $query->where(function ($q) use ($request) {
+            $n = $request->input('ozelNotlar');
+            $q->where('ozelNotlar',  'LIKE', "%{$n}%")
+                ->orWhere('ozelNotlar2', 'LIKE', "%{$n}%")
+                ->orWhere('ozelNotlar3', 'LIKE', "%{$n}%");
+        });
+        if ($request->filled('oduncVerilebilir')) {
+            $query->where('oduncVerilemez', $request->input('oduncVerilebilir') === 'evet' ? 0 : 1);
+        }
+        if ($request->filled('etiketlendi')) {
+            $query->where('etiketlendi', $request->input('etiketlendi') === 'evet' ? 1 : 0);
+        }
+        if ($request->filled('kayitBaslangic')) {
+            $kayitBaslangic = $request->input('kayitBaslangic');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBaslangic)) {
+                $query->whereDate('created_at', '>=', $kayitBaslangic);
+            }
+        }
+        if ($request->filled('kayitBitis')) {
+            $kayitBitis = $request->input('kayitBitis');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBitis)) {
+                $query->whereDate('created_at', '<=', $kayitBitis);
+            }
+        }
+        if ($request->filled('yazarId')) {
+            $this->applyYazarIdFilter($query, (int) $request->input('yazarId'));
+        } elseif ($request->filled('yazar')) {
+            $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
+        }
+        if ($request->filled('yayineviId')) {
+            $query->where('yayineviId', (int) $request->input('yayineviId'));
+        } elseif ($request->filled('yayinevi')) {
+            $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
+        }
+    }
+
+    /**
      * @return list<int>
      */
     private function normalizeYazarIdsFromRequest(Request $request): array
@@ -186,7 +262,7 @@ class KatalogController extends Controller
         $bookcount = Katalog::count();
 
         if (!$request->ajax() && !$request->wantsJson()) {
-            $kategoriler  = Kategori::aktif()->orderBy('title')->get(['id', 'title']);
+            $kategoriler  = Kategori::aktif()->get(['id', 'title']);
             abort_unless($this->canListAllBooks() || $this->canListScopedBooks(), 403);
 
             if ($this->canListAllBooks()) {
@@ -440,6 +516,7 @@ class KatalogController extends Controller
             'kunyeKopya', 'kunyeCilt', 'kunyeDilKN', 'kunyeDil2', 'kunyeEserAdi',
             'kunyeEserAdiAlt', 'kunyeYazar', 'kunyeSorumlular',
             'kunyeYayinYeri', 'kunyeYayinlayan', 'kunyeFizikselTanim',
+            'kunyeSayfaSayisi',
             'kunyeISBNISSN', 'kunyeBasimKaydi', 'kunyeDiziKaydi',
             'kunyeKonuBasligi', 'kunyeKategori', 'kunyeGelisTarihi',
             'faturaNo', 'faturaTarihi', 'tedarikci', 'tedarikciTelefon',
@@ -596,7 +673,7 @@ class KatalogController extends Controller
     public function new()
     {
         abort_unless($this->canSaveBooks(), 403);
-        $kategoriler  = Kategori::aktif()->orderBy('title')->get();
+        $kategoriler  = Kategori::aktif()->get();
         $girisTurleri = \App\Models\GirisTuru::where('aktif', 1)->orderBy('sira')->get();
         $allowedIds   = $this->allowedKutuphaneIdsForSave();
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
@@ -610,11 +687,36 @@ class KatalogController extends Controller
         $sekiller     = Sekil::aktif()->orderBy('sira')->get(['id', 'ad']);
         $ortamlar     = Ortam::aktif()->orderBy('sira')->get(['id', 'ad']);
         $koleksiyonlar = Koleksiyon::aktif()->orderBy('title')->get();
+        $yayinYeriOneriler = Katalog::query()
+            ->select('kunyeYayinYeri', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('kunyeYayinYeri')
+            ->where('kunyeYayinYeri', '!=', '')
+            ->groupBy('kunyeYayinYeri')
+            ->orderByDesc('last_id')
+            ->limit(5)
+            ->pluck('kunyeYayinYeri');
+        $sorumluOneriler = Katalog::query()
+            ->select('kunyeSorumlular', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('kunyeSorumlular')
+            ->where('kunyeSorumlular', '!=', '')
+            ->groupBy('kunyeSorumlular')
+            ->orderByDesc('last_id')
+            ->limit(5)
+            ->pluck('kunyeSorumlular');
+        $diziKaydiOneriler = Katalog::query()
+            ->select('kunyeDiziKaydi', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('kunyeDiziKaydi')
+            ->where('kunyeDiziKaydi', '!=', '')
+            ->groupBy('kunyeDiziKaydi')
+            ->orderByDesc('last_id')
+            ->limit(5)
+            ->pluck('kunyeDiziKaydi');
 
         return view('book.new', compact(
             'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri', 'demirbasNo',
-            'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar'
+            'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
+            'yayinYeriOneriler', 'sorumluOneriler', 'diziKaydiOneriler'
         ));
     }
 
@@ -740,7 +842,7 @@ class KatalogController extends Controller
     public function copy(Katalog $kitap)
     {
         abort_unless($this->canSaveBooks(), 403);
-        $kategoriler  = Kategori::aktif()->orderBy('title')->get();
+        $kategoriler  = Kategori::aktif()->get();
         $girisTurleri = \App\Models\GirisTuru::where('aktif', 1)->orderBy('sira')->get();
         $allowedIds   = $this->allowedKutuphaneIdsForSave();
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
@@ -769,7 +871,7 @@ class KatalogController extends Controller
     }
 
     // ─── Düzenle Form ───────────────────────────────────────────────────────────
-    public function view(Katalog $kitap)
+    public function view(Request $request, Katalog $kitap)
     {
         abort_unless($this->canListAllBooks() || $this->canListScopedBooks(), 403);
         if (!$this->canListAllBooks()) {
@@ -777,7 +879,7 @@ class KatalogController extends Controller
             abort_unless(in_array((int) $kitap->kutuphaneId, $ids, true), 403);
         }
 
-        $kategoriler  = Kategori::aktif()->orderBy('title')->get();
+        $kategoriler  = Kategori::aktif()->get();
         $girisTurleri = \App\Models\GirisTuru::where('aktif', 1)->orderBy('sira')->get();
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
             ->orderBy('title')->get();
@@ -791,6 +893,20 @@ class KatalogController extends Controller
 
         $createdUser = $kitap->created_user ? \App\Models\User::find($kitap->created_user) : null;
         $updatedUser = $kitap->updated_user ? \App\Models\User::find($kitap->updated_user) : null;
+        $navBase = Katalog::query()->select('id');
+        $this->scopeKatalogForUser($navBase, auth()->user());
+        $this->applyListFiltersToKatalogQuery($navBase, $request);
+
+        // Liste sırası id desc olduğundan:
+        // "Önceki" = mevcut kaydın üstündeki (daha büyük id), "Sonraki" = alttaki (daha küçük id).
+        $prevKatalogId = (clone $navBase)
+            ->where('id', '>', $kitap->id)
+            ->orderBy('id')
+            ->value('id');
+        $nextKatalogId = (clone $navBase)
+            ->where('id', '<', $kitap->id)
+            ->orderByDesc('id')
+            ->value('id');
 
         $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
 
@@ -798,19 +914,19 @@ class KatalogController extends Controller
             'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri',
             'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
-            'createdUser', 'updatedUser'
+            'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId'
         ));
     }
 
     // ─── Düzenle Form ───────────────────────────────────────────────────────────
-    public function edit(Katalog $kitap)
+    public function edit(Request $request, Katalog $kitap)
     {
         abort_unless($this->canUpdateBooks(), 403);
         if (!$this->canListAllBooks()) {
             $ids = auth()->user()->yetkiliKutuphaneIds();
             abort_unless(in_array((int) $kitap->kutuphaneId, $ids, true), 403);
         }
-        $kategoriler  = Kategori::aktif()->orderBy('title')->get();
+        $kategoriler  = Kategori::aktif()->get();
         $girisTurleri = \App\Models\GirisTuru::where('aktif', 1)->orderBy('sira')->get();
         $allowedIds   = $this->allowedKutuphaneIdsForSave();
         $kutuphaneler = Kutuphane::whereNull('deleted_at')
@@ -826,6 +942,17 @@ class KatalogController extends Controller
 
         $createdUser = $kitap->created_user ? \App\Models\User::find($kitap->created_user) : null;
         $updatedUser = $kitap->updated_user ? \App\Models\User::find($kitap->updated_user) : null;
+        $navBase = Katalog::query()->select('id');
+        $this->scopeKatalogForUser($navBase, auth()->user());
+        $this->applyListFiltersToKatalogQuery($navBase, $request);
+        $prevKatalogId = (clone $navBase)
+            ->where('id', '>', $kitap->id)
+            ->orderBy('id')
+            ->value('id');
+        $nextKatalogId = (clone $navBase)
+            ->where('id', '<', $kitap->id)
+            ->orderByDesc('id')
+            ->value('id');
 
         $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
 
@@ -833,7 +960,7 @@ class KatalogController extends Controller
             'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri',
             'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
-            'createdUser', 'updatedUser'
+            'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId'
         ));
     }
 

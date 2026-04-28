@@ -8,6 +8,7 @@ use App\Models\Kutuphane;
 use App\Models\OduncIslem;
 use App\Models\Uye;
 use App\Models\UyeRezerve;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -37,6 +38,7 @@ class DashboardController extends Controller
         $kategoriMax = 1;
         $kutuphaneAktifKatalog = collect();
         $kutuphaneAktifMax = 1;
+        $topCatalogCreators = collect();
         $uyeCinsiyetBreakdown = collect();
         $uyeCinsiyetMax = 1;
         $uyeYasBreakdown = collect();
@@ -108,6 +110,33 @@ class DashboardController extends Controller
                 return ['label' => $label, 'count' => (int) $r->c];
             })->values();
             $kutuphaneAktifMax = max((int) $kutuphaneAktifKatalog->max('count'), 1);
+
+            $creatorRows = (clone $base)
+                ->whereNotNull('created_user')
+                ->select('created_user', DB::raw('count(*) as c'))
+                ->groupBy('created_user')
+                ->orderByDesc('c')
+                ->limit(5)
+                ->get();
+            $creatorIds = $creatorRows->pluck('created_user')->map(fn ($id) => (int) $id)->all();
+            $creatorNames = $creatorIds === []
+                ? collect()
+                : User::query()
+                    ->whereIn('id', $creatorIds)
+                    ->get(['id', 'name', 'soyad'])
+                    ->keyBy('id');
+            $topCatalogCreators = $creatorRows->map(function ($row) use ($creatorNames) {
+                $user = $creatorNames->get((int) $row->created_user);
+                $fullName = trim((string) ($user->name ?? '') . ' ' . (string) ($user->soyad ?? ''));
+                if ($fullName === '') {
+                    $fullName = 'Kullanıcı #' . (int) $row->created_user;
+                }
+
+                return [
+                    'label' => $fullName,
+                    'count' => (int) $row->c,
+                ];
+            })->values();
         }
 
         if ($flags['loans']) {
@@ -175,6 +204,7 @@ class DashboardController extends Controller
             'kategoriMax',
             'kutuphaneAktifKatalog',
             'kutuphaneAktifMax',
+            'topCatalogCreators',
             'uyeCinsiyetBreakdown',
             'uyeCinsiyetMax',
             'uyeYasBreakdown',

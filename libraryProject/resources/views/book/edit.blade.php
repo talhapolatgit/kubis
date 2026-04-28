@@ -294,6 +294,19 @@
             border-color: var(--muted-foreground);
         }
 
+        .form-card-header-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .form-card-edit-btn.is-disabled {
+            pointer-events: none;
+            opacity: 0.55;
+            cursor: default;
+        }
+
         .notification-btn {
             position: relative;
             width: 32px;
@@ -1118,9 +1131,39 @@
                             }}
                         </p>
                     </div>
-                    @if($isViewOnly && (auth()->user()->hasYetki(2) || auth()->user()->hasYetki(5)))
-                        <a href="{{ route('katalog.edit', $kitap->id) }}" class="form-card-edit-btn">Düzenle</a>
-                    @endif
+                    <div class="form-card-header-actions">
+                        @if(!empty($prevKatalogId))
+                            @if($isViewOnly)
+                                <a href="{{ route('katalog.view', array_merge(['kitap' => $prevKatalogId], request()->query())) }}" class="form-card-edit-btn">Önceki Katalog</a>
+                            @else
+                                <a href="{{ route('katalog.edit', array_merge(['kitap' => $prevKatalogId], request()->query())) }}" class="form-card-edit-btn">Önceki Katalog</a>
+                            @endif
+                        @else
+                            <span class="form-card-edit-btn is-disabled">Önceki Katalog</span>
+                        @endif
+
+                        @if(!empty($nextKatalogId))
+                            @if($isViewOnly)
+                                <a href="{{ route('katalog.view', array_merge(['kitap' => $nextKatalogId], request()->query())) }}" class="form-card-edit-btn">Sonraki Katalog</a>
+                            @else
+                                <a href="{{ route('katalog.edit', array_merge(['kitap' => $nextKatalogId], request()->query())) }}" class="form-card-edit-btn">Sonraki Katalog</a>
+                            @endif
+                        @else
+                            <span class="form-card-edit-btn is-disabled">Sonraki Katalog</span>
+                        @endif
+
+                        @if(auth()->user()->hasYetki(3) || auth()->user()->hasYetki(6))
+                            <a href="{{ route('katalog.copy', array_merge(['kitap' => $kitap->id], request()->query())) }}" class="form-card-edit-btn">Kopyala</a>
+                        @endif
+
+                        @if($isViewOnly && (auth()->user()->hasYetki(2) || auth()->user()->hasYetki(5)))
+                            <a href="{{ route('katalog.edit', array_merge(['kitap' => $kitap->id], request()->query())) }}" class="form-card-edit-btn">Düzenle</a>
+                        @endif
+
+                        @if(!$isViewOnly)
+                            <a href="{{ route('katalog.view', array_merge(['kitap' => $kitap->id], request()->query())) }}" class="form-card-edit-btn">Görüntüle</a>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="form-card-separator"></div>
@@ -1278,7 +1321,7 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeKopya">Kopya Sayısı</label>
-                                        <input type="number" class="form-input" id="kunyeKopya" name="kunyeKopya" value="1" min="1" value="{{ old('kunyeKopya', $kitap->kunyeKopya) }}" />
+                                        <input type="number" class="form-input" id="kunyeKopya" name="kunyeKopya" min="1" value="{{ old('kunyeKopya', $kitap->kunyeKopya) }}" />
                                     </div>
                                 </div>
 
@@ -2076,9 +2119,6 @@
             .then(function(result) {
                 if (result.status === 200 && result.data.success) {
                     showToast('success', 'Güncelleme Başarılı', result.data.message || 'Kitap başarıyla güncellendi.');
-                    setTimeout(function() {
-                        window.location.href = @json(route('katalog.index'));
-                    }, 400);
                 } else if (result.status === 422 && result.data.errors) {
                     var msgs = Object.values(result.data.errors).flat();
                     showToast('error', 'Doğrulama Hatası', msgs[0] || 'Lütfen formu kontrol edin.');

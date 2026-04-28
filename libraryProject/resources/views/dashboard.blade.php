@@ -303,6 +303,7 @@
                                 <p class="panel-hint">Sayılar yalnızca <strong>Rafta</strong>, <strong>Ödünç</strong> ve <strong>Rezerve</strong> durumundaki kayıtları içerir (kayıp / bakım vb. hariç).</p>
                             @endif
                         </div>
+
                     @endif
                 </div>
             @endif
@@ -323,6 +324,29 @@
                                 <span class="bar-count">{{ number_format($row['count'], 0, ',', '.') }}</span>
                             </div>
                         @endforeach
+                    </div>
+                @endif
+
+                @if($flags['catalog'])
+                    <div class="panel">
+                        <div class="panel-title">
+                            <span>Kullanıcı Katalog Kayıt Sayıları</span>
+                            <a href="{{ route('katalog.index') }}">Katalog</a>
+                        </div>
+                        @if($topCatalogCreators->isEmpty())
+                            <p class="empty-hint" style="padding:12px 0;">Gösterecek kullanıcı kayıt verisi bulunmuyor.</p>
+                        @else
+                            @foreach($topCatalogCreators as $row)
+                                <div class="bar-row">
+                                    <span class="bar-name" title="{{ $row['label'] }}">{{ \Illuminate\Support\Str::limit($row['label'], 22) }}</span>
+                                    <div class="bar-track" title="{{ $row['count'] }} kitap">
+                                        <div class="bar-fill bar-fill--secondary" style="width:{{ min(100, round($row['count'] / $topCatalogCreators->max('count') * 100)) }}%"></div>
+                                    </div>
+                                    <span class="bar-count">{{ number_format($row['count'], 0, ',', '.') }}</span>
+                                </div>
+                            @endforeach
+                            <p class="panel-hint">Liste, kapsamınızdaki katalog kayıtlarında en fazla kitap kaydeden ilk 5 kullanıcıyı gösterir.</p>
+                        @endif
                     </div>
                 @endif
 

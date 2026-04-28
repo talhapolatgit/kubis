@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#7a5c3c" />
-    <title>Kütüphane Yönetim Sistemi</title>
+    <title>Kütüphane Bilgi Sistemi</title>
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -248,7 +248,7 @@
                 geçer.
             </h2>
             <p class="panel-tagline-sub">
-                KUBİS ile kitap envanterini, ödünç takibini ve kütüphane yönetimini tek ekrandan kolayca yönetin.
+                KÜBİS ile kitap envanterini, ödünç takibini ve kütüphane yönetimini tek ekrandan kolayca yönetin.
             </p>
             {{--<div class="panel-stats">
                 <div><div class="stat-num">∞</div><div class="stat-label">Katalog</div></div>
@@ -317,7 +317,7 @@
                 </button>
             </form>
 
-            <div class="form-footer">Kütüphane Yönetim Sistemi &nbsp;·&nbsp; © {{ date('Y') }}</div>
+            <div class="form-footer">Kütüphane Bilgi Sistemi &nbsp;·&nbsp; © {{ date('Y') }}</div>
         </div>
     </div>
 </div>
