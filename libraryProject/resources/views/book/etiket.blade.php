@@ -365,7 +365,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding-top: 5rem;
             gap: 12px;
             color: var(--muted-foreground);
         }
@@ -393,8 +394,9 @@
             background: rgba(250,248,243,.85);
             display: none;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             flex-direction: column;
+            padding-top: 5rem;
             gap: 12px;
             z-index: 10;
         }
@@ -765,6 +767,9 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
                                     Yazdır
                                 </button>
+                                <button class="btn btn-primary btn-sm" id="btnMarkLabeled" onclick="markAsLabeled()" style="display:none;">
+                                    Etiketlendi Olarak İşaretle
+                                </button>
                             </div>
                         </div>
                         <div class="pdf-viewer-wrap">
@@ -829,6 +834,7 @@
     var searchTimeout  = null;
     var lastPdfBlob    = null;
     var lastPdfUrl     = null;
+    var generatedBookIds = [];
 
     // ── Tahoma font (Tip 2 için) ──────────────────────────────────────────────────
     // public/fonts/tahoma.ttf dosyasını sayfa açılışında yükler.
@@ -1145,6 +1151,8 @@
                 document.getElementById('pdfPlaceholder').style.display = 'none';
                 document.getElementById('btnDownload').style.display = '';
                 document.getElementById('btnPrint').style.display = '';
+                document.getElementById('btnMarkLabeled').style.display = '';
+                generatedBookIds = selectedBooks.map(function(b) { return b.id; });
 
                 var skipNote = skip > 0 ? ' · ' + skip + ' boş etiket' : '';
                 var pageCalcCount = (tip === 'tip4') ? selectedBooks.length * 2
@@ -2158,6 +2166,64 @@ window.scrollTo({
         var frame = document.getElementById('pdfFrame');
         if (!frame || frame.style.display === 'none') return;
         frame.contentWindow.print();
+    }
+
+    function markAsLabeled() {
+        if (!generatedBookIds.length) {
+            showToast('info', 'Önce etiket oluşturun', 'İşaretleme için önce Etiket PDF Oluştur adımını tamamlayın.');
+            return;
+        }
+        var btn = document.getElementById('btnMarkLabeled');
+        var original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin .6s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Güncelleniyor…';
+
+        postMarkLabeledRequest(true)
+            .then(function(preview) {
+                var updateCount = Number(preview.updateable || 0);
+                if (updateCount <= 0) {
+                    showToast('info', 'Güncellenecek kayıt yok', 'Seçili kayıtlar zaten etiketlendi olabilir.');
+                    return null;
+                }
+                var ok = window.confirm(updateCount + ' katalog Etiketlendi olarak işaretlenecek. Devam edilsin mi?');
+                return ok ? postMarkLabeledRequest(false) : null;
+            })
+            .then(function(data) {
+                if (!data) return;
+                var updated = Number(data.updated || 0);
+                showToast('success', 'Güncelleme tamamlandı', updated + ' katalog etiketlendi olarak işaretlendi.');
+            })
+            .catch(function(e) {
+                showToast('error', 'Güncelleme hatası', e.message || 'Bilinmeyen hata.');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
+    }
+
+    function postMarkLabeledRequest(dryRun) {
+        return fetch('{{ route('etiket.isaretle') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ ids: generatedBookIds, dry_run: !!dryRun })
+        })
+        .then(function(r) {
+            return r.text().then(function(text) {
+                var data = {};
+                try { data = text ? JSON.parse(text) : {}; } catch (e) { data = {}; }
+                if (!r.ok) {
+                    var msg = (data && (data.message || data.error)) ? (data.message || data.error) : ('HTTP ' + r.status);
+                    throw new Error(msg);
+                }
+                return data;
+            });
+        });
     }
 
     // ── Enter tuşu ile arama ─────────────────────────────────────────────────────

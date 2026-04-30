@@ -12,6 +12,7 @@ use App\Models\Tur;
 use App\Models\AltTur;
 use App\Models\Sekil;
 use App\Models\Ortam;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -19,6 +20,28 @@ use Illuminate\Validation\Rule;
 
 class KatalogController extends Controller
 {
+    private function normalizePhoneForSms(?string $value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+        if ($digits === '') {
+            return null;
+        }
+
+        if (strlen($digits) === 10 && str_starts_with($digits, '5')) {
+            return '0' . $digits;
+        }
+
+        if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+            return $digits;
+        }
+
+        if (strlen($digits) === 12 && str_starts_with($digits, '90')) {
+            return $digits;
+        }
+
+        return null;
+    }
+
     private function canListAllBooks(): bool
     {
         $u = auth()->user();
@@ -165,6 +188,9 @@ class KatalogController extends Controller
         } elseif ($request->filled('yayinevi')) {
             $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
         }
+        if ($request->filled('createdUserId')) {
+            $query->where('created_user', (int) $request->input('createdUserId'));
+        }
     }
 
     /**
@@ -283,8 +309,28 @@ class KatalogController extends Controller
             // Sadece en az bir kitabı olan yayınevlerini getir
             $yayineviIds = Katalog::whereNotNull('yayineviId')->distinct()->pluck('yayineviId');
             $yayinevleri = Yayinevi::whereIn('id', $yayineviIds)->orderBy('ad')->get(['id', 'ad']);
+            $createdUserIds = Katalog::query()
+                ->whereNotNull('created_user')
+                ->distinct()
+                ->pluck('created_user')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->values();
+            $kaydedenler = User::query()
+                ->whereIn('id', $createdUserIds->isEmpty() ? [-1] : $createdUserIds->all())
+                ->select(['id', 'ad', 'soyad', 'name'])
+                ->orderBy('ad')
+                ->orderBy('soyad')
+                ->get()
+                ->map(function (User $u) {
+                    $label = trim(((string) ($u->ad ?? '')) . ' ' . ((string) ($u->soyad ?? '')));
+                    return [
+                        'id' => (int) $u->id,
+                        'ad' => $label !== '' ? $label : (string) ($u->name ?? ('Kullanıcı #' . $u->id)),
+                    ];
+                });
             $turler      = \App\Models\Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
-            return view('book.list', compact('bookcount', 'kategoriler', 'kutuphaneler', 'yazarlar', 'yayinevleri', 'turler'));
+            return view('book.list', compact('bookcount', 'kategoriler', 'kutuphaneler', 'yazarlar', 'yayinevleri', 'kaydedenler', 'turler'));
         }
 
         $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100, 500])
@@ -353,6 +399,9 @@ class KatalogController extends Controller
             $query->where('yayineviId', (int) $request->input('yayineviId'));
         } elseif ($request->filled('yayinevi')) {
             $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
+        }
+        if ($request->filled('createdUserId')) {
+            $query->where('created_user', (int) $request->input('createdUserId'));
         }
 
         $kitaplar = $query->orderBy('id', 'desc')->paginate($perPage);
@@ -423,6 +472,7 @@ class KatalogController extends Controller
         }
         if ($request->filled('yayineviId'))   $query->where('yayineviId', (int) $request->input('yayineviId'));
         elseif ($request->filled('yayinevi')) $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
+        if ($request->filled('createdUserId')) $query->where('created_user', (int) $request->input('createdUserId'));
 
         $kitaplar    = $query->orderBy('id', 'desc')->get();
         $kategoriMap = Kategori::pluck('title', 'id');
@@ -693,7 +743,7 @@ class KatalogController extends Controller
             ->where('kunyeYayinYeri', '!=', '')
             ->groupBy('kunyeYayinYeri')
             ->orderByDesc('last_id')
-            ->limit(5)
+            ->limit(10)
             ->pluck('kunyeYayinYeri');
         $sorumluOneriler = Katalog::query()
             ->select('kunyeSorumlular', DB::raw('MAX(id) as last_id'))
@@ -701,7 +751,7 @@ class KatalogController extends Controller
             ->where('kunyeSorumlular', '!=', '')
             ->groupBy('kunyeSorumlular')
             ->orderByDesc('last_id')
-            ->limit(5)
+            ->limit(10)
             ->pluck('kunyeSorumlular');
         $diziKaydiOneriler = Katalog::query()
             ->select('kunyeDiziKaydi', DB::raw('MAX(id) as last_id'))
@@ -709,14 +759,47 @@ class KatalogController extends Controller
             ->where('kunyeDiziKaydi', '!=', '')
             ->groupBy('kunyeDiziKaydi')
             ->orderByDesc('last_id')
-            ->limit(5)
+            ->limit(10)
             ->pluck('kunyeDiziKaydi');
+        $konuBasligiOneriler = Katalog::query()
+            ->select('kunyeKonuBasligi', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('kunyeKonuBasligi')
+            ->where('kunyeKonuBasligi', '!=', '')
+            ->groupBy('kunyeKonuBasligi')
+            ->orderByDesc('last_id')
+            ->limit(10)
+            ->pluck('kunyeKonuBasligi');
+        $icerikOneriler = Katalog::query()
+            ->select('icerik', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('icerik')
+            ->where('icerik', '!=', '')
+            ->groupBy('icerik')
+            ->orderByDesc('last_id')
+            ->limit(10)
+            ->pluck('icerik');
+        $aciklamaOneriler = Katalog::query()
+            ->select('aciklama', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('aciklama')
+            ->where('aciklama', '!=', '')
+            ->groupBy('aciklama')
+            ->orderByDesc('last_id')
+            ->limit(10)
+            ->pluck('aciklama');
+        $ozelNotlarOneriler = Katalog::query()
+            ->select('ozelNotlar', DB::raw('MAX(id) as last_id'))
+            ->whereNotNull('ozelNotlar')
+            ->where('ozelNotlar', '!=', '')
+            ->groupBy('ozelNotlar')
+            ->orderByDesc('last_id')
+            ->limit(10)
+            ->pluck('ozelNotlar');
 
         return view('book.new', compact(
             'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri', 'demirbasNo',
             'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
-            'yayinYeriOneriler', 'sorumluOneriler', 'diziKaydiOneriler'
+            'yayinYeriOneriler', 'sorumluOneriler', 'diziKaydiOneriler',
+            'konuBasligiOneriler', 'icerikOneriler', 'aciklamaOneriler', 'ozelNotlarOneriler'
         ));
     }
 
@@ -733,6 +816,7 @@ class KatalogController extends Controller
             'kunyeYazar'    => 'nullable|string|max:500',
             'kunyeISBNISSN' => 'nullable|string|max:50',
             'kunyeSayfaSayisi' => 'nullable|integer|min:1',
+            'smsGonderBagisci' => 'nullable|boolean',
             'kutuphaneId'   => ['required', 'integer', Rule::in($allowedKutuphaneIds)],
             'koleksiyon_id' => $this->koleksiyonIdValidationRule(),
             'yazar_giris_tipi' => 'nullable|in:kayitli,manuel',
@@ -829,6 +913,21 @@ class KatalogController extends Controller
 
         $katalog = Katalog::create($data);
         $this->syncKatalogYazarlar($katalog, $orderedYazarIds);
+
+        if ($girisTuruAd === 'bağış' && $request->boolean('smsGonderBagisci')) {
+            $smsTelefon = $this->normalizePhoneForSms($data['tedarikciTelefon'] ?? null);
+            if ($smsTelefon) {
+                $bagislayan = trim((string) ($data['tedarikci'] ?? ''));
+                $eserAdi = trim((string) ($data['kunyeEserAdi'] ?? ''));
+                $smsMesaji = 'Sayın ' . ($bagislayan !== '' ? $bagislayan : 'Bagisci') . "; "
+                    . 'kütüphanemize bağısladığınız "' . $eserAdi . '" isimli eser için teşekkur ederiz.';
+                try {
+                    MessageController::smsGonder($smsTelefon, $smsMesaji);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => '"' . $data['kunyeEserAdi'] . '" başarıyla kütüphaneye eklendi.']);

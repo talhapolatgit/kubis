@@ -1134,9 +1134,9 @@
                     <div class="form-card-header-actions">
                         @if(!empty($prevKatalogId))
                             @if($isViewOnly)
-                                <a href="{{ route('katalog.view', array_merge(['kitap' => $prevKatalogId], request()->query())) }}" class="form-card-edit-btn">Önceki Katalog</a>
+                                <a href="{{ route('katalog.view', array_merge(['kitap' => $prevKatalogId], request()->query())) }}" class="form-card-edit-btn" id="prevKatalogBtn">Önceki Katalog</a>
                             @else
-                                <a href="{{ route('katalog.edit', array_merge(['kitap' => $prevKatalogId], request()->query())) }}" class="form-card-edit-btn">Önceki Katalog</a>
+                                <a href="{{ route('katalog.edit', array_merge(['kitap' => $prevKatalogId], request()->query())) }}" class="form-card-edit-btn" id="prevKatalogBtn">Önceki Katalog</a>
                             @endif
                         @else
                             <span class="form-card-edit-btn is-disabled">Önceki Katalog</span>
@@ -1144,9 +1144,9 @@
 
                         @if(!empty($nextKatalogId))
                             @if($isViewOnly)
-                                <a href="{{ route('katalog.view', array_merge(['kitap' => $nextKatalogId], request()->query())) }}" class="form-card-edit-btn">Sonraki Katalog</a>
+                                <a href="{{ route('katalog.view', array_merge(['kitap' => $nextKatalogId], request()->query())) }}" class="form-card-edit-btn" id="nextKatalogBtn">Sonraki Katalog</a>
                             @else
-                                <a href="{{ route('katalog.edit', array_merge(['kitap' => $nextKatalogId], request()->query())) }}" class="form-card-edit-btn">Sonraki Katalog</a>
+                                <a href="{{ route('katalog.edit', array_merge(['kitap' => $nextKatalogId], request()->query())) }}" class="form-card-edit-btn" id="nextKatalogBtn">Sonraki Katalog</a>
                             @endif
                         @else
                             <span class="form-card-edit-btn is-disabled">Sonraki Katalog</span>
@@ -3291,6 +3291,36 @@
         // Combobox ve kapak alanlarında etkileşimi tamamen kapat.
         form.querySelectorAll('.combobox-wrapper, .combobox-dropdown, .cover-upload-area, .ue-autocomplete-wrap, #ustEserSearchField').forEach(function (el) {
             el.style.pointerEvents = 'none';
+        });
+    })();
+
+    // ============================
+    // Keyboard Navigation (Left/Right)
+    // ============================
+    (function () {
+        function isEditableTarget(el) {
+            if (!el) return false;
+            var tag = (el.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (isEditableTarget(document.activeElement)) return;
+            if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+            if (e.key === 'ArrowLeft') {
+                var prevBtn = document.getElementById('prevKatalogBtn');
+                if (prevBtn) {
+                    e.preventDefault();
+                    window.location.href = prevBtn.href;
+                }
+            } else if (e.key === 'ArrowRight') {
+                var nextBtn = document.getElementById('nextKatalogBtn');
+                if (nextBtn) {
+                    e.preventDefault();
+                    window.location.href = nextBtn.href;
+                }
+            }
         });
     })();
 

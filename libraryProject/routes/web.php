@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/etiket',     [EtiketController::class, 'index'])->name('etiket.index');
     Route::get('/etiket/ara', [EtiketController::class, 'ara'])->name('etiket.ara');
+    Route::post('/etiket/isaretle', [EtiketController::class, 'isaretle'])->name('etiket.isaretle');
 
     // Katalog
     Route::get('/katalog',              [KatalogController::class, 'index'])->name('katalog.index');

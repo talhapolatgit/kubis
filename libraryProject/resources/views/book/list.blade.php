@@ -354,6 +354,9 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             overflow: hidden;
         }
+        .form-card.filters-card {
+            overflow: visible;
+        }
 
         .form-card-header {
             padding: 24px 24px 16px;
@@ -1113,7 +1116,7 @@
         <!-- Content -->
         <div class="content-area">
         
-            <div class="form-card">
+            <div class="form-card filters-card">
                 <div class="form-card-header">
                     <h2 class="form-card-title">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -1280,8 +1283,24 @@
                         </div>
                     </div>
 
-                    {{-- Satır 4: Kayıt Tarihi --}}
+                    {{-- Satır 4: Kaydeden + Kayıt Tarihi --}}
                     <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                        <div class="form-field">
+                            <label class="form-label">Kaydeden</label>
+                            <div class="combobox-wrapper" id="filterCreatedUserCombobox">
+                                <div class="combobox-input-wrap">
+                                    <div class="combobox-face" id="filterCreatedUserFace">
+                                        <span class="combobox-face-text" id="filterCreatedUserFaceText">Kullanıcı seçin...</span>
+                                        <button type="button" class="combobox-clear-btn" id="filterCreatedUserClear" title="Seçimi kaldır" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                                    </div>
+                                    <input type="text" class="form-input" id="filterCreatedUserSearch" placeholder="Kullanıcı ara..." autocomplete="off" style="display:none;" />
+                                    <button type="button" class="combobox-toggle" tabindex="-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+                                </div>
+                                <div class="combobox-dropdown"></div>
+                            </div>
+                            <input type="hidden" id="filterCreatedUser" value="" />
+                            <script id="filterCreatedUserData" type="application/json">@json($kaydedenler ?? [])</script>
+                        </div>
                         <div class="form-field">
                             <label class="form-label">Kayıt Tarihi (Başlangıç)</label>
                             <input type="date" id="filterKayitBaslangic" class="form-input" autocomplete="off">
@@ -1392,6 +1411,7 @@
                     etiketlendi:       document.getElementById('filterEtiketlendi').value,
                     kayitBaslangic:    document.getElementById('filterKayitBaslangic').value,
                     kayitBitis:        document.getElementById('filterKayitBitis').value,
+                    createdUserId:     document.getElementById('filterCreatedUser').value,
                 };
             }
 
@@ -1551,6 +1571,7 @@
                 if (f.etiketlendi)       params.set('etiketlendi',       f.etiketlendi);
                 if (f.kayitBaslangic)    params.set('kayitBaslangic',    f.kayitBaslangic);
                 if (f.kayitBitis)        params.set('kayitBitis',        f.kayitBitis);
+                if (f.createdUserId)     params.set('createdUserId',     f.createdUserId);
                 var a = document.createElement('a');
                 a.href = exportUrl + (params.toString() ? '?' + params.toString() : '');
                 a.download = '';
@@ -1602,6 +1623,8 @@
                 document.getElementById('filterEtiketlendi').value      = '';
                 document.getElementById('filterKayitBaslangic').value   = '';
                 document.getElementById('filterKayitBitis').value       = '';
+                document.getElementById('filterCreatedUser').value = '';
+                resetComboboxFace('filterCreatedUserFace', 'filterCreatedUserFaceText', 'filterCreatedUserClear', 'Kullanıcı seçin...');
                 // per-page sıfırla
                 document.getElementById('perPageSelect').value = '20';
                 fetchPage(1);
@@ -1861,6 +1884,16 @@
                     clearBtnId:   'filterTurClear',
                     dataScriptId: 'filterTurData',
                     placeholder:  'Tür seçin...',
+                });
+                initFilterCombobox({
+                    wrapperId:    'filterCreatedUserCombobox',
+                    searchInputId:'filterCreatedUserSearch',
+                    hiddenId:     'filterCreatedUser',
+                    faceId:       'filterCreatedUserFace',
+                    faceTextId:   'filterCreatedUserFaceText',
+                    clearBtnId:   'filterCreatedUserClear',
+                    dataScriptId: 'filterCreatedUserData',
+                    placeholder:  'Kullanıcı seçin...',
                 });
             })();
 

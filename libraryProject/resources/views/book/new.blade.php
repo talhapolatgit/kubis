@@ -560,6 +560,28 @@
         }
 
         .form-label .required { color: var(--destructive); }
+        .form-label-inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .inline-sms-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--muted-foreground);
+            user-select: none;
+            white-space: nowrap;
+        }
+        .inline-sms-toggle input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            margin: 0;
+            accent-color: var(--primary);
+        }
 
         .form-input, .form-select, .form-textarea {
             width: 100%;
@@ -1422,9 +1444,16 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="kunyeKonuBasligi">Konu Başlığı</label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeKonuBasligi" name="kunyeKonuBasligi" placeholder="Örnek: Roman -- Fransız edebiyatı" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="kunyeKonuBasligi" name="kunyeKonuBasligi" placeholder="Örnek: Roman -- Fransız edebiyatı" rows="1">{{ old('kunyeKonuBasligi') }}</textarea>
+                                        @if(isset($konuBasligiOneriler) && $konuBasligiOneriler->isNotEmpty())
+                                            <div id="kunyeKonuBasligiOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($konuBasligiOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="kunyeKonuBasligi" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDilKN">Dil</label>
@@ -1469,17 +1498,38 @@
                                         <label class="form-label" for="kunyeGelisTarihi">Geliş Tarihi</label>
                                         <input type="date" class="form-input" id="kunyeGelisTarihi" name="kunyeGelisTarihi" placeholder="Geliş Tarihi" value="{{ old('kunyeGelisTarihi', now()->format('Y-m-d')) }}" />
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="icerik">İçindekiler</label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="icerik" name="icerik" placeholder="Kitabın içindekiler bilgisi…" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="icerik" name="icerik" placeholder="Kitabın içindekiler bilgisi…" rows="1">{{ old('icerik') }}</textarea>
+                                        @if(isset($icerikOneriler) && $icerikOneriler->isNotEmpty())
+                                            <div id="icerikOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($icerikOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="icerik" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="aciklama">Açıklama</label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="aciklama" name="aciklama" placeholder="Kitap hakkında açıklama…" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="aciklama" name="aciklama" placeholder="Kitap hakkında açıklama…" rows="1">{{ old('aciklama') }}</textarea>
+                                        @if(isset($aciklamaOneriler) && $aciklamaOneriler->isNotEmpty())
+                                            <div id="aciklamaOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($aciklamaOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="aciklama" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
-                                    <div class="form-field">
+                                    <div class="form-field" style="position:relative;">
                                         <label class="form-label" for="ozelNotlar">Özel Notlar</label>
-                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar" name="ozelNotlar" placeholder="Kütüphaneye özel notlar…" rows="1"></textarea>
+                                        <textarea class="form-textarea auto-grow-textarea" id="ozelNotlar" name="ozelNotlar" placeholder="Kütüphaneye özel notlar…" rows="1">{{ old('ozelNotlar') }}</textarea>
+                                        @if(isset($ozelNotlarOneriler) && $ozelNotlarOneriler->isNotEmpty())
+                                            <div id="ozelNotlarOnerilerBox" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:6px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-height:180px;overflow:auto;z-index:30;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+                                                @foreach($ozelNotlarOneriler as $oner)
+                                                    <button type="button" class="kunye-oneri-btn" data-target="ozelNotlar" data-value="{{ $oner }}" style="display:block;width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;font-size:13px;cursor:pointer;">{{ $oner }}</button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="ozelNotlar2">Özel Notlar 2</label>
@@ -1572,8 +1622,14 @@
                                             <textarea class="form-textarea auto-grow-textarea" id="tedarikci_bagis" placeholder="Bağışlayan kişi veya kurum" rows="1">{{ old('tedarikci') }}</textarea>
                                         </div>
                                         <div class="form-field">
-                                            <label class="form-label" for="tedarikciTelefon_bagis">Telefon</label>
-                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikciTelefon_bagis" placeholder="Örnek: 0212 555 00 00" rows="1">{{ old('tedarikciTelefon') }}</textarea>
+                                            <div class="form-label form-label-inline">
+                                                <label for="tedarikciTelefon_bagis">Telefon</label>
+                                                <label class="inline-sms-toggle" for="smsGonderBagisci">
+                                                    <input type="checkbox" id="smsGonderBagisci" name="smsGonderBagisci" value="1" {{ old('smsGonderBagisci') ? 'checked' : '' }} />
+                                                    Sms Gönder
+                                                </label>
+                                            </div>
+                                            <textarea class="form-textarea auto-grow-textarea" id="tedarikciTelefon_bagis" placeholder="Örnek: 0530 555 00 00" rows="1">{{ old('tedarikciTelefon') }}</textarea>
                                         </div>
                                         <div class="form-field">
                                             <label class="form-label" for="tedarikciEposta_bagis">E-posta Adresi</label>
@@ -2074,7 +2130,11 @@
         var pairs = [
             { inputId: 'kunyeYayinYeri', boxId: 'kunyeYayinYeriOnerilerBox' },
             { inputId: 'kunyeSorumlular', boxId: 'kunyeSorumlularOnerilerBox' },
-            { inputId: 'kunyeDiziKaydi', boxId: 'kunyeDiziKaydiOnerilerBox' }
+            { inputId: 'kunyeDiziKaydi', boxId: 'kunyeDiziKaydiOnerilerBox' },
+            { inputId: 'kunyeKonuBasligi', boxId: 'kunyeKonuBasligiOnerilerBox' },
+            { inputId: 'icerik', boxId: 'icerikOnerilerBox' },
+            { inputId: 'aciklama', boxId: 'aciklamaOnerilerBox' },
+            { inputId: 'ozelNotlar', boxId: 'ozelNotlarOnerilerBox' }
         ];
         pairs.forEach(function (cfg) {
             var input = document.getElementById(cfg.inputId);

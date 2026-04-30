@@ -11,11 +11,18 @@ class EtiketController extends Controller
     // ─── Etiket Sayfası ─────────────────────────────────────────────────────────
     public function index()
     {
-        abort_unless(auth()->user()?->hasYetki(20), 403);
-        $ids = auth()->user()->yetkiliKutuphaneIds();
+        $user = auth()->user();
+        abort_unless($user?->hasYetki(20), 403);
+
         $kutuphaneler = Kutuphane::query()
-            ->whereNull('deleted_at')
-            ->whereIn('id', $ids ?: [-1])
+            ->whereNull('deleted_at');
+
+        if (!$user->isAdmin()) {
+            $ids = $user->yetkiliKutuphaneIds();
+            $kutuphaneler->whereIn('id', $ids ?: [-1]);
+        }
+
+        $kutuphaneler = $kutuphaneler
             ->orderBy('title')
             ->get(['id', 'title']);
 
@@ -26,13 +33,16 @@ class EtiketController extends Controller
     // GET /etiket/ara
     public function ara(Request $request)
     {
-        abort_unless(auth()->user()?->hasYetki(20), 403);
+        $user = auth()->user();
+        abort_unless($user?->hasYetki(20), 403);
         $perPage = min((int) $request->input('per_page', 50), 200);
         $query   = Katalog::query();
-        $yetkiliKutuphaneIds = auth()->user()->yetkiliKutuphaneIds();
+        $yetkiliKutuphaneIds = $user->yetkiliKutuphaneIds();
 
-        // Kütüphane seçilmese bile sonuçlar yalnızca yetkili kütüphanelerden gelsin.
-        $query->whereIn('katalog.kutuphaneId', $yetkiliKutuphaneIds ?: [-1]);
+        // Admin tüm kütüphaneleri görebilir, diğer kullanıcılar yalnızca yetkilileri.
+        if (!$user->isAdmin()) {
+            $query->whereIn('katalog.kutuphaneId', $yetkiliKutuphaneIds ?: [-1]);
+        }
 
         // ── Eser adı / ISBN ───────────────────────────────────────────────────
         if ($request->filled('search')) {
@@ -56,7 +66,7 @@ class EtiketController extends Controller
         // ── Kütüphane (seçmeli) ───────────────────────────────────────────────
         if ($request->filled('kutuphaneId')) {
             $kutuphaneId = (int) $request->input('kutuphaneId');
-            if (!in_array($kutuphaneId, $yetkiliKutuphaneIds ?: [], true)) {
+            if (!$user->isAdmin() && !in_array($kutuphaneId, $yetkiliKutuphaneIds ?: [], true)) {
                 return response()->json(['rows' => []]);
             }
             $query->where('katalog.kutuphaneId', $kutuphaneId);
@@ -71,10 +81,10 @@ class EtiketController extends Controller
             $query->whereDate('katalog.created_at', '<=', $request->input('kayitBitis'));
         }
 
-        // ── Yalnızca etiket oluşmayanlar ──────────────────────────────────────
-        // Seçiliyse etiketOlustumu = 'evet' olan kayıtlar getirilir
+        // ── Yalnızca etiketlenmeyenler ────────────────────────────────────────
+        // Seçiliyse etiketlendi = 0 olan kayıtlar getirilir
         if ($request->boolean('etiketOlusmayanlar')) {
-            $query->where('etiketOlustumu', 'hayir');
+            $query->where('etiketlendi', 0);
         }
 
         $kitaplar = $query
@@ -99,5 +109,53 @@ class EtiketController extends Controller
             ->get();
 
         return response()->json(['rows' => $kitaplar->toArray()]);
+    }
+
+    // ─── Etiketlendi olarak işaretleme ──────────────────────────────────────────
+    // POST /etiket/isaretle
+    public function isaretle(Request $request)
+    {
+        $user = auth()->user();
+        abort_unless($user?->hasYetki(20), 403);
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'min:1'],
+            'dry_run' => ['nullable', 'boolean'],
+        ]);
+
+        $ids = collect($validated['ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $yetkiliKutuphaneIds = $user->yetkiliKutuphaneIds();
+
+        $baseQuery = Katalog::query()
+            ->whereIn('id', $ids)
+            ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->whereNull('etiketlendi')
+                    ->orWhere('etiketlendi', '!=', 1);
+            });
+
+        if (!$user->isAdmin()) {
+            $baseQuery->whereIn('kutuphaneId', $yetkiliKutuphaneIds ?: [-1]);
+        }
+
+        $updateableCount = (clone $baseQuery)->count();
+        if ($request->boolean('dry_run')) {
+            return response()->json([
+                'ok' => true,
+                'updateable' => $updateableCount,
+            ]);
+        }
+
+        $updatedCount = $baseQuery->update(['etiketlendi' => 1]);
+
+        return response()->json([
+            'ok' => true,
+            'updated' => $updatedCount,
+        ]);
     }
 }
