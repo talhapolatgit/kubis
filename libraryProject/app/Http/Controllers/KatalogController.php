@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Katalog;
+use App\Models\KatalogKutuphaneTransfer;
 use App\Models\Koleksiyon;
 use App\Models\Kategori;
 use App\Models\Kutuphane;
@@ -340,6 +341,7 @@ class KatalogController extends Controller
 
         $query = Katalog::query()->with([
             'yazarlar:id,ad,soyad',
+            'kutuphane:id,title',
         ]);
 
         if (!$this->canListAllBooks()) {
@@ -408,6 +410,7 @@ class KatalogController extends Controller
         $rows = collect($kitaplar->items())->map(function (Katalog $kitap) {
             $row = $kitap->toArray();
             $row['kunyeKapakResmi'] = $kitap->kapak_resim_path;
+            $row['kutuphane_title'] = optional($kitap->kutuphane)->title ?? '—';
 
             return $row;
         })->all();
@@ -1055,12 +1058,101 @@ class KatalogController extends Controller
 
         $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
 
+        $canTransferKutuphane = $this->canUpdateBooks() && $this->canSaveBooks();
+        $allowedForTransfer = $this->allowedKutuphaneIdsForUpdate();
+        $kutuphaneTransferTargets = collect();
+        $kutuphaneTransferAllowedJson = [];
+        if ($canTransferKutuphane && !empty($allowedForTransfer)) {
+            $kutuphaneTransferAllowedJson = Kutuphane::whereNull('deleted_at')
+                ->whereIn('id', $allowedForTransfer)
+                ->orderBy('title')
+                ->get(['id', 'title'])
+                ->map(fn ($k) => ['id' => (int) $k->id, 'title' => $k->title])
+                ->values()
+                ->all();
+            $kutuphaneTransferTargets = Kutuphane::whereNull('deleted_at')
+                ->whereIn('id', $allowedForTransfer)
+                ->when(
+                    $kitap->kutuphaneId !== null && $kitap->kutuphaneId !== '',
+                    fn ($q) => $q->where('id', '!=', (int) $kitap->kutuphaneId)
+                )
+                ->orderBy('title')
+                ->get();
+        }
+        $currentKutuphaneTitle = optional($kitap->kutuphane)->title ?? '—';
+
         return view('book.edit', compact(
             'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri',
             'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
-            'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId'
+            'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId',
+            'canTransferKutuphane', 'kutuphaneTransferTargets', 'currentKutuphaneTitle',
+            'kutuphaneTransferAllowedJson'
         ));
+    }
+
+    /**
+     * Katalog kaydını başka bir kütüphaneye taşır; işlem ayrı tabloda loglanır.
+     */
+    public function transferKutuphane(Request $request, Katalog $kitap)
+    {
+        abort_unless($this->canUpdateBooks(), 403);
+        abort_unless($this->canSaveBooks(), 403);
+        if (!$this->canListAllBooks()) {
+            $ids = auth()->user()->yetkiliKutuphaneIds();
+            abort_unless(in_array((int) $kitap->kutuphaneId, $ids, true), 403);
+        }
+
+        $validated = $request->validate([
+            'to_kutuphane_id' => [
+                'required',
+                'integer',
+                Rule::exists('kutuphane', 'id')->where(function ($q) {
+                    $q->whereNull('deleted_at');
+                }),
+            ],
+            'aciklama' => 'nullable|string|max:5000',
+        ]);
+
+        $toId = (int) $validated['to_kutuphane_id'];
+        $aciklama = isset($validated['aciklama']) ? trim((string) $validated['aciklama']) : '';
+        $aciklama = $aciklama === '' ? null : $aciklama;
+        $fromId = $kitap->kutuphaneId !== null && $kitap->kutuphaneId !== ''
+            ? (int) $kitap->kutuphaneId
+            : null;
+
+        if ($fromId !== null && $fromId === $toId) {
+            return response()->json(['success' => false, 'message' => 'Kayıt zaten bu kütüphanede.'], 422);
+        }
+
+        $allowedIds = $this->allowedKutuphaneIdsForUpdate();
+        if (!in_array($toId, $allowedIds, true)) {
+            return response()->json(['success' => false, 'message' => 'Bu kütüphaneye transfer yetkiniz yok.'], 403);
+        }
+
+        DB::transaction(function () use ($kitap, $fromId, $toId, $aciklama) {
+            KatalogKutuphaneTransfer::create([
+                'katalog_id' => $kitap->id,
+                'from_kutuphane_id' => $fromId,
+                'to_kutuphane_id' => $toId,
+                'user_id' => auth()->id(),
+                'aciklama' => $aciklama,
+            ]);
+            $kitap->update([
+                'kutuphaneId' => $toId,
+                'updated_user' => auth()->id(),
+            ]);
+        });
+
+        $kitap->refresh();
+        $kitap->loadMissing('kutuphane');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Katalog başarıyla transfer edildi.',
+            'kutuphane_id' => $toId,
+            'kutuphane_title' => optional($kitap->kutuphane)->title ?? '—',
+        ]);
     }
 
     // ─── Güncelle ───────────────────────────────────────────────────────────────

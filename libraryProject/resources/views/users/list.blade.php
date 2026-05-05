@@ -1,71 +1,11 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#7a5c3c" />
-    <title>Kullanıcılar — Beyoğlu Kütüphane Sistemi</title>
+@extends('layouts.base')
+
+@section('title', 'Kullanicilar')
+
+@section('styles')
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-        :root {
-            --background: #f5f0e8; --foreground: #3d3226; --card: #faf8f3;
-            --primary: #7a5c3c; --primary-foreground: #f5f0e8;
-            --secondary: #ede8de; --muted: #ede8de; --muted-foreground: #7a7060;
-            --destructive: #c53030; --border: #d9d0c2; --ring: #7a5c3c; --radius: 0.625rem;
-            --sidebar: #3d3226; --sidebar-foreground: #e8e2d6;
-            --sidebar-primary: #9b7b55; --sidebar-primary-foreground: #f5f0e8;
-            --sidebar-accent: #524435; --sidebar-accent-foreground: #e8e2d6;
-            --sidebar-border: #5a4a3a;
-            --font-sans: 'Source Sans 3', system-ui, sans-serif;
-            --font-serif: 'Merriweather', Georgia, serif;
-        }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: var(--font-sans); background: var(--background); color: var(--foreground); -webkit-font-smoothing: antialiased; line-height: 1.5; }
-        input, select, button { font-family: inherit; font-size: inherit; }
-
-        .app-layout { display: flex; min-height: 100vh; }
-
-        /* ── Sidebar ── */
-        .sidebar { width: 260px; background: var(--sidebar); color: var(--sidebar-foreground); display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid var(--sidebar-border); position: fixed; top: 0; left: 0; bottom: 0; z-index: 40; transition: transform 0.3s ease; }
-        .sidebar.collapsed { transform: translateX(-260px); }
-        .sidebar-header { padding: 16px; display: flex; align-items: center; gap: 12px; }
-        .sidebar-logo { width: 36px; height: 36px; border-radius: 8px; background: var(--sidebar-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .sidebar-logo svg { width: 20px; height: 20px; color: var(--sidebar-primary-foreground); }
-        .sidebar-brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.025em; }
-        .sidebar-brand-sub { font-size: 12px; opacity: 0.6; }
-        .sidebar-separator { height: 1px; background: var(--sidebar-border); margin: 0 16px; }
-        .sidebar-content { flex: 1; overflow-y: auto; padding: 8px 0; }
-        .sidebar-group { padding: 8px 12px; }
-        .sidebar-group-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sidebar-foreground); opacity: 0.5; padding: 4px 8px; margin-bottom: 4px; }
-        .sidebar-menu { list-style: none; }
-        .sidebar-menu-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--sidebar-foreground); cursor: pointer; transition: background 0.15s; text-decoration: none; }
-        .sidebar-menu-item:hover { background: var(--sidebar-accent); }
-        .sidebar-menu-item.active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
-        .sidebar-menu-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.8; }
-        .sidebar-footer { padding: 16px; border-top: 1px solid var(--sidebar-border); }
-        .sidebar-user { display: flex; align-items: center; gap: 12px; }
-        .sidebar-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--sidebar-accent); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
-        .sidebar-user-name { font-size: 14px; font-weight: 500; }
-        .sidebar-user-role { font-size: 12px; opacity: 0.6; }
-
-        /* ── Main ── */
-        .main-content { flex: 1; margin-left: 260px; display: flex; flex-direction: column; min-height: 100vh; transition: margin-left 0.3s ease; }
-        .main-content.expanded { margin-left: 0; }
-        .top-header { height: 56px; display: flex; align-items: center; gap: 16px; padding: 0 16px; border-bottom: 1px solid rgba(217,208,194,0.6); background: var(--card); flex-shrink: 0; }
-        .sidebar-trigger { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: none; background: transparent; cursor: pointer; color: var(--foreground); transition: background 0.15s; }
-        .sidebar-trigger:hover { background: var(--muted); }
-        .sidebar-trigger svg { width: 18px; height: 18px; }
-        .header-separator { width: 1px; height: 20px; background: var(--border); }
-        .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-        .breadcrumb-link { display: flex; align-items: center; gap: 6px; color: var(--muted-foreground); text-decoration: none; transition: color 0.15s; }
-        .breadcrumb-link:hover { color: var(--foreground); }
-        .breadcrumb-link svg { width: 14px; height: 14px; }
-        .breadcrumb-sep { color: var(--muted-foreground); opacity: 0.5; font-size: 12px; }
-        .breadcrumb-current { font-weight: 500; color: var(--foreground); }
-        .content-area { flex: 1; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+        .content-area { display: flex; flex-direction: column; gap: 20px; }
 
         /* ── Page header ── */
         .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -123,6 +63,9 @@
         .role-admin    { background: rgba(122,92,60,0.12); color: #5a3e28; }
         .role-personel { background: rgba(26,107,26,0.10); color: #1a5c1d; }
         .role-okuyucu  { background: rgba(37,99,235,0.08); color: #1e40af; }
+        .status-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+        .status-aktif { background: rgba(26,107,26,0.10); color: #1a5c1d; }
+        .status-pasif { background: rgba(197,48,48,0.10); color: #c53030; }
 
         /* Lib pills */
         .lib-cell { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; max-width: 240px; }
@@ -186,25 +129,27 @@
         .btn-danger { background: var(--destructive); color: white; }
         .btn-danger:hover { opacity: 0.9; }
 
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 35; }
-        .sidebar-overlay.visible { display: block; }
-
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-260px); }
-            .sidebar.open { transform: translateX(0); }
-            .main-content { margin-left: 0; }
-            .content-area { padding: 16px; }
             .page-header { flex-direction: column; align-items: flex-start; }
             .toolbar { flex-direction: column; align-items: stretch; }
             .filter-input { min-width: 0; width: 100%; }
         }
     </style>
-</head>
-<body>
+@endsection
 
+@section('breadcrumb')
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ route('katalog.index') }}" class="breadcrumb-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Ana Sayfa
+        </a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">Kullanıcılar</span>
+    </nav>
+@endsection
+
+@section('content')
 <div class="toast-container" id="toastContainer"></div>
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
 <!-- Delete Modal -->
 <div class="modal-backdrop" id="deleteModal">
     <div class="modal">
@@ -225,27 +170,6 @@
         </div>
     </div>
 </div>
-
-<div class="app-layout">
-
-    @include('partials.sidebar')
-
-    <main class="main-content" id="mainContent">
-
-        <header class="top-header">
-            <button class="sidebar-trigger" id="sidebarToggle" aria-label="Sidebar toggle">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
-            </button>
-            <div class="header-separator"></div>
-            <nav class="breadcrumb">
-                <a href="{{ route('katalog.index') }}" class="breadcrumb-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    Ana Sayfa
-                </a>
-                <span class="breadcrumb-sep">/</span>
-                <span class="breadcrumb-current">Kullanıcılar</span>
-            </nav>
-        </header>
 
         <div class="content-area">
 
@@ -290,6 +214,16 @@
                     </select>
                 </div>
 
+                <!-- Durum filtresi -->
+                <div class="filter-wrap">
+                    <svg class="fi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    <select class="filter-select has-icon" id="statuFilter">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="aktif" selected>Aktif</option>
+                        <option value="pasif">Pasif</option>
+                    </select>
+                </div>
+
                 <!-- Kütüphane filtresi -->
                 <div class="filter-wrap">
                     <svg class="fi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
@@ -321,6 +255,7 @@
                             <th style="width:48px;">#</th>
                             <th>Kullanıcı</th>
                             <th style="width:110px;">Rol</th>
+                            <th style="width:110px;">Durum</th>
                             <th>Yetkili Kütüphaneler</th>
                             <th style="width:100px;">Kayıt Tarihi</th>
                             <th style="width:130px;">Son Giriş</th>
@@ -328,7 +263,7 @@
                         </tr>
                         </thead>
                         <tbody id="tableBody">
-                        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted-foreground);font-size:13px;">Yükleniyor…</td></tr>
+                        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted-foreground);font-size:13px;">Yükleniyor…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -353,24 +288,10 @@
             </div>
 
         </div>
-    </main>
-</div>
+@endsection
 
+@section('scripts')
 <script>
-    // ══════════════════════════════════════════════════════════════════════════════
-    // Sidebar
-    // ══════════════════════════════════════════════════════════════════════════════
-    var sidebar = document.getElementById('sidebar');
-    var mainContent = document.getElementById('mainContent');
-    var sidebarOverlay = document.getElementById('sidebarOverlay');
-    var isMobile = window.innerWidth <= 768;
-    document.getElementById('sidebarToggle').addEventListener('click', function() {
-        if (isMobile) { sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('visible'); }
-        else { sidebar.classList.toggle('collapsed'); mainContent.classList.toggle('expanded'); }
-    });
-    sidebarOverlay.addEventListener('click', function() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('visible'); });
-    window.addEventListener('resize', function() { isMobile = window.innerWidth <= 768; });
-
     // ══════════════════════════════════════════════════════════════════════════════
     // Toast
     // ══════════════════════════════════════════════════════════════════════════════
@@ -389,7 +310,7 @@
     // ══════════════════════════════════════════════════════════════════════════════
     // State
     // ══════════════════════════════════════════════════════════════════════════════
-    var state = { search: '', role: '', kutuphane_id: 0, per_page: 10, page: 1 };
+    var state = { search: '', role: '', statu: 'aktif', kutuphane_id: 0, per_page: 10, page: 1 };
     var fetchTimer   = null;   // debounce timer (arama kutusu)
     var activeXhr    = null;   // mevcut AbortController — önceki isteği iptal etmek için
     var currentAuthId = {{ auth()->id() }};
@@ -444,6 +365,7 @@
             '<div class="user-email">' + esc(u.email) + '</div></div>' +
             '</div></td>' +
             '<td><span class="role-badge" style="' + roleBg + '">' + esc(u.role_label) + '</span></td>' +
+            '<td><span class="status-badge status-' + esc(u.statu || 'aktif') + '">' + esc(u.statu || 'aktif') + '</span></td>' +
             '<td>' + renderLibPills(u.kutuphaneler) + '</td>' +
             '<td style="font-size:13px;color:var(--muted-foreground);">' + esc(u.created_at) + '</td>' +
             '<td style="font-size:13px;color:var(--muted-foreground);">' + esc(u.last_login_at) + '</td>' +
@@ -521,6 +443,7 @@
         var params = new URLSearchParams({
             search:       state.search,
             role:         state.role,
+            statu:        state.statu,
             kutuphane_id: state.kutuphane_id > 0 ? state.kutuphane_id : '',
             per_page:     state.per_page,
             page:         state.page,
@@ -552,7 +475,7 @@
 
                 var tbody = document.getElementById('tableBody');
                 if (rows.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7">' +
+                    tbody.innerHTML = '<tr><td colspan="8">' +
                         '<div class="empty-state">' +
                         '<div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>' +
                         '<p class="empty-title">Kullanıcı bulunamadı</p>' +
@@ -580,10 +503,11 @@
     // Filter listeners
     // ══════════════════════════════════════════════════════════════════════════════
     function updateClearBtn() {
-        var hasFilter = state.search !== '' || state.role !== '' || state.kutuphane_id > 0;
+        var hasFilter = state.search !== '' || state.role !== '' || state.statu !== '' || state.kutuphane_id > 0;
         document.getElementById('clearFiltersBtn').style.display = hasFilter ? '' : 'none';
         document.getElementById('searchInput').classList.toggle('filter-active', state.search !== '');
         document.getElementById('roleFilter').classList.toggle('filter-active', state.role !== '');
+        document.getElementById('statuFilter').classList.toggle('filter-active', state.statu !== '');
         document.getElementById('kutuphaneFilter').classList.toggle('filter-active', state.kutuphane_id > 0);
     }
 
@@ -596,6 +520,12 @@
     document.getElementById('roleFilter').addEventListener('change', function() {
         clearTimeout(fetchTimer); // bekleyen arama timer'ını iptal et
         state.role = this.value;
+        fetchTable(true);
+    });
+
+    document.getElementById('statuFilter').addEventListener('change', function() {
+        clearTimeout(fetchTimer); // bekleyen arama timer'ını iptal et
+        state.statu = this.value;
         fetchTable(true);
     });
 
@@ -613,9 +543,10 @@
 
     document.getElementById('clearFiltersBtn').addEventListener('click', function() {
         clearTimeout(fetchTimer);
-        state.search = ''; state.role = ''; state.kutuphane_id = 0;
+        state.search = ''; state.role = ''; state.statu = 'aktif'; state.kutuphane_id = 0;
         document.getElementById('searchInput').value    = '';
         document.getElementById('roleFilter').value     = '';
+        document.getElementById('statuFilter').value    = 'aktif';
         document.getElementById('kutuphaneFilter').value = '';
         fetchTable(true);
     });
@@ -627,6 +558,7 @@
         var params = new URLSearchParams({
             search:       state.search,
             role:         state.role,
+            statu:        state.statu,
             kutuphane_id: state.kutuphane_id || '',
         });
         var a = document.createElement('a');
@@ -657,5 +589,4 @@
     // ══════════════════════════════════════════════════════════════════════════════
     fetchTable();
 </script>
-</body>
-</html>
+@endsection

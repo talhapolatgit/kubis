@@ -1,71 +1,10 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#7a5c3c" />
-    <title>Yeni Kullanıcı — Beyoğlu Kütüphane Sistemi</title>
+@extends('layouts.base')
+
+@section('title', 'Yeni Kullanici')
+
+@section('styles')
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-        :root {
-            --background:#f5f0e8;--foreground:#3d3226;--card:#faf8f3;
-            --primary:#7a5c3c;--primary-foreground:#f5f0e8;
-            --secondary:#ede8de;--muted:#ede8de;--muted-foreground:#7a7060;
-            --destructive:#c53030;--border:#d9d0c2;--ring:#7a5c3c;--radius:0.625rem;
-            --sidebar:#3d3226;--sidebar-foreground:#e8e2d6;
-            --sidebar-primary:#9b7b55;--sidebar-primary-foreground:#f5f0e8;
-            --sidebar-accent:#524435;--sidebar-accent-foreground:#e8e2d6;
-            --sidebar-border:#5a4a3a;
-            --font-sans:'Source Sans 3',system-ui,sans-serif;
-            --font-serif:'Merriweather',Georgia,serif;
-        }
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:var(--font-sans);background:var(--background);color:var(--foreground);-webkit-font-smoothing:antialiased;line-height:1.5}
-        input,select,button{font-family:inherit;font-size:inherit}
-
-        .app-layout{display:flex;min-height:100vh}
-
-        /* ── Sidebar ── */
-        .sidebar{width:260px;background:var(--sidebar);color:var(--sidebar-foreground);display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid var(--sidebar-border);position:fixed;top:0;left:0;bottom:0;z-index:40;transition:transform .3s ease}
-        .sidebar.collapsed{transform:translateX(-260px)}
-        .sidebar-header{padding:16px;display:flex;align-items:center;gap:12px}
-        .sidebar-logo{width:36px;height:36px;border-radius:8px;background:var(--sidebar-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .sidebar-logo svg{width:20px;height:20px;color:var(--sidebar-primary-foreground)}
-        .sidebar-brand-name{font-size:16px;font-weight:700;letter-spacing:-.025em}
-        .sidebar-brand-sub{font-size:12px;opacity:.6}
-        .sidebar-separator{height:1px;background:var(--sidebar-border);margin:0 16px}
-        .sidebar-content{flex:1;overflow-y:auto;padding:8px 0}
-        .sidebar-group{padding:8px 12px}
-        .sidebar-group-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--sidebar-foreground);opacity:.5;padding:4px 8px;margin-bottom:4px}
-        .sidebar-menu{list-style:none}
-        .sidebar-menu-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:14px;font-weight:500;color:var(--sidebar-foreground);cursor:pointer;transition:background .15s;text-decoration:none}
-        .sidebar-menu-item:hover{background:var(--sidebar-accent)}
-        .sidebar-menu-item.active{background:var(--sidebar-accent);color:var(--sidebar-accent-foreground)}
-        .sidebar-menu-item svg{width:18px;height:18px;flex-shrink:0;opacity:.8}
-        .sidebar-footer{padding:16px;border-top:1px solid var(--sidebar-border)}
-        .sidebar-user{display:flex;align-items:center;gap:12px}
-        .sidebar-avatar{width:32px;height:32px;border-radius:50%;background:var(--sidebar-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
-        .sidebar-user-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .sidebar-user-role{font-size:12px;opacity:.6}
-
-        /* ── Main ── */
-        .main-content{flex:1;margin-left:260px;display:flex;flex-direction:column;min-height:100vh;transition:margin-left .3s ease}
-        .main-content.expanded{margin-left:0}
-        .top-header{height:56px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid rgba(217,208,194,.6);background:var(--card);flex-shrink:0}
-        .sidebar-trigger{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:none;background:transparent;cursor:pointer;color:var(--foreground);transition:background .15s}
-        .sidebar-trigger:hover{background:var(--muted)}
-        .sidebar-trigger svg{width:18px;height:18px}
-        .header-separator{width:1px;height:20px;background:var(--border)}
-        .breadcrumb{display:flex;align-items:center;gap:8px;font-size:14px}
-        .breadcrumb-link{display:flex;align-items:center;gap:6px;color:var(--muted-foreground);text-decoration:none;transition:color .15s}
-        .breadcrumb-link:hover{color:var(--foreground)}
-        .breadcrumb-link svg{width:14px;height:14px}
-        .breadcrumb-sep{color:var(--muted-foreground);opacity:.5;font-size:12px}
-        .breadcrumb-current{font-weight:500;color:var(--foreground)}
-        .content-area{flex:1;padding:24px}
 
         /* ── Form Card ── */
         .form-card{border:1px solid rgba(217,208,194,.6);border-radius:var(--radius);background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.04);max-width:720px}
@@ -199,22 +138,26 @@
         @keyframes toast-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
         @keyframes toast-out{from{opacity:1}to{opacity:0;transform:translateX(100%)}}
 
-        .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35}
-        .sidebar-overlay.visible{display:block}
-
         @media(max-width:768px){
-            .sidebar{transform:translateX(-260px)}
-            .sidebar.open{transform:translateX(0)}
-            .main-content{margin-left:0}
-            .content-area{padding:16px}
             .form-grid.cols-2,.form-grid.cols-3,.role-cards{grid-template-columns:1fr}
             .span-2{grid-column:span 1}
             .form-actions{flex-direction:column-reverse}
         }
     </style>
-</head>
-<body>
+@endsection
 
+@section('breadcrumb')
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ route('users.index') }}" class="breadcrumb-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Kullanıcılar
+        </a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">Yeni Kullanıcı</span>
+    </nav>
+@endsection
+
+@section('content')
 <div class="toast-container" id="toastContainer"></div>
 <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-box">
@@ -223,28 +166,6 @@
         <span class="loading-subtext">Lütfen bekleyin</span>
     </div>
 </div>
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<div class="app-layout">
-    @include('partials.sidebar')
-
-    <main class="main-content" id="mainContent">
-
-        <header class="top-header">
-            <button class="sidebar-trigger" id="sidebarToggle">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
-            </button>
-            <div class="header-separator"></div>
-            <nav class="breadcrumb">
-                <a href="{{ route('users.index') }}" class="breadcrumb-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                    Kullanıcılar
-                </a>
-                <span class="breadcrumb-sep">/</span>
-                <span class="breadcrumb-current">Yeni Kullanıcı</span>
-            </nav>
-        </header>
-
         <div class="content-area">
             <form id="userForm" class="form-card" method="POST"
                   action="{{ route('users.store') }}" novalidate>
@@ -497,9 +418,33 @@
 
                     {{-- Bölüm 6: Kütüphane Yetkileri --}}
                     <div>
+                        <p class="section-label"><span class="section-num">6</span> Hesap Ayarları</p>
+                        <div class="form-grid cols-2">
+                            <div class="form-field">
+                                <label class="form-label" for="statu">Hesap Durumu <span class="req">*</span></label>
+                                <select id="statu" name="statu" class="form-select @error('statu') is-error @enderror">
+                                    <option value="aktif" {{ old('statu', 'aktif') === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                                    <option value="pasif" {{ old('statu') === 'pasif' ? 'selected' : '' }}>Pasif</option>
+                                </select>
+                                @error('statu')<div class="form-error"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-field" style="justify-content:flex-end;">
+                                <label class="form-label" for="twofactor">SMS ile 2FA</label>
+                                <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--secondary);cursor:pointer;">
+                                    <input type="checkbox" id="twofactor" name="twofactor" value="1" {{ old('twofactor') ? 'checked' : '' }} style="width:16px;height:16px;accent-color:var(--primary);" />
+                                    <span style="font-size:13px;">Girişte SMS doğrulama zorunlu</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-sep"></div>
+
+                    {{-- Bölüm 7: Kütüphane Yetkileri --}}
+                    <div>
                         <div class="kutuphane-section-header">
                             <p class="section-label" style="margin-bottom:0;">
-                                <span class="section-num">6</span>
+                                <span class="section-num">7</span>
                                 Kütüphane Yetkileri
                                 <span style="font-size:11px;font-weight:400;color:var(--muted-foreground);text-transform:none;letter-spacing:0;margin-left:2px;">(İsteğe bağlı)</span>
                             </p>
@@ -552,21 +497,10 @@
                 </div>
             </form>
         </div>
-    </main>
-</div>
+@endsection
 
+@section('scripts')
 <script>
-    // Sidebar
-    var sidebar = document.getElementById('sidebar');
-    var mainContent = document.getElementById('mainContent');
-    var sidebarOverlay = document.getElementById('sidebarOverlay');
-    var isMobile = window.innerWidth <= 768;
-    document.getElementById('sidebarToggle').addEventListener('click', function() {
-        if (isMobile) { sidebar.classList.toggle('open'); sidebarOverlay.classList.toggle('visible'); }
-        else { sidebar.classList.toggle('collapsed'); mainContent.classList.toggle('expanded'); }
-    });
-    sidebarOverlay.addEventListener('click', function() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('visible'); });
-
     // Toast
     function showToast(type, title, desc) {
         var c = document.getElementById('toastContainer');
@@ -855,5 +789,4 @@
             });
     });
 </script>
-</body>
-</html>
+@endsection

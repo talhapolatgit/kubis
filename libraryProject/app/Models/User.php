@@ -33,6 +33,8 @@ class User extends Authenticatable
         'acik_adres',
         'password',
         'role',
+        'statu',
+        'twofactor',
     ];
 
     /**
@@ -56,6 +58,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'dogum_tarihi'      => 'date',
             'password'          => 'hashed',
+            'twofactor'         => 'boolean',
         ];
     }
 

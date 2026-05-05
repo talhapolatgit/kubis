@@ -1,272 +1,18 @@
-@php($isViewOnly = $isViewOnly ?? false)
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#7a5c3c" />
-    <title>Beyoğlu Kütüphane Sistemi</title>
+@php
+    $isViewOnly = $isViewOnly ?? false;
+    $canTransferKutuphane = $canTransferKutuphane ?? false;
+    $kutuphaneTransferTargets = $kutuphaneTransferTargets ?? collect();
+    $kutuphaneTransferAllowedJson = $kutuphaneTransferAllowedJson ?? [];
+    $currentKutuphaneTitle = $currentKutuphaneTitle ?? '—';
+@endphp
+@extends('layouts.base')
+
+@section('title', 'Kitap Guncelle')
+
+@section('styles')
     <meta name="description" content="Modern kutuphane yonetim ve otomasyon sistemi. Kitap kaydi, odunc verme ve envanter yonetimi." />
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-        /* ============= CSS Variables ============= */
-        :root {
-            --background: #f5f0e8;
-            --foreground: #3d3226;
-            --card: #faf8f3;
-            --card-foreground: #3d3226;
-            --primary: #7a5c3c;
-            --primary-foreground: #f5f0e8;
-            --secondary: #ede8de;
-            --secondary-foreground: #4a3c2e;
-            --muted: #ede8de;
-            --muted-foreground: #7a7060;
-            --accent: #9b6b3f;
-            --accent-foreground: #f5f0e8;
-            --destructive: #c53030;
-            --border: #d9d0c2;
-            --input: #e2dbd0;
-            --ring: #7a5c3c;
-            --radius: 0.625rem;
-
-            --sidebar: #3d3226;
-            --sidebar-foreground: #e8e2d6;
-            --sidebar-primary: #9b7b55;
-            --sidebar-primary-foreground: #f5f0e8;
-            --sidebar-accent: #524435;
-            --sidebar-accent-foreground: #e8e2d6;
-            --sidebar-border: #5a4a3a;
-
-            --font-sans: 'Source Sans 3', system-ui, sans-serif;
-            --font-serif: 'Merriweather', Georgia, serif;
-        }
-
-        /* ============= Reset & Base ============= */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: var(--font-sans);
-            background: var(--background);
-            color: var(--foreground);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            line-height: 1.5;
-        }
-
-        input, select, textarea, button { font-family: inherit; font-size: inherit; }
-
-        /* ============= Layout ============= */
-        .app-layout {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* ============= Sidebar ============= */
-        .sidebar {
-            width: 260px;
-            background: var(--sidebar);
-            color: var(--sidebar-foreground);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-            border-right: 1px solid var(--sidebar-border);
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            z-index: 40;
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar.collapsed {
-            transform: translateX(-260px);
-        }
-
-        .sidebar-header {
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .sidebar-logo {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background: var(--sidebar-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .sidebar-logo svg { width: 20px; height: 20px; color: var(--sidebar-primary-foreground); }
-
-        .sidebar-brand-name {
-            font-family: var(--font-sans);
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-        }
-
-        .sidebar-brand-sub {
-            font-size: 12px;
-            opacity: 0.6;
-        }
-
-        .sidebar-separator {
-            height: 1px;
-            background: var(--sidebar-border);
-            margin: 0 16px;
-        }
-
-        .sidebar-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px 0;
-        }
-
-        .sidebar-group { padding: 8px 12px; }
-
-        .sidebar-group-label {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--sidebar-foreground);
-            opacity: 0.5;
-            padding: 4px 8px;
-            margin-bottom: 4px;
-        }
-
-        .sidebar-menu { list-style: none; }
-
-        .sidebar-menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--sidebar-foreground);
-            cursor: pointer;
-            transition: background 0.15s ease;
-            text-decoration: none;
-        }
-
-        .sidebar-menu-item:hover { background: var(--sidebar-accent); }
-
-        .sidebar-menu-item.active {
-            background: var(--sidebar-accent);
-            color: var(--sidebar-accent-foreground);
-        }
-
-        .sidebar-menu-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.8; }
-
-        .sidebar-footer {
-            padding: 16px;
-            border-top: 1px solid var(--sidebar-border);
-        }
-
-        .sidebar-user {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .sidebar-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--sidebar-accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .sidebar-user-name { font-size: 14px; font-weight: 500; }
-        .sidebar-user-role { font-size: 12px; opacity: 0.6; }
-
-        /* ============= Main Content ============= */
-        .main-content {
-            flex: 1;
-            margin-left: 260px;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            background: var(--background);
-            transition: margin-left 0.3s ease;
-        }
-
-        .main-content.expanded { margin-left: 0; }
-
-        /* ============= Header ============= */
-        .top-header {
-            height: 56px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 0 16px;
-            border-bottom: 1px solid rgba(217, 208, 194, 0.6);
-            background: var(--card);
-            flex-shrink: 0;
-        }
-
-        .sidebar-trigger {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            color: var(--foreground);
-            transition: background 0.15s;
-        }
-
-        .sidebar-trigger:hover { background: var(--muted); }
-        .sidebar-trigger svg { width: 18px; height: 18px; }
-
-        .header-separator {
-            width: 1px;
-            height: 20px;
-            background: var(--border);
-        }
-
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-
-        .breadcrumb-link {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--muted-foreground);
-            text-decoration: none;
-            transition: color 0.15s;
-        }
-
-        .breadcrumb-link:hover { color: var(--foreground); }
-        .breadcrumb-link svg { width: 14px; height: 14px; }
-
-        .breadcrumb-sep { color: var(--muted-foreground); opacity: 0.5; font-size: 12px; }
-
-        .breadcrumb-current { font-weight: 500; color: var(--foreground); }
-
-        .header-actions { margin-left: auto; }
-
         .form-card-header-main {
             flex: 1;
             min-width: 0;
@@ -305,40 +51,6 @@
             pointer-events: none;
             opacity: 0.55;
             cursor: default;
-        }
-
-        .notification-btn {
-            position: relative;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            color: var(--foreground);
-            transition: background 0.15s;
-        }
-
-        .notification-btn:hover { background: var(--muted); }
-        .notification-btn svg { width: 16px; height: 16px; }
-
-        .notification-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: var(--primary-foreground);
-            font-size: 10px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         /* ============= Content Area ============= */
@@ -389,15 +101,6 @@
 
         .stat-label { font-size: 12px; color: var(--muted-foreground); }
 
-        /* ============= Form Card ============= */
-        .form-card {
-            border: 1px solid rgba(217, 208, 194, 0.6);
-            border-radius: var(--radius);
-            background: var(--card);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            overflow: hidden;
-        }
-
         .form-card-header {
             padding: 24px 24px 16px;
             display: flex;
@@ -406,32 +109,6 @@
             justify-content: space-between;
             gap: 16px;
         }
-
-        .form-card-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: var(--font-serif);
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--foreground);
-        }
-
-        .form-card-title svg { width: 20px; height: 20px; color: var(--primary); }
-
-        .form-card-desc {
-            font-size: 14px;
-            color: var(--muted-foreground);
-            line-height: 1.6;
-            margin-top: 4px;
-        }
-
-        .form-card-separator {
-            height: 1px;
-            background: var(--border);
-        }
-
-        .form-card-body { padding: 24px; }
 
         /* ============= Form Layout ============= */
         .form-layout {
@@ -858,6 +535,72 @@
             to { transform: translateX(100%); opacity: 0; }
         }
 
+        /* ============= Katalog transfer modal ============= */
+        .katalog-transfer-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 2100;
+            background: rgba(61, 50, 38, 0.5);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .katalog-transfer-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .katalog-transfer-modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 24px 20px;
+            max-width: 420px;
+            width: calc(100% - 32px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+            transform: scale(0.96);
+            transition: transform 0.2s ease;
+        }
+        .katalog-transfer-backdrop.visible .katalog-transfer-modal {
+            transform: scale(1);
+        }
+        .katalog-transfer-modal h2 {
+            font-family: var(--font-serif);
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: var(--foreground);
+        }
+        .katalog-transfer-field { margin-bottom: 14px; }
+        .katalog-transfer-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted-foreground);
+            margin-bottom: 6px;
+        }
+        .katalog-transfer-current {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--foreground);
+            padding: 10px 12px;
+            background: var(--muted);
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid var(--border);
+        }
+        .katalog-transfer-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 18px;
+        }
+
         /* ============= Combobox ============= */
         .combobox-wrapper {
             position: relative;
@@ -1007,17 +750,6 @@
             opacity: 0.8;
         }
 
-        /* ============= Mobile Overlay ============= */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.4);
-            z-index: 35;
-        }
-
-        .sidebar-overlay.visible { display: block; }
-
         /* ============= Responsive ============= */
         @media (max-width: 1024px) {
             .form-layout { flex-direction: column; }
@@ -1030,11 +762,6 @@
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-260px);
-            }
-            .sidebar.open { transform: translateX(0); }
-            .main-content { margin-left: 0; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .content-area { padding: 16px; }
             .form-grid.cols-2, .form-grid.cols-3 { grid-template-columns: 1fr; }
@@ -1064,9 +791,20 @@
         .ue-selected-clear:hover{background:var(--muted)}
         .ue-selected-clear svg{width:13px;height:13px}
     </style>
-</head>
-<body class="{{ $isViewOnly ? 'view-only-page' : '' }}">
+@endsection
 
+@section('breadcrumb')
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{{ route('katalog.index') }}" class="breadcrumb-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+            Katalog
+        </a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ $isViewOnly ? 'Kitap Görüntüle' : 'Kitap Güncelle' }}</span>
+    </nav>
+@endsection
+
+@section('content')
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -1079,39 +817,35 @@
     </div>
 </div>
 
-<!-- Sidebar Overlay (Mobile) -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+@if(!$isViewOnly && $canTransferKutuphane && $kutuphaneTransferTargets->isNotEmpty())
+<div class="katalog-transfer-backdrop" id="katalogTransferBackdrop" role="dialog" aria-modal="true" aria-labelledby="katalogTransferTitle" hidden>
+    <div class="katalog-transfer-modal" role="document">
+        <h2 id="katalogTransferTitle">Katalog Transfer</h2>
+        <div class="katalog-transfer-field">
+            <label>Mevcut Kütüphane</label>
+            <div class="katalog-transfer-current" id="katalogTransferCurrentLib">{{ $currentKutuphaneTitle }}</div>
+        </div>
+        <div class="katalog-transfer-field">
+            <label class="form-label" for="transferTargetKutuphaneId">Transfer edilecek kütüphane</label>
+            <select class="form-select" id="transferTargetKutuphaneId" autocomplete="off">
+                <option value="">— Seçiniz —</option>
+                @foreach($kutuphaneTransferTargets as $k)
+                    <option value="{{ $k->id }}">{{ $k->title }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="katalog-transfer-field">
+            <label class="form-label" for="transferAciklama">Açıklama <span style="font-weight:400;color:var(--muted-foreground);">(isteğe bağlı)</span></label>
+            <textarea class="form-textarea" id="transferAciklama" rows="3" maxlength="5000" placeholder="Transfer ile ilgili not ekleyebilirsiniz…" autocomplete="off"></textarea>
+        </div>
+        <div class="katalog-transfer-actions">
+            <button type="button" class="btn btn-outline" id="katalogTransferCancel">İptal</button>
+            <button type="button" class="btn btn-primary" id="katalogTransferSubmit">Transfer et</button>
+        </div>
+    </div>
+</div>
+@endif
 
-<div class="app-layout">
-
-    @include('partials.sidebar')
-
-    <!-- ====== MAIN CONTENT ====== -->
-    <main class="main-content" id="mainContent">
-        <!-- Header -->
-        <header class="top-header">
-            <button class="sidebar-trigger" id="sidebarToggle" aria-label="Sidebar toggle">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
-            </button>
-            <div class="header-separator"></div>
-            <nav class="breadcrumb" aria-label="Breadcrumb">
-                <a href="#" class="breadcrumb-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
-                    Katalog
-                </a>
-                <span class="breadcrumb-sep">/</span>
-                <span class="breadcrumb-current">{{ $isViewOnly ? 'Kitap Görüntüle' : 'Kitap Güncelle' }}</span>
-            </nav>
-            <div class="header-actions">
-                <button class="notification-btn" aria-label="Bildirimler">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                    <span class="notification-badge">3</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- Content -->
-        <div class="content-area">
             <!-- Book Registration Form -->
             <form id="bookForm" class="form-card" method="POST" action="{{ $isViewOnly ? '#' : route('katalog.update', $kitap->id) }}" enctype="multipart/form-data" novalidate>
                 @csrf
@@ -1712,15 +1446,20 @@
                                         <label class="form-label" for="kutuphaneId">
                                             Kütüphane
                                         </label>
-                                        <select class="form-select" id="kutuphaneId" name="kutuphaneId" disabled>
-                                            <option value="">— Seçiniz —</option>
-                                            @foreach($kutuphaneler as $kutuphane)
-                                                <option value="{{ $kutuphane->id }}"
-                                                    {{ old('kutuphaneId', $kitap->kutuphaneId) == $kutuphane->id ? 'selected' : '' }}>
-                                                    {{ $kutuphane->title }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                            <select class="form-select" id="kutuphaneId" name="kutuphaneId" disabled style="flex:1; min-width:200px;">
+                                                <option value="">— Seçiniz —</option>
+                                                @foreach($kutuphaneler as $kutuphane)
+                                                    <option value="{{ $kutuphane->id }}"
+                                                        {{ old('kutuphaneId', $kitap->kutuphaneId) == $kutuphane->id ? 'selected' : '' }}>
+                                                        {{ $kutuphane->title }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @if(!$isViewOnly && $canTransferKutuphane && $kutuphaneTransferTargets->isNotEmpty())
+                                                <button type="button" class="btn btn-outline" id="btnKatalogTransferOpen" style="flex-shrink:0;">Transfer</button>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     <div class="form-field">
@@ -1791,10 +1530,9 @@
                     </div>
                 </div>
             </form>
-        </div>
-    </main>
-</div>
+@endsection
 
+@section('scripts')
 <script>
     // ============================
     // Toast System
@@ -1813,40 +1551,6 @@
             }, 300);
         }, 3500);
     }
-
-    // ============================
-    // Sidebar Toggle
-    // ============================
-    var sidebar = document.getElementById('sidebar');
-    var mainContent = document.getElementById('mainContent');
-    var sidebarToggle = document.getElementById('sidebarToggle');
-    var sidebarOverlay = document.getElementById('sidebarOverlay');
-    var isMobile = window.innerWidth <= 768;
-
-    function toggleSidebar() {
-        if (isMobile) {
-            sidebar.classList.toggle('open');
-            sidebarOverlay.classList.toggle('visible');
-        } else {
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('expanded');
-        }
-    }
-
-    sidebarToggle.addEventListener('click', toggleSidebar);
-
-    sidebarOverlay.addEventListener('click', function() {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('visible');
-    });
-
-    window.addEventListener('resize', function() {
-        isMobile = window.innerWidth <= 768;
-        if (!isMobile) {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('visible');
-        }
-    });
 
     // ============================
     // Cover Image Upload
@@ -3270,6 +2974,131 @@
     }
 
     // ============================
+    // Katalog kütüphane transferi
+    // ============================
+    (function () {
+        var backdrop = document.getElementById('katalogTransferBackdrop');
+        var openBtn = document.getElementById('btnKatalogTransferOpen');
+        var cancelBtn = document.getElementById('katalogTransferCancel');
+        var submitBtn = document.getElementById('katalogTransferSubmit');
+        var targetSel = document.getElementById('transferTargetKutuphaneId');
+        var aciklamaEl = document.getElementById('transferAciklama');
+        var mainKutSel = document.getElementById('kutuphaneId');
+        var currentLibEl = document.getElementById('katalogTransferCurrentLib');
+        var allowedList = @json($kutuphaneTransferAllowedJson);
+
+        function rebuildTransferTargetOptions(excludeId) {
+            if (!targetSel) return;
+            var ex = excludeId != null && excludeId !== '' ? parseInt(excludeId, 10) : null;
+            targetSel.innerHTML = '<option value="">— Seçiniz —</option>';
+            (allowedList || []).forEach(function (row) {
+                if (ex != null && !isNaN(ex) && row.id === ex) return;
+                var opt = document.createElement('option');
+                opt.value = String(row.id);
+                opt.textContent = row.title;
+                targetSel.appendChild(opt);
+            });
+        }
+
+        function setBackdropVisible(show) {
+            if (!backdrop) return;
+            if (show) {
+                backdrop.hidden = false;
+                backdrop.classList.add('visible');
+                document.body.style.overflow = 'hidden';
+            } else {
+                backdrop.classList.remove('visible');
+                document.body.style.overflow = '';
+                setTimeout(function () { backdrop.hidden = true; }, 200);
+            }
+        }
+
+        if (openBtn && backdrop) {
+            openBtn.addEventListener('click', function () {
+                rebuildTransferTargetOptions(mainKutSel ? mainKutSel.value : null);
+                if (targetSel) targetSel.value = '';
+                if (aciklamaEl) aciklamaEl.value = '';
+                setBackdropVisible(true);
+            });
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () { setBackdropVisible(false); });
+        }
+        if (backdrop) {
+            backdrop.addEventListener('click', function (e) {
+                if (e.target === backdrop) setBackdropVisible(false);
+            });
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && backdrop && backdrop.classList.contains('visible')) {
+                setBackdropVisible(false);
+            }
+        });
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function () {
+                if (!targetSel || !mainKutSel) return;
+                var toId = parseInt(targetSel.value, 10);
+                if (!toId) {
+                    showToast('error', 'Seçim gerekli', 'Lütfen transfer edilecek kütüphaneyi seçin.');
+                    return;
+                }
+                submitBtn.disabled = true;
+                fetch(@json(route('katalog.transferKutuphane', $kitap)), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to_kutuphane_id: toId,
+                        aciklama: aciklamaEl && aciklamaEl.value ? aciklamaEl.value.trim() : ''
+                    })
+                })
+                .then(function (r) {
+                    return r.text().then(function (text) {
+                        var data = {};
+                        try { data = text ? JSON.parse(text) : {}; } catch (err) { data = {}; }
+                        if (!r.ok) {
+                            var msg = 'HTTP ' + r.status;
+                            if (data && data.message) msg = data.message;
+                            else if (data && data.errors) {
+                                if (data.errors.to_kutuphane_id && data.errors.to_kutuphane_id[0]) {
+                                    msg = data.errors.to_kutuphane_id[0];
+                                } else if (data.errors.aciklama && data.errors.aciklama[0]) {
+                                    msg = data.errors.aciklama[0];
+                                }
+                            }
+                            throw new Error(msg);
+                        }
+                        return data;
+                    });
+                })
+                .then(function (data) {
+                    if (mainKutSel) {
+                        mainKutSel.value = String(data.kutuphane_id);
+                    }
+                    if (currentLibEl && data.kutuphane_title) {
+                        currentLibEl.textContent = data.kutuphane_title;
+                    }
+                    rebuildTransferTargetOptions(data.kutuphane_id);
+                    if (targetSel) targetSel.value = '';
+                    if (aciklamaEl) aciklamaEl.value = '';
+                    setBackdropVisible(false);
+                    showToast('success', 'Transfer tamamlandı', data.message || 'Katalog yeni kütüphaneye taşındı.');
+                })
+                .catch(function (err) {
+                    showToast('error', 'Transfer başarısız', err.message || 'Bilinmeyen hata.');
+                })
+                .finally(function () {
+                    submitBtn.disabled = false;
+                });
+            });
+        }
+    })();
+
+    // ============================
     // View Only Mode
     // ============================
     (function () {
@@ -3329,5 +3158,4 @@
     // ============================
 
 </script>
-</body>
-</html>
+@endsection

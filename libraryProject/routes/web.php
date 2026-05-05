@@ -24,6 +24,9 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/giris',  [AuthController::class, 'loginForm'])->name('login');
     Route::post('/giris', [AuthController::class, 'login'])->name('auth.login.post');
+    Route::get('/giris/2fa', [AuthController::class, 'twoFactorForm'])->name('auth.twofactor.form');
+    Route::post('/giris/2fa', [AuthController::class, 'twoFactorVerify'])->name('auth.twofactor.verify');
+    Route::post('/giris/2fa/yeniden-gonder', [AuthController::class, 'twoFactorResend'])->name('auth.twofactor.resend');
 });
 
 Route::post('/cikis', [AuthController::class, 'logout'])
@@ -32,6 +35,8 @@ Route::post('/cikis', [AuthController::class, 'logout'])
 
 // ─── Korumalı alan (giriş gerektirir) ─────────────────────────────────────────
 Route::middleware('auth')->group(function () {
+    Route::get('/sifre-degistir', [AuthController::class, 'passwordForm'])->name('auth.password.form');
+    Route::post('/sifre-degistir', [AuthController::class, 'passwordUpdate'])->name('auth.password.update');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
@@ -50,6 +55,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/katalog/{kitap}/copy', [KatalogController::class, 'copy'])->name('katalog.copy');
     Route::get('/katalog/{kitap}/view', [KatalogController::class, 'view'])->name('katalog.view');
     Route::get('/katalog/{kitap}/edit', [KatalogController::class, 'edit'])->name('katalog.edit');
+    Route::post('/katalog/{kitap}/transfer-kutuphane', [KatalogController::class, 'transferKutuphane'])->name('katalog.transferKutuphane');
     Route::put('/katalog/{kitap}',      [KatalogController::class, 'update'])->name('katalog.update');
 
     // Kütüphane

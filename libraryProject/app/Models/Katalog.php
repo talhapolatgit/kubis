@@ -64,6 +64,14 @@ class Katalog extends Model
         return $this->belongsTo(Kutuphane::class, 'kutuphaneId');
     }
 
+    /**
+     * Kütüphane transfer geçmişi (audit).
+     */
+    public function kutuphaneTransferleri()
+    {
+        return $this->hasMany(KatalogKutuphaneTransfer::class, 'katalog_id')->orderByDesc('created_at');
+    }
+
     public function koleksiyon()
     {
         return $this->belongsTo(Koleksiyon::class, 'koleksiyon_id');

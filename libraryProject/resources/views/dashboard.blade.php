@@ -1,61 +1,10 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#7a5c3c" />
-    <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>Genel Bakış — KÜBİS</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
+@extends('layouts.base')
+
+@section('title', 'Genel Bakış — KÜBİS')
+
+@section('styles')
     <style>
-        :root {
-            --background:#f5f0e8;--foreground:#3d3226;--card:#faf8f3;
-            --primary:#7a5c3c;--primary-foreground:#f5f0e8;
-            --secondary:#ede8de;--muted:#ede8de;--muted-foreground:#7a7060;
-            --destructive:#b91c1c;--success:#15803d;--warning:#b45309;
-            --border:#d9d0c2;--radius:0.625rem;
-            --sidebar:#3d3226;--sidebar-foreground:#e8e2d6;
-            --sidebar-primary:#9b7b55;--sidebar-accent:#524435;--sidebar-accent-foreground:#e8e2d6;
-            --sidebar-border:#5a4a3a;
-            --font-sans:'Source Sans 3',system-ui,sans-serif;
-            --font-serif:'Merriweather',Georgia,serif;
-        }
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:var(--font-sans);background:var(--background);color:var(--foreground);-webkit-font-smoothing:antialiased;line-height:1.5}
-        .app-layout{display:flex;min-height:100vh}
-        .sidebar{width:260px;background:var(--sidebar);color:var(--sidebar-foreground);display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid var(--sidebar-border);position:fixed;top:0;left:0;bottom:0;z-index:40;transition:transform .3s ease}
-        .sidebar.collapsed{transform:translateX(-260px)}
-        .sidebar-header{padding:16px;display:flex;align-items:center;gap:12px}
-        .sidebar-logo{width:36px;height:36px;border-radius:8px;background:var(--sidebar-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .sidebar-logo svg{width:20px;height:20px;color:var(--primary-foreground)}
-        .sidebar-brand-name{font-size:16px;font-weight:700}
-        .sidebar-brand-sub{font-size:12px;opacity:.6}
-        .sidebar-separator{height:1px;background:var(--sidebar-border);margin:0 16px}
-        .sidebar-content{flex:1;overflow-y:auto;padding:8px 0}
-        .sidebar-group{padding:8px 12px}
-        .sidebar-group-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.5;padding:4px 8px;margin-bottom:4px}
-        .sidebar-menu{list-style:none}
-        .sidebar-menu-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:14px;font-weight:500;color:var(--sidebar-foreground);text-decoration:none;transition:background .15s}
-        .sidebar-menu-item:hover{background:var(--sidebar-accent)}
-        .sidebar-menu-item.active{background:var(--sidebar-accent);color:var(--sidebar-accent-foreground)}
-        .sidebar-menu-item svg{width:18px;height:18px;flex-shrink:0;opacity:.85}
-        .sidebar-footer{padding:16px;border-top:1px solid var(--sidebar-border)}
-        .sidebar-user{display:flex;align-items:center;gap:12px}
-        .sidebar-avatar{width:32px;height:32px;border-radius:50%;background:var(--sidebar-accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
-        .sidebar-user-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .sidebar-user-role{font-size:12px;opacity:.6}
-        .main-content{flex:1;margin-left:260px;display:flex;flex-direction:column;min-height:100vh;transition:margin-left .3s ease}
-        .main-content.expanded{margin-left:0}
-        .top-header{height:56px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid rgba(217,208,194,.6);background:var(--card);flex-shrink:0}
-        .sidebar-trigger{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:none;background:transparent;cursor:pointer}
-        .sidebar-trigger:hover{background:var(--muted)}
-        .sidebar-trigger svg{width:18px;height:18px}
-        .header-separator{width:1px;height:20px;background:var(--border)}
-        .breadcrumb{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted-foreground)}
-        .breadcrumb-current{font-weight:600;color:var(--foreground)}
-        .content-area{flex:1;padding:24px 24px 40px;display:flex;flex-direction:column;gap:22px;max-width:1200px;width:100%;margin:0 auto}
+        .dashboard-content{display:flex;flex-direction:column;gap:22px;max-width:1200px;width:100%;margin:0 auto}
         .page-hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
         .page-title{font-family:var(--font-serif);font-size:26px;font-weight:700;letter-spacing:-.02em}
         .page-sub{font-size:14px;color:var(--muted-foreground);margin-top:4px;max-width:520px}
@@ -107,31 +56,18 @@
         .badge--uye-aktif{background:rgba(22,163,74,.12);color:var(--success)}
         .badge--uye-pasif{background:rgba(180,83,9,.12);color:var(--warning)}
         .empty-hint{padding:20px;text-align:center;color:var(--muted-foreground);font-size:13px}
-        .sidebar-overlay{display:none;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.4)}
-        .sidebar-overlay.visible{display:block}
-        @media(max-width:768px){
-            .main-content{margin-left:0}
-            .sidebar{transform:translateX(-260px)}
-            .sidebar.open{transform:translateX(0)}
-        }
+        @media(max-width:768px){.dashboard-content{gap:16px}}
     </style>
-</head>
-<body>
-<div class="app-layout">
-    @include('partials.sidebar')
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <main class="main-content" id="mainContent">
-        <header class="top-header">
-            <button type="button" class="sidebar-trigger" id="sidebarToggle" aria-label="Menü">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-            </button>
-            <div class="header-separator"></div>
-            <nav class="breadcrumb" aria-label="Gezinti">
-                <span class="breadcrumb-current">Genel bakış</span>
-            </nav>
-        </header>
+@endsection
 
-        <div class="content-area">
+@section('breadcrumb')
+    <nav class="breadcrumb" aria-label="Gezinti">
+        <span class="breadcrumb-current">Genel bakış</span>
+    </nav>
+@endsection
+
+@section('content')
+            <div class="dashboard-content">
             <div class="page-hero">
                 <div>
                     <h1 class="page-title">Merhaba, {{ auth()->user()->name }}</h1>
@@ -459,27 +395,5 @@
                     </div>
                 @endif
             </div>
-        </div>
-    </main>
-</div>
-<script>
-    var sidebar = document.getElementById('sidebar');
-    var mainContent = document.getElementById('mainContent');
-    var isMobile = window.innerWidth <= 768;
-    document.getElementById('sidebarToggle').addEventListener('click', function() {
-        if (isMobile) {
-            sidebar.classList.toggle('open');
-            document.getElementById('sidebarOverlay').classList.toggle('visible');
-        } else {
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('expanded');
-        }
-    });
-    document.getElementById('sidebarOverlay').addEventListener('click', function() {
-        sidebar.classList.remove('open');
-        this.classList.remove('visible');
-    });
-    window.addEventListener('resize', function() { isMobile = window.innerWidth <= 768; });
-</script>
-</body>
-</html>
+            </div>
+@endsection

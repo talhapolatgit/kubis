@@ -33,6 +33,7 @@ class UserController extends Controller
             : 10;
         $search      = trim($request->input('search', ''));
         $role        = $request->input('role', '');
+        $statu       = $request->input('statu', '');
         $kutuphaneId = (int) $request->input('kutuphane_id', 0);
 
         $query = User::query();
@@ -46,6 +47,9 @@ class UserController extends Controller
 
         if ($role !== null) {
             $query->where('role', $role);
+        }
+        if ($statu !== null) {
+            $query->where('statu', $statu);
         }
 
         if ($kutuphaneId > 0) {
@@ -82,6 +86,7 @@ class UserController extends Controller
                     'email'         => $user->email,
                     'role'          => $user->role,
                     'role_label'    => $user->getRoleLabel(),
+                    'statu'         => $user->statu ?? 'aktif',
                     'created_at'    => $user->created_at
                         ? $user->created_at->format('d.m.Y')
                         : '—',
@@ -121,6 +126,7 @@ class UserController extends Controller
         abort_unless(Auth::user()?->hasYetki(14), 403);
         $search      = trim($request->input('search', ''));
         $role        = $request->input('role', '');
+        $statu       = $request->input('statu', '');
         $kutuphaneId = (int) $request->input('kutuphane_id', 0);
 
         $query = User::query();
@@ -133,6 +139,9 @@ class UserController extends Controller
         }
         if ($role !== null) {
             $query->where('role', $role);
+        }
+        if ($statu !== null) {
+            $query->where('statu', $statu);
         }
         if ($kutuphaneId > 0) {
             $query->whereExists(function ($sub) use ($kutuphaneId) {
@@ -170,7 +179,7 @@ class UserController extends Controller
         $callback = function () use ($users, $yetkiliMap, $rolLabels) {
             $out = fopen('php://output', 'w');
             fputs($out, "\xEF\xBB\xBF"); // UTF-8 BOM — Türkçe için
-            fputcsv($out, ['#', 'Ad Soyad', 'E-posta', 'Rol', 'Yetkili Kütüphaneler', 'Kayıt Tarihi', 'Son Giriş'], ';');
+            fputcsv($out, ['#', 'Ad Soyad', 'E-posta', 'Rol', 'Durum', 'Yetkili Kütüphaneler', 'Kayıt Tarihi', 'Son Giriş'], ';');
 
             foreach ($users as $user) {
                 $libs = $yetkiliMap->get($user->id, collect())->pluck('title')->implode(' | ');
@@ -179,6 +188,7 @@ class UserController extends Controller
                     $user->name,
                     $user->email,
                     $rolLabels[$user->role] ?? $user->role,
+                    $user->statu ?? 'aktif',
                     $libs ?: '—',
                     $user->created_at ? $user->created_at->format('d.m.Y') : '—',
                     $user->last_login_at
@@ -222,6 +232,8 @@ class UserController extends Controller
             'acik_adres'      => ['nullable', 'string', 'max:1000'],
             'password'        => ['required', 'confirmed', Password::min(8)],
             'role'            => ['required', 'in:admin,personel,okuyucu'],
+            'statu'           => ['required', 'in:aktif,pasif'],
+            'twofactor'       => ['nullable', 'boolean'],
             'kutuphane_ids'   => ['nullable', 'array'],
             'kutuphane_ids.*' => ['integer', 'exists:kutuphane,id'],
         ], [
@@ -240,6 +252,7 @@ class UserController extends Controller
             'password.confirmed' => 'Şifre tekrarı uyuşmuyor.',
             'password.min'       => 'Şifre en az 8 karakter olmalıdır.',
             'role.required'      => 'Kullanıcı rolü seçilmelidir.',
+            'statu.required'     => 'Hesap durumu seçilmelidir.',
         ]);
 
         $adSoyad = trim($request->input('ad') . ' ' . $request->input('soyad'));
@@ -258,6 +271,8 @@ class UserController extends Controller
             'acik_adres' => $request->input('acik_adres'),
             'password' => Hash::make($request->input('password')),
             'role'     => $request->input('role'),
+            'statu'    => $request->input('statu', 'aktif'),
+            'twofactor'=> $request->boolean('twofactor'),
         ]);
 
         $kutuphaneIds = $request->input('kutuphane_ids', []);
@@ -370,6 +385,8 @@ class UserController extends Controller
             'mahalle' => ['nullable', 'string', 'max:150'],
             'acik_adres' => ['nullable', 'string', 'max:1000'],
             'role'  => ['required', 'in:admin,personel,okuyucu'],
+            'statu' => ['required', 'in:aktif,pasif'],
+            'twofactor' => ['nullable', 'boolean'],
         ], [
             'tc_kimlik.required' => 'TC Kimlik No zorunludur.',
             'tc_kimlik.digits' => 'TC Kimlik No 11 rakamdan oluşmalıdır.',
@@ -383,6 +400,7 @@ class UserController extends Controller
             'email.unique'   => 'Bu e-posta adresi başka bir kullanıcıya ait.',
             'telefon.required' => 'Telefon numarası zorunludur.',
             'role.required'  => 'Kullanıcı rolü seçilmelidir.',
+            'statu.required' => 'Hesap durumu seçilmelidir.',
         ]);
 
         $adSoyad = trim($request->input('ad') . ' ' . $request->input('soyad'));
@@ -400,6 +418,8 @@ class UserController extends Controller
             'mahalle' => $request->input('mahalle'),
             'acik_adres' => $request->input('acik_adres'),
             'role'  => $request->input('role'),
+            'statu' => $request->input('statu', 'aktif'),
+            'twofactor' => $request->boolean('twofactor'),
         ];
 
         if ($request->filled('password')) {

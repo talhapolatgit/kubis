@@ -163,6 +163,9 @@
                     <div class="sidebar-user-name">{{ auth()->user()->name }}</div>
                     <div class="sidebar-user-role">{{ auth()->user()->getRoleLabel() }}</div>
                 </div>
+                <a href="{{ route('auth.password.form') }}" title="Şifre Değiştir" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--sidebar-foreground);opacity:0.55;display:flex;align-items:center;transition:opacity .15s,background .15s;text-decoration:none;" onmouseover="this.style.opacity='1';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.opacity='0.55';this.style.background='none'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </a>
                 <form method="POST" action="{{ route('auth.logout') }}" style="margin:0;">
                     @csrf
                     <button type="submit" title="Çıkış Yap" style="background:none;border:none;cursor:pointer;padding:6px;border-radius:6px;color:var(--sidebar-foreground);opacity:0.55;display:flex;align-items:center;transition:opacity .15s,background .15s;" onmouseover="this.style.opacity='1';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.opacity='0.55';this.style.background='none'">
