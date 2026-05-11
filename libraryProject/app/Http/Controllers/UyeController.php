@@ -33,6 +33,8 @@ class UyeController extends Controller
             : 10;
         $search = trim($request->input('search', ''));
         $statu  = $request->input('statu', '');
+        $sortBy = (string) $request->input('sort_by', '');
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $query = Uye::query();
 
@@ -50,7 +52,16 @@ class UyeController extends Controller
             $query->where('statu', $statu);
         }
 
-        $uyeler = $query->orderBy('id', 'desc')->paginate($perPage);
+        if ($sortBy === 'ad_soyad') {
+            $query->orderBy('ad', $sortDir)->orderBy('soyad', $sortDir)->orderBy('id', 'desc');
+        } elseif ($sortBy === 'uyelik_baslangic') {
+            $query->orderBy('uyelik_baslangic', $sortDir)->orderBy('id', 'desc');
+        } else {
+            $query->orderBy('id', 'desc');
+            $sortBy = '';
+        }
+
+        $uyeler = $query->paginate($perPage);
 
         // collect($uyeler->items()) — plain array koleksiyonu, paginator objesi değil
         $items = collect($uyeler->items())
@@ -91,6 +102,8 @@ class UyeController extends Controller
                 'total'        => $uyeler->total(),
                 'from'         => $uyeler->firstItem() ?? 0,
                 'to'           => $uyeler->lastItem() ?? 0,
+                'sort_by'      => $sortBy !== '' ? $sortBy : null,
+                'sort_dir'     => $sortBy !== '' ? $sortDir : null,
             ],
         ]);
     }

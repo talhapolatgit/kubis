@@ -44,6 +44,7 @@
         .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
         .form-field { display: flex; flex-direction: column; }
         .form-label { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+        .form-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
         .form-label .req { color: var(--destructive); }
         .form-label .hint{font-weight:400;color:var(--muted-foreground);font-size:12px;margin-left:4px}
         .input-wrap { position: relative; }
@@ -72,6 +73,10 @@
         .adres-spin{animation:adres-spin .7s linear infinite}
         .form-hint { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
         .form-error { font-size: 12px; color: var(--destructive); margin-top: 4px; }
+        .ldap-search-btn { width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--muted-foreground); border-radius: 4px; padding: 0; transition: color 0.15s, background 0.15s; }
+        .ldap-search-btn svg { width: 15px; height: 15px; }
+        .ldap-search-btn:hover { color: var(--primary); background: rgba(122,92,60,0.08); }
+        .ldap-search-btn:disabled { pointer-events: none; opacity: 0.5; }
 
         /* Şifre toggle */
         .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; color: var(--muted-foreground); border-radius: 4px; display: flex; transition: color 0.15s, background 0.15s; }
@@ -122,7 +127,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Toast */
-        .toast-container { position: fixed; top: 16px; right: 16px; z-index: 3000; display: flex; flex-direction: column; gap: 8px; }
+        .toast-container { position: fixed; top: 16px; right: 16px; z-index: 5000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 14px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toast-in 0.3s ease; max-width: 380px; }
         .toast.success { background: #2f7d32; color: white; }
         .toast.error { background: var(--destructive); color: white; }
@@ -131,6 +136,25 @@
         @keyframes toast-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
 
+        /* LDAP modal */
+        .ldap-modal-overlay { position: fixed; inset: 0; z-index: 4000; background: rgba(30,23,15,0.45); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; padding: 16px; }
+        .ldap-modal-overlay.visible { display: flex; }
+        body.ldap-modal-open { overflow: hidden; }
+        .ldap-modal { width: min(760px, 100%); max-height: min(680px, calc(100vh - 32px)); overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+        .ldap-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+        .ldap-modal-title { font-size: 16px; font-weight: 700; }
+        .ldap-modal-close { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--muted-foreground); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .ldap-modal-close:hover { color: var(--foreground); background: var(--secondary); }
+        .ldap-modal-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+        .ldap-auth-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+        .ldap-list { border: 1px solid var(--border); border-radius: 8px; overflow: auto; max-height: 300px; background: var(--background); }
+        .ldap-list-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-bottom: 1px solid rgba(217,208,194,0.35); cursor: pointer; transition: background 0.12s; }
+        .ldap-list-item:last-child { border-bottom: none; }
+        .ldap-list-item:hover { background: var(--secondary); }
+        .ldap-list-main { font-size: 13px; font-weight: 600; }
+        .ldap-list-sub { font-size: 12px; color: var(--muted-foreground); }
+        .ldap-empty { padding: 18px 12px; text-align: center; color: var(--muted-foreground); font-size: 13px; }
+        .ldap-inline-status { font-size: 12px; color: var(--muted-foreground); margin-top: 5px; }
 
         /* ── Auth Panel (Kütüphaneler) ─────────────────────────────────────── */
         .auth-panel { width: 360px; flex-shrink: 0; border: 1px solid rgba(217,208,194,0.6); border-radius: var(--radius); background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; flex-direction: column; position: sticky; top: 24px; max-height: calc(100vh - 80px); }
@@ -210,6 +234,7 @@
             .form-grid.cols-2, .form-grid.cols-3, .meta-grid, .role-cards { grid-template-columns: 1fr; }
             .form-actions { flex-direction: column-reverse; }
             .user-hero { flex-direction: column; align-items: flex-start; }
+            .ldap-auth-grid { grid-template-columns: 1fr; }
         }
     </style>
 @endsection
@@ -232,6 +257,38 @@
     <div class="loading-box">
         <div class="loading-spinner"></div>
         <span class="loading-text">Güncelleniyor...</span>
+    </div>
+</div>
+
+<div class="ldap-modal-overlay" id="ldapModalOverlay" aria-hidden="true">
+    <div class="ldap-modal" role="dialog" aria-modal="true" aria-labelledby="ldapModalTitle">
+        <div class="ldap-modal-header">
+            <h3 class="ldap-modal-title" id="ldapModalTitle">LDAP Kullanıcı Seçimi</h3>
+            <button type="button" class="ldap-modal-close" id="ldapModalClose" aria-label="Kapat">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="ldap-modal-body">
+            <div class="ldap-auth-grid">
+                <div class="form-field">
+                    <label class="form-label" for="ldapBindUsername">Yetkili LDAP Kullanıcısı <span class="req">*</span></label>
+                    <input type="text" id="ldapBindUsername" class="form-input" placeholder="Örn: admin.username" autocomplete="off" />
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="ldapBindPassword">Yetkili LDAP Şifresi <span class="req">*</span></label>
+                    <input type="password" id="ldapBindPassword" class="form-input" placeholder="Şifre" autocomplete="new-password" />
+                </div>
+                <button type="button" class="btn btn-primary" id="ldapFetchBtn" style="height:38px;white-space:nowrap;">Kullanıcıları Getir</button>
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="ldapQueryInput">LDAP Kullanıcı Ara</label>
+                <input type="text" id="ldapQueryInput" class="form-input" placeholder="Kullanıcı adı, ad soyad veya e-posta..." autocomplete="off" />
+                <span class="ldap-inline-status" id="ldapStatusText">Önce yetkili LDAP kullanıcı bilgileri ile arama yapın.</span>
+            </div>
+            <div class="ldap-list" id="ldapUsersList">
+                <div class="ldap-empty">Henüz liste yok.</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -360,7 +417,7 @@
                                         </div>
                                         @error('telefon')<span class="form-error">{{ $message }}</span>@enderror
                                     </div>
-                                    <div class="form-field" style="grid-column:span 2;">
+                                    <div class="form-field">
                                         <label class="form-label" for="email">E-posta Adresi <span class="req">*</span></label>
                                         <div class="input-wrap">
                                             <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -368,6 +425,18 @@
                                                    id="email" name="email" value="{{ old('email', $user->email) }}" />
                                         </div>
                                         @error('email')<span class="form-error">{{ $message }}</span>@enderror
+                                    </div>
+                                    <div class="form-field">
+                                        <div class="form-label-row">
+                                            <label class="form-label" for="ldap_username" style="margin-bottom:0;">LDAP Kullanıcı Adı</label>
+                                            <button type="button" id="ldapSearchBtn" class="ldap-search-btn" title="LDAP kullanıcı ara">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                            </button>
+                                        </div>
+                                        <input type="text" class="form-input @error('ldap_username') is-error @enderror"
+                                               id="ldap_username" name="ldap_username"
+                                               value="{{ old('ldap_username', $user->ldap_username) }}" autocomplete="off" />
+                                        @error('ldap_username')<span class="form-error">{{ $message }}</span>@enderror
                                     </div>
                                 </div>
                             </div>
@@ -616,6 +685,7 @@
         cinsiyet: @json($user->cinsiyet),
         telefon: @json($user->telefon),
         email: @json($user->email),
+        ldap_username: @json($user->ldap_username),
         il: @json($user->il),
         ilce: @json($user->ilce),
         mahalle: @json($user->mahalle),
@@ -634,6 +704,7 @@
         document.getElementById('cinsiyet').value  = origValues.cinsiyet || '';
         document.getElementById('telefon').value  = origValues.telefon || '';
         document.getElementById('email').value = origValues.email;
+        document.getElementById('ldap_username').value = origValues.ldap_username || '';
         document.getElementById('il').value = origValues.il || '';
         document.getElementById('ilce').value = origValues.ilce || '';
         document.getElementById('mahalle').value = origValues.mahalle || '';
@@ -692,6 +763,164 @@
     // TC kimlik sadece rakam
     document.getElementById('tc_kimlik').addEventListener('input', function() {
         this.value = this.value.replace(/\D/g, '').slice(0, 11);
+    });
+
+    // LDAP kullanıcı seçimi
+    var ldapModalOverlay = document.getElementById('ldapModalOverlay');
+    var ldapModalClose = document.getElementById('ldapModalClose');
+    var ldapSearchBtn = document.getElementById('ldapSearchBtn');
+    var ldapFetchBtn = document.getElementById('ldapFetchBtn');
+    var ldapBindUsernameInput = document.getElementById('ldapBindUsername');
+    var ldapBindPasswordInput = document.getElementById('ldapBindPassword');
+    var ldapQueryInput = document.getElementById('ldapQueryInput');
+    var ldapUsersList = document.getElementById('ldapUsersList');
+    var ldapStatusText = document.getElementById('ldapStatusText');
+    var ldapUsernameInput = document.getElementById('ldap_username');
+    var ldapSearchTimer = null;
+    var ldapState = {
+        bindUsername: '',
+        bindPassword: '',
+    };
+
+    function escapeLdapHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str || ''));
+        return div.innerHTML;
+    }
+
+    function setLdapStatus(text) {
+        ldapStatusText.textContent = text || '';
+    }
+
+    function renderLdapUsers(users) {
+        if (!Array.isArray(users) || users.length === 0) {
+            ldapUsersList.innerHTML = '<div class="ldap-empty">Kullanıcı bulunamadı.</div>';
+            return;
+        }
+        ldapUsersList.innerHTML = users.map(function(user) {
+            var username = escapeLdapHtml(user.username || '');
+            var displayName = escapeLdapHtml(user.display_name || user.username || '');
+            var mail = escapeLdapHtml(user.mail || '');
+            return '<button type="button" class="ldap-list-item" data-ldap-username="' + username + '" style="width:100%;text-align:left;border:none;background:transparent;">'
+                + '<span class="ldap-list-main">' + displayName + ' (' + username + ')</span>'
+                + '<span class="ldap-list-sub">' + (mail || 'E-posta bilgisi yok') + '</span>'
+                + '</button>';
+        }).join('');
+    }
+
+    function openLdapModal() {
+        ldapModalOverlay.classList.add('visible');
+        ldapModalOverlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('ldap-modal-open');
+        ldapBindUsernameInput.value = ldapState.bindUsername || '';
+        ldapBindPasswordInput.value = ldapState.bindPassword || '';
+        ldapQueryInput.value = '';
+        ldapUsersList.innerHTML = '<div class="ldap-empty">Henüz liste yok.</div>';
+        setLdapStatus('Önce yetkili LDAP kullanıcı bilgileri ile arama yapın.');
+        setTimeout(function() { ldapBindUsernameInput.focus(); }, 20);
+    }
+
+    function closeLdapModal() {
+        ldapModalOverlay.classList.remove('visible');
+        ldapModalOverlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('ldap-modal-open');
+    }
+
+    function fetchLdapUsers(query) {
+        if (!ldapState.bindUsername || !ldapState.bindPassword) {
+            showToast('warning', 'Yetkili LDAP Bilgisi Gerekli', 'Önce yetkili LDAP kullanıcı bilgilerini girin.');
+            return;
+        }
+
+        ldapFetchBtn.disabled = true;
+        ldapFetchBtn.textContent = 'Aranıyor...';
+        ldapUsersList.innerHTML = '<div class="ldap-empty">LDAP kullanıcıları getiriliyor...</div>';
+        setLdapStatus('LDAP üzerinde arama yapılıyor...');
+
+        fetch('{{ route("users.ldap.search") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                bind_username: ldapState.bindUsername,
+                bind_password: ldapState.bindPassword,
+                q: query || ''
+            })
+        })
+            .then(function(res) {
+                return res.json().then(function(data) {
+                    return { status: res.status, data: data };
+                });
+            })
+            .then(function(result) {
+                if (result.status !== 200 || !result.data.success) {
+                    throw new Error(result.data.message || 'LDAP kullanıcıları alınamadı.');
+                }
+
+                var users = Array.isArray(result.data.data) ? result.data.data : [];
+                renderLdapUsers(users);
+                setLdapStatus(users.length + ' kullanıcı listelendi. Listeden seçim yapabilirsiniz.');
+            })
+            .catch(function(error) {
+                ldapUsersList.innerHTML = '<div class="ldap-empty">Arama başarısız.</div>';
+                setLdapStatus(error.message || 'LDAP araması başarısız.');
+                showToast('error', 'LDAP Arama Hatası', error.message || 'LDAP kullanıcıları alınamadı.');
+            })
+            .finally(function() {
+                ldapFetchBtn.disabled = false;
+                ldapFetchBtn.textContent = 'Kullanıcıları Getir';
+            });
+    }
+
+    ldapSearchBtn.addEventListener('click', openLdapModal);
+    ldapModalClose.addEventListener('click', closeLdapModal);
+    ldapModalOverlay.addEventListener('click', function(e) {
+        if (e.target === ldapModalOverlay) closeLdapModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && ldapModalOverlay.classList.contains('visible')) {
+            closeLdapModal();
+        }
+    });
+
+    ldapFetchBtn.addEventListener('click', function() {
+        var bindUsername = ldapBindUsernameInput.value.trim();
+        var bindPassword = ldapBindPasswordInput.value;
+        if (!bindUsername || !bindPassword) {
+            showToast('warning', 'Eksik Bilgi', 'Yetkili LDAP kullanıcı adı ve şifresi zorunludur.');
+            return;
+        }
+        ldapState.bindUsername = bindUsername;
+        ldapState.bindPassword = bindPassword;
+        fetchLdapUsers(ldapQueryInput.value.trim());
+    });
+
+    ldapQueryInput.addEventListener('input', function() {
+        if (!ldapState.bindUsername || !ldapState.bindPassword) {
+            setLdapStatus('Arama için önce yetkili LDAP kullanıcı bilgilerini doğrulayın.');
+            return;
+        }
+        clearTimeout(ldapSearchTimer);
+        var q = this.value.trim();
+        ldapSearchTimer = setTimeout(function() {
+            fetchLdapUsers(q);
+        }, 350);
+    });
+
+    ldapUsersList.addEventListener('click', function(e) {
+        var btn = e.target.closest('.ldap-list-item');
+        if (!btn) return;
+
+        var username = btn.getAttribute('data-ldap-username') || '';
+        if (!username) return;
+
+        ldapUsernameInput.value = username;
+        showToast('success', 'LDAP Kullanıcı Seçildi', '"' + username + '" kullanıcı adına atandı.');
+        closeLdapModal();
     });
 
     function kimlikSorgula() {
@@ -828,6 +1057,7 @@
                     origValues.cinsiyet  = document.getElementById('cinsiyet').value;
                     origValues.telefon  = document.getElementById('telefon').value.trim();
                     origValues.email = document.getElementById('email').value.trim();
+                    origValues.ldap_username = document.getElementById('ldap_username').value.trim();
                     origValues.il = document.getElementById('il').value.trim();
                     origValues.ilce = document.getElementById('ilce').value.trim();
                     origValues.mahalle = document.getElementById('mahalle').value.trim();

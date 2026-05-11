@@ -50,4 +50,9 @@ return [
     'webhook_secret' => env('BEYOGLU_WEBHOOK_SECRET'),
 ],
 
+    'ldap' => [
+        'host' => env('LDAP_HOST', 'ldap://128.0.0.4:389'),
+        'base_dn' => env('LDAP_BASE_DN', 'DC=beyoglu,DC=bel,DC=tr'),
+    ],
+
 ];

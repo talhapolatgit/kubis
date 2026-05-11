@@ -29,36 +29,68 @@ class AuthController extends Controller
     // ─── Giriş İşlemi ───────────────────────────────────────────────────────────
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => ['required', 'email'],
+        $loginMethod = (string) $request->input('login_method', 'email');
+        if (!in_array($loginMethod, ['email', 'ldap'], true)) {
+            $loginMethod = 'email';
+        }
+
+        $rules = [
+            'login_method' => ['required', 'in:email,ldap'],
             'password' => ['required'],
-        ], [
-            'email.required'    => 'E-posta adresi zorunludur.',
-            'email.email'       => 'Geçerli bir e-posta adresi girin.',
+        ];
+        $messages = [
             'password.required' => 'Şifre zorunludur.',
-        ]);
+        ];
+
+        if ($loginMethod === 'email') {
+            $rules['email'] = ['required', 'email'];
+            $messages['email.required'] = 'E-posta adresi zorunludur.';
+            $messages['email.email'] = 'Geçerli bir e-posta adresi girin.';
+        } else {
+            $rules['ldap_username'] = ['required', 'string'];
+            $messages['ldap_username.required'] = 'LDAP kullanıcı adı zorunludur.';
+        }
+
+        $credentials = $request->validate($rules, $messages);
 
         $remember = $request->boolean('remember');
-        $user = User::where('email', $credentials['email'])->first();
+        $user = $loginMethod === 'email'
+            ? User::where('email', (string) ($credentials['email'] ?? ''))->first()
+            : User::where('ldap_username', trim((string) ($credentials['ldap_username'] ?? '')))->first();
 
         if ($user && ($user->statu ?? 'aktif') !== 'aktif') {
             return back()
-                ->withInput($request->only('email', 'remember'))
+                ->withInput($request->only('login_method', 'email', 'ldap_username', 'remember'))
                 ->withErrors([
-                    'email' => 'Kullanıcı hesabınız pasif durumda. Sistem yöneticiniz ile iletişime geçiniz.',
+                    'auth' => 'Kullanıcı hesabınız pasif durumda. Sistem yöneticiniz ile iletişime geçiniz.',
                 ]);
         }
 
-        if ($user && Hash::check($credentials['password'], $user->password)) {
+        $isPasswordValid = false;
+        $ldapConnectionError = false;
+        if ($user) {
+            if ($loginMethod === 'ldap') {
+                $ldapUsername = trim((string) ($user->ldap_username ?? ''));
+                $ldapAuthResult = $ldapUsername !== ''
+                    ? $this->authenticateViaLdap($ldapUsername, (string) $credentials['password'])
+                    : ['ok' => false, 'connection_error' => false];
+                $isPasswordValid = (bool) ($ldapAuthResult['ok'] ?? false);
+                $ldapConnectionError = (bool) ($ldapAuthResult['connection_error'] ?? false);
+            } else {
+                $isPasswordValid = Hash::check($credentials['password'], $user->password);
+            }
+        }
+
+        if ($user && $isPasswordValid) {
             $this->clearFailedLoginAttempts($user);
 
             if ((bool) $user->twofactor) {
                 $phone = $this->normalizePhoneForSms($user->telefon);
                 if (!$phone) {
                     return back()
-                        ->withInput($request->only('email', 'remember'))
+                        ->withInput($request->only('login_method', 'email', 'ldap_username', 'remember'))
                         ->withErrors([
-                            'email' => 'Bu kullanıcının sistemde kayıtlı telefon numarası yok. Doğrulama kodu gönderilemedi. Lütfen sistem yöneticiniz ile iletişime geçiniz.',
+                            'auth' => 'Bu kullanıcının sistemde kayıtlı telefon numarası yok. Doğrulama kodu gönderilemedi. Lütfen sistem yöneticiniz ile iletişime geçiniz.',
                         ]);
                 }
 
@@ -88,17 +120,19 @@ class AuthController extends Controller
                 $this->sendAccountLockedSms($user);
 
                 return back()
-                    ->withInput($request->only('email', 'remember'))
+                    ->withInput($request->only('login_method', 'email', 'ldap_username', 'remember'))
                     ->withErrors([
-                        'email' => 'Arka arkaya 5 hatalı giriş nedeniyle hesabınız askıya alındı.',
+                        'auth' => 'Arka arkaya 5 hatalı giriş nedeniyle hesabınız askıya alındı.',
                     ]);
             }
         }
 
         return back()
-            ->withInput($request->only('email', 'remember'))
+            ->withInput($request->only('login_method', 'email', 'ldap_username', 'remember'))
             ->withErrors([
-                'email' => 'E-posta adresi veya şifre hatalı.',
+                'auth' => ($loginMethod === 'ldap' && $ldapConnectionError)
+                    ? 'LDAP bağlantı hatası.'
+                    : 'Kullanıcı adı veya şifre hatalı.',
             ]);
     }
 
@@ -317,5 +351,71 @@ class AuthController extends Controller
 
         $message = 'KÜBİS hesabınız, arka arkaya 5 hatalı giriş nedeniyle güvenlik amaçlı askıya alınmıştır. Lütfen sistem yöneticiniz ile iletişime geçiniz.';
         MessageController::smsGonder($phone, $message, 'auth_failed_login_lock');
+    }
+
+    /**
+     * @return array{ok: bool, connection_error: bool}
+     */
+    private function authenticateViaLdap(string $ldapUsername, string $password): array
+    {
+        $ldapUsername = trim($ldapUsername);
+        if ($ldapUsername === '' || $password === '') {
+            return ['ok' => false, 'connection_error' => false];
+        }
+        if (!function_exists('ldap_connect') || !function_exists('ldap_bind')) {
+            return ['ok' => false, 'connection_error' => true];
+        }
+
+        $host = (string) config('services.ldap.host', 'ldap://dc16.beyoglu.bel.tr:389');
+        $baseDn = (string) config('services.ldap.base_dn', 'DC=beyoglu,DC=bel,DC=tr');
+
+        $conn = @ldap_connect($host);
+        if (!$conn) {
+            return ['ok' => false, 'connection_error' => true];
+        }
+
+        @ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
+        @ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
+
+        $bindDn = $this->ldapBindPrincipal($ldapUsername, $baseDn);
+        $ok = @ldap_bind($conn, $bindDn, $password);
+
+        if ($ok) {
+            @ldap_unbind($conn);
+            return ['ok' => true, 'connection_error' => false];
+        }
+
+        $errno = function_exists('ldap_errno') ? (int) @ldap_errno($conn) : 0;
+        @ldap_unbind($conn);
+        $connectionErrorCodes = [81, 82, 85, 91];
+        $isConnectionError = in_array($errno, $connectionErrorCodes, true);
+
+        return ['ok' => false, 'connection_error' => $isConnectionError];
+    }
+
+    private function ldapBindPrincipal(string $ldapUsername, string $baseDn): string
+    {
+        if (str_contains($ldapUsername, '@') || str_contains($ldapUsername, '\\') || str_contains($ldapUsername, '=')) {
+            return $ldapUsername;
+        }
+
+        $domain = $this->ldapDomainFromBaseDn($baseDn);
+        if ($domain === '') {
+            return $ldapUsername;
+        }
+
+        return $ldapUsername . '@' . $domain;
+    }
+
+    private function ldapDomainFromBaseDn(string $baseDn): string
+    {
+        if (!preg_match_all('/DC=([^,]+)/i', $baseDn, $matches)) {
+            return '';
+        }
+
+        $parts = array_map(static fn($v) => trim((string) $v), $matches[1] ?? []);
+        $parts = array_values(array_filter($parts, static fn($v) => $v !== ''));
+
+        return implode('.', $parts);
     }
 }

@@ -3,12 +3,31 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Yazar extends Model
 {
     protected $table = 'yazarlar';
 
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+        ];
+    }
+
+    public function olusturan(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function guncelleyen(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 
     /**
      * Görüntüleme / katalog metni: "Ad Soyad".
@@ -77,16 +96,23 @@ class Yazar extends Model
 
     /**
      * Ad ve soyad alanlarıyla bul veya oluştur (manuel katalog girişi).
+     *
+     * @param  int|null  $createdByUserId  Yeni kayıtta yalnızca `created_by` (ör. katalog kaydeden kullanıcı); `updated_by` güncellemede dolar.
      */
-    public static function findOrCreateByAdSoyad(string $ad, string $soyad): self
+    public static function findOrCreateByAdSoyad(string $ad, string $soyad, ?int $createdByUserId = null): self
     {
         $ad = trim($ad);
         $soyad = trim($soyad);
         $siralama = $soyad !== '' ? ($soyad . ', ' . $ad) : $ad;
 
+        $attributes = ['siralama_adi' => $siralama];
+        if ($createdByUserId !== null) {
+            $attributes['created_by'] = $createdByUserId;
+        }
+
         return static::firstOrCreate(
             ['ad' => $ad, 'soyad' => $soyad],
-            ['siralama_adi' => $siralama]
+            $attributes
         );
     }
 
@@ -99,5 +125,31 @@ class Yazar extends Model
             ->withPivot('sira')
             ->orderByPivot('sira')
             ->withTimestamps();
+    }
+
+    /**
+     * Eski tek yazar alanı (katalog.yazarId) ile bağlı kitaplar.
+     */
+    public function kataloglarLegacy()
+    {
+        return $this->hasMany(Katalog::class, 'yazarId');
+    }
+
+    public function getFotografUrlAttribute(): ?string
+    {
+        if (!$this->fotograf_path) {
+            return null;
+        }
+
+        if (str_starts_with($this->fotograf_path, 'http://') || str_starts_with($this->fotograf_path, 'https://')) {
+            return $this->fotograf_path;
+        }
+
+        $path = ltrim((string) $this->fotograf_path, '/');
+        if (str_starts_with($path, 'storage/')) {
+            return '/' . $path;
+        }
+
+        return '/storage/' . $path;
     }
 }

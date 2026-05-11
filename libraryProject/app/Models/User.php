@@ -26,6 +26,7 @@ class User extends Authenticatable
         'soyad',
         'cinsiyet',
         'email',
+        'ldap_username',
         'telefon',
         'il',
         'ilce',
@@ -91,7 +92,7 @@ class User extends Authenticatable
     public function hasYetki(int $yetkiNo): bool
     {
         if ($this->isAdmin()) return true;
-        if ($yetkiNo < 1 || $yetkiNo > 21) return false;
+        if ($yetkiNo < 1 || $yetkiNo > 25) return false;
 
         $row = $this->yetkilerRow();
         if (!$row) return false;

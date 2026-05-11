@@ -4,11 +4,90 @@
 
 @section('styles')
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <link rel="stylesheet" href="{{ asset('css/uye-list.css') }}?v={{ @filemtime(public_path('css/uye-list.css')) ?: time() }}">
-    @php($uyeListCss = @file_get_contents(public_path('css/uye-list.css')))
-    @if($uyeListCss)
-        <style>{!! $uyeListCss !!}</style>
-    @endif
+    <style>
+        .page-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+        .page-title{font-family:var(--font-serif);font-size:22px;font-weight:700;color:var(--foreground)}
+        .page-subtitle{font-size:13px;color:var(--muted-foreground);margin-top:2px}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:calc(var(--radius) - 2px);font-size:14px;font-weight:500;cursor:pointer;border:none;text-decoration:none}
+        .btn-primary{background:var(--primary);color:var(--primary-foreground)}
+        .btn-success,.btn-outline{background:transparent;color:var(--foreground);border:1px solid var(--border)}
+        .btn-sm{padding:6px 12px;font-size:13px}
+        .filters-card{margin-bottom:14px}
+        .table-card,.form-card{background:var(--card);border:1px solid rgba(217,208,194,.6);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+        .form-card-header{padding:14px 16px;border-bottom:1px solid rgba(217,208,194,.5)}
+        .form-card-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin:0}
+        .form-card-body{padding:14px 16px}
+        .toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+        .filter-wrap{position:relative;flex:1;min-width:280px;max-width:460px}
+        .filter-wrap .fi{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted-foreground);pointer-events:none}
+        .filter-input,.filter-select,.per-page-select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);font-size:14px;outline:none}
+        .filter-input{padding-left:34px}
+        .filter-input:focus,.filter-select:focus,.per-page-select:focus{border-color:var(--ring);box-shadow:0 0 0 2px rgba(122,92,60,.12)}
+        .filter-input.filter-active,.filter-select.filter-active{border-color:var(--ring)}
+        .table-card-header{padding:14px 16px;border-bottom:1px solid rgba(217,208,194,.5);display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        thead{background:var(--secondary)}
+        th{padding:11px 16px;text-align:left;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted-foreground);white-space:nowrap;border-bottom:1px solid var(--border)}
+        td{padding:12px 16px;font-size:14px;border-bottom:1px solid rgba(217,208,194,.4);vertical-align:middle}
+        tr:last-child td{border-bottom:none}
+        .member-cell{display:flex;align-items:center;gap:10px}
+        .member-avatar{width:34px;height:34px;border-radius:999px;background:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted-foreground)}
+        .member-name{font-weight:600}
+        .member-sub{font-size:12px;color:var(--muted-foreground)}
+        .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+        .badge-aktif{background:rgba(34,139,34,.12);color:#1a6b1a}
+        .badge-pasif{background:rgba(197,48,48,.1);color:#9b1c1c}
+        .table-footer{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(217,208,194,.5);font-size:13px;color:var(--muted-foreground)}
+        .tf-info{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+        .per-page-wrap{display:flex;align-items:center;gap:8px}
+        .per-page-select{width:95px;padding:6px 8px}
+        .pagination{display:flex;gap:6px;align-items:center}
+        .page-btn{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:13px}
+        .page-btn.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+        .page-btn.disabled{opacity:.45;cursor:default;pointer-events:none}
+        .page-ellipsis{padding:0 4px}
+        th.sortable-th{cursor:pointer;user-select:none}
+        th.sortable-th:hover{color:var(--foreground)}
+        th.sortable-th .sort-label{display:inline-flex;align-items:center;gap:6px}
+        th.sortable-th .sort-caret{opacity:.35;font-size:10px;line-height:1}
+        th.sortable-th.sort-active .sort-caret{opacity:1}
+        .table-veil{position:absolute;inset:0;background:rgba(255,255,255,.6);display:none;align-items:center;justify-content:center;z-index:2}
+        .table-veil.visible{display:flex}
+        .table-card{position:relative}
+        .veil-spinner{width:28px;height:28px;border-radius:50%;border:3px solid rgba(122,92,60,.18);border-top-color:var(--primary);animation:spin 1s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .empty-state{padding:48px 24px;text-align:center}
+        .empty-title{font-size:15px;font-weight:600;color:var(--foreground);margin:8px 0 4px}
+        .empty-desc{font-size:13px;color:var(--muted-foreground)}
+        .empty-icon{width:56px;height:56px;border-radius:50%;background:var(--muted);display:flex;align-items:center;justify-content:center;margin:0 auto}
+        .empty-icon svg{width:28px;height:28px;color:var(--muted-foreground)}
+        .row-actions-btn{width:32px;height:32px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);transition:background .15s,color .15s}
+        .row-actions-btn:hover{background:var(--muted);color:var(--foreground)}
+        .row-actions-btn svg{width:16px;height:16px;pointer-events:none}
+        #uyeFloatingMenu{position:fixed;z-index:1300;min-width:155px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:4px;display:none}
+        #uyeFloatingMenu.open{display:block}
+        .row-actions-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;font-size:14px;font-weight:500;color:var(--foreground);text-decoration:none;cursor:pointer;transition:background .12s;white-space:nowrap;border:none;background:transparent;width:100%;text-align:left;font-family:inherit}
+        .row-actions-item:hover{background:var(--secondary)}
+        .row-actions-item.primary{font-weight:500}
+        .row-actions-item.danger{color:var(--destructive)}
+        .row-actions-item svg{width:15px;height:15px}
+        .row-actions-sep{height:1px;background:var(--border)}
+        .toast-container{position:fixed;top:16px;right:16px;z-index:1400;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:14px 20px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.15);animation:toast-in .3s ease;max-width:380px}
+        .toast.success{background:#2f7d32;color:#fff}
+        .toast.error{background:var(--destructive);color:#fff}
+        .toast-desc{font-size:13px;font-weight:400;opacity:.9;margin-top:2px}
+        @keyframes toast-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes toast-out{from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0}}
+        .modal-backdrop{position:fixed;inset:0;background:rgba(20,16,12,.5);display:none;align-items:center;justify-content:center;z-index:1500;padding:16px}
+        .modal-backdrop.visible{display:flex}
+        .modal-box{width:100%;max-width:460px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
+        .modal-title{margin:10px 0 6px}
+        .modal-desc{margin:0;color:var(--muted-foreground);font-size:14px}
+        .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+        .modal-icon{width:44px;height:44px;border-radius:999px;background:rgba(197,48,48,.12);display:flex;align-items:center;justify-content:center;color:var(--destructive)}
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -32,10 +111,6 @@
                     <p class="page-subtitle" id="pageSubtitle">Yükleniyor…</p>
                 </div>
                 <div class="page-actions">
-                    <button class="btn btn-success" id="exportBtn" title="Mevcut filtreyle Excel (CSV) indir">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                        Excel İndir
-                    </button>
                     @if(auth()->user()->hasYetki(12))
                     <a href="{{ route('uyeler.new') }}" class="btn btn-primary">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
@@ -46,25 +121,42 @@
                 </div>
             </div>
 
-            <!-- Filtreler -->
-            <div class="toolbar">
-                <div class="filter-wrap">
-                    <svg class="fi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" class="filter-input" id="searchInput" placeholder="Ad, soyad, TC kimlik, telefon, e-posta ara…" autocomplete="off" />
+            <div class="form-card filters-card">
+                <div class="form-card-header">
+                    <h2 class="form-card-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        Filtrele
+                    </h2>
                 </div>
-                <select class="filter-select" id="statuFilter">
-                    <option value="">Tüm Durumlar</option>
-                    <option value="aktif">Aktif</option>
-                    <option value="pasif">Pasif</option>
-                </select>
-                <button class="btn btn-outline btn-sm" id="clearFiltersBtn" style="display:none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    Temizle
-                </button>
+                <div class="form-card-body">
+                    <div class="toolbar">
+                        <div class="filter-wrap">
+                            <svg class="fi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="text" class="filter-input" id="searchInput" placeholder="Ad, soyad, TC kimlik, telefon, e-posta ara…" autocomplete="off" />
+                        </div>
+                        <div style="min-width:180px;">
+                            <label class="field-label" for="statuFilter">Durum</label>
+                            <select class="filter-select" id="statuFilter">
+                                <option value="">Tüm Durumlar</option>
+                                <option value="aktif">Aktif</option>
+                                <option value="pasif">Pasif</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-outline" id="clearFiltersBtn" style="display:none;">Filtreyi Temizle</button>
+                        <button class="btn btn-primary" id="applyFiltersBtn">Ara</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Tablo -->
             <div class="table-card" id="tableCard">
+                <div class="table-card-header">
+                    <h2 class="form-card-title" style="margin:0;">Üye Listesi</h2>
+                    <button class="btn btn-outline" id="exportBtn" title="Mevcut filtreyle Excel (CSV) indir">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        Excel Olarak İndir
+                    </button>
+                </div>
                 <div class="table-veil" id="tableVeil">
                     <div class="veil-spinner"></div>
                 </div>
@@ -73,12 +165,12 @@
                     <table>
                         <thead>
                         <tr>
-                            <th>Üye</th>
+                            <th class="sortable-th" data-sort="ad_soyad" title="Sıralamak için tıklayın"><span class="sort-label">Üye</span><span class="sort-caret">◇</span></th>
                             <th style="width:130px;">TC Kimlik No</th>
                             <th style="width:140px;">Telefon</th>
                             <th style="width:130px;">İl / İlçe</th>
                             <th style="width:90px;">Durum</th>
-                            <th style="width:110px;">Üyelik Tarihi</th>
+                            <th class="sortable-th" data-sort="uyelik_baslangic" style="width:110px;" title="Sıralamak için tıklayın"><span class="sort-label">Üyelik Tarihi</span><span class="sort-caret">◇</span></th>
                             <th style="width:130px;"></th>
                         </tr>
                         </thead>
@@ -170,7 +262,22 @@
     // ══════════════════════════════════════════════════════════════════════════════
     // State + request counter
     // ══════════════════════════════════════════════════════════════════════════════
-    var state      = { search: '', statu: '', per_page: 10, page: 1 };
+    var urlParams  = new URLSearchParams(window.location.search);
+    var initialPerPage = parseInt(urlParams.get('per_page') || '10', 10);
+    if (![10, 20, 50, 100, 500].includes(initialPerPage)) initialPerPage = 10;
+    var initialPage = parseInt(urlParams.get('page') || '1', 10);
+    if (!Number.isFinite(initialPage) || initialPage < 1) initialPage = 1;
+    var initialSortBy = urlParams.get('sort_by') || '';
+    if (!['ad_soyad', 'uyelik_baslangic'].includes(initialSortBy)) initialSortBy = '';
+    var initialSortDir = (urlParams.get('sort_dir') || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+    var state      = {
+        search: (urlParams.get('search') || '').trim(),
+        statu: (urlParams.get('statu') || ''),
+        per_page: initialPerPage,
+        page: initialPage,
+        sort_by: initialSortBy,
+        sort_dir: initialSortDir
+    };
     var fetchTimer = null;
     var reqCounter = 0;   // yalnızca en son isteğin yanıtı işlenir
 
@@ -254,6 +361,21 @@
 
     function goPage(p) { if (p < 1) return; state.page = p; fetchTable(); }
 
+    function updateSortHeaderDisplay() {
+        document.querySelectorAll('th.sortable-th').forEach(function (th) {
+            th.classList.remove('sort-active');
+            var col = th.getAttribute('data-sort');
+            var caret = th.querySelector('.sort-caret');
+            if (!caret) return;
+            if (state.sort_by && col === state.sort_by) {
+                th.classList.add('sort-active');
+                caret.textContent = state.sort_dir === 'desc' ? '▼' : '▲';
+            } else {
+                caret.textContent = '◇';
+            }
+        });
+    }
+
     // ══════════════════════════════════════════════════════════════════════════════
     // AJAX Fetch — reqCounter ile stale response önlemi
     // ══════════════════════════════════════════════════════════════════════════════
@@ -273,6 +395,10 @@
             per_page: state.per_page,
             page:     state.page,
         });
+        if (state.sort_by) {
+            params.set('sort_by', state.sort_by);
+            params.set('sort_dir', state.sort_dir || 'asc');
+        }
 
         fetch('/uyeler/tablo?' + params.toString(), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -304,10 +430,26 @@
                 }
 
                 var m = result.meta;
+                state.sort_by = m.sort_by || '';
+                state.sort_dir = m.sort_dir || 'asc';
+                state.page = m.current_page || state.page;
                 document.getElementById('pageSubtitle').textContent = m.total + ' üye kayıtlı';
                 document.getElementById('rangeInfo').textContent    = m.from + '–' + m.to + ' / ' + m.total + ' kayıt';
                 buildPagination(m);
+                updateSortHeaderDisplay();
                 updateClearBtn();
+
+                var u = new URL(window.location.href);
+                ['search','statu','per_page','page','sort_by','sort_dir'].forEach(function(k){ u.searchParams.delete(k); });
+                if (state.search) u.searchParams.set('search', state.search);
+                if (state.statu) u.searchParams.set('statu', state.statu);
+                if (state.per_page) u.searchParams.set('per_page', String(state.per_page));
+                if (state.page > 1) u.searchParams.set('page', String(state.page));
+                if (state.sort_by) {
+                    u.searchParams.set('sort_by', state.sort_by);
+                    u.searchParams.set('sort_dir', state.sort_dir || 'asc');
+                }
+                window.history.replaceState({}, '', u.toString());
             })
             .catch(function() {
                 if (myReq !== reqCounter) return;
@@ -320,22 +462,36 @@
     // Filtre dinleyiciler
     // ══════════════════════════════════════════════════════════════════════════════
     function updateClearBtn() {
-        var has = state.search !== '' || state.statu !== '';
+        var uiSearch = (document.getElementById('searchInput').value || '').trim();
+        var uiStatu = document.getElementById('statuFilter').value || '';
+        var has = uiSearch !== '' || uiStatu !== '';
         document.getElementById('clearFiltersBtn').style.display = has ? '' : 'none';
-        document.getElementById('searchInput').classList.toggle('filter-active', state.search !== '');
-        document.getElementById('statuFilter').classList.toggle('filter-active', state.statu !== '');
+        document.getElementById('searchInput').classList.toggle('filter-active', uiSearch !== '');
+        document.getElementById('statuFilter').classList.toggle('filter-active', uiStatu !== '');
     }
 
-    document.getElementById('searchInput').addEventListener('input', function() {
-        state.search = this.value.trim();
-        clearTimeout(fetchTimer);
-        fetchTimer = setTimeout(function() { fetchTable(true); }, 380);
-    });
-
-    document.getElementById('statuFilter').addEventListener('change', function() {
-        clearTimeout(fetchTimer);
-        state.statu = this.value;
+    function applyFilters() {
+        state.search = (document.getElementById('searchInput').value || '').trim();
+        state.statu = document.getElementById('statuFilter').value || '';
         fetchTable(true);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', updateClearBtn);
+    document.getElementById('statuFilter').addEventListener('change', updateClearBtn);
+    document.getElementById('applyFiltersBtn').addEventListener('click', function () {
+        applyFilters();
+    });
+    document.getElementById('searchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyFilters();
+        }
+    });
+    document.getElementById('statuFilter').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyFilters();
+        }
     });
 
     document.getElementById('perPageSelect').addEventListener('change', function() {
@@ -345,11 +501,26 @@
     });
 
     document.getElementById('clearFiltersBtn').addEventListener('click', function() {
-        clearTimeout(fetchTimer);
-        state.search = ''; state.statu = '';
+        state.search = ''; state.statu = ''; state.sort_by = ''; state.sort_dir = 'asc';
         document.getElementById('searchInput').value = '';
         document.getElementById('statuFilter').value = '';
+        updateSortHeaderDisplay();
         fetchTable(true);
+    });
+
+    document.querySelectorAll('th.sortable-th').forEach(function (th) {
+        th.addEventListener('click', function () {
+            var col = this.getAttribute('data-sort');
+            if (!col) return;
+            if (state.sort_by === col) {
+                state.sort_dir = state.sort_dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                state.sort_by = col;
+                state.sort_dir = 'asc';
+            }
+            updateSortHeaderDisplay();
+            fetchTable(true);
+        });
     });
 
     // ══════════════════════════════════════════════════════════════════════════════
@@ -446,6 +617,10 @@
     // ══════════════════════════════════════════════════════════════════════════════
     // Boot
     // ══════════════════════════════════════════════════════════════════════════════
+    document.getElementById('searchInput').value = state.search || '';
+    document.getElementById('statuFilter').value = state.statu || '';
+    document.getElementById('perPageSelect').value = String(state.per_page || 10);
+    updateSortHeaderDisplay();
     fetchTable();
 </script>
 @endsection

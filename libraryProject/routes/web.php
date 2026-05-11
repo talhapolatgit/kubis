@@ -8,9 +8,13 @@ use App\Http\Controllers\UyeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DilController;
+use App\Http\Controllers\KatalogParametreController;
 use App\Http\Controllers\KatalogController;
 use App\Http\Controllers\KutuphaneController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\YazarController;
+use App\Http\Controllers\YayineviController;
 use Illuminate\Support\Facades\Storage;
 
 // ─── Ana sayfa → girişli kullanıcıya katalog, değilse giriş ───────────────────
@@ -43,6 +47,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/etiket',     [EtiketController::class, 'index'])->name('etiket.index');
     Route::get('/etiket/ara', [EtiketController::class, 'ara'])->name('etiket.ara');
     Route::post('/etiket/isaretle', [EtiketController::class, 'isaretle'])->name('etiket.isaretle');
+    Route::get('/dil', [DilController::class, 'index'])->name('dil.index');
+    Route::get('/dil/export', [DilController::class, 'export'])->name('dil.export');
+    Route::post('/dil', [DilController::class, 'store'])->name('dil.store');
+    Route::put('/dil/{dil}', [DilController::class, 'update'])->name('dil.update');
+    Route::delete('/dil/{dil}', [DilController::class, 'destroy'])->name('dil.destroy');
+    Route::get('/katalog-parametreler', [KatalogParametreController::class, 'index'])->name('katalog_parametre.index');
+    Route::get('/katalog-parametreler/{tab}/list', [KatalogParametreController::class, 'list'])->name('katalog_parametre.list');
+    Route::get('/katalog-parametreler/{tab}/export', [KatalogParametreController::class, 'export'])->name('katalog_parametre.export');
+    Route::post('/katalog-parametreler/{tab}', [KatalogParametreController::class, 'store'])->name('katalog_parametre.store');
+    Route::put('/katalog-parametreler/{tab}/{id}', [KatalogParametreController::class, 'update'])->name('katalog_parametre.update');
+    Route::delete('/katalog-parametreler/{tab}/{id}', [KatalogParametreController::class, 'destroy'])->name('katalog_parametre.destroy');
 
     // Katalog
     Route::get('/katalog',              [KatalogController::class, 'index'])->name('katalog.index');
@@ -57,9 +72,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/katalog/{kitap}/edit', [KatalogController::class, 'edit'])->name('katalog.edit');
     Route::post('/katalog/{kitap}/transfer-kutuphane', [KatalogController::class, 'transferKutuphane'])->name('katalog.transferKutuphane');
     Route::put('/katalog/{kitap}',      [KatalogController::class, 'update'])->name('katalog.update');
+    Route::get('/yazarlar',             [YazarController::class, 'index'])->name('yazarlar.index');
+    Route::get('/yazarlar/export',      [YazarController::class, 'export'])->name('yazarlar.export');
+    Route::post('/yazarlar/merge',      [YazarController::class, 'merge'])->name('yazarlar.merge');
+    Route::post('/yazarlar',            [YazarController::class, 'store'])->name('yazarlar.store');
+    Route::put('/yazarlar/{yazar}',     [YazarController::class, 'update'])->name('yazarlar.update');
+    Route::delete('/yazarlar/{yazar}',  [YazarController::class, 'destroy'])->name('yazarlar.destroy');
+
+    Route::get('/yayinevleri',            [YayineviController::class, 'index'])->name('yayinevleri.index');
+    Route::get('/yayinevleri/export',     [YayineviController::class, 'export'])->name('yayinevleri.export');
+    Route::post('/yayinevleri/merge',     [YayineviController::class, 'merge'])->name('yayinevleri.merge');
+    Route::post('/yayinevleri',            [YayineviController::class, 'store'])->name('yayinevleri.store');
+    Route::put('/yayinevleri/{yayinevi}', [YayineviController::class, 'update'])->name('yayinevleri.update');
+    Route::delete('/yayinevleri/{yayinevi}', [YayineviController::class, 'destroy'])->name('yayinevleri.destroy');
 
     // Kütüphane
     Route::get('/kutuphane',                  [KutuphaneController::class, 'index'])->name('kutuphane.index');
+    Route::get('/kutuphane/export',           [KutuphaneController::class, 'export'])->name('kutuphane.export');
     Route::get('/kutuphane/new',              [KutuphaneController::class, 'new'])->name('kutuphane.new');
     Route::post('/kutuphane/new',             [KutuphaneController::class, 'store'])->name('kutuphane.store');
     Route::get('/kutuphane/{kutuphane}/edit', [KutuphaneController::class, 'edit'])->name('kutuphane.edit');
@@ -82,6 +111,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/kullanicilar/{user}/yetkili/search',       [UserController::class, 'searchKutuphaneler']);
     Route::post('/kullanicilar/{user}/yetkili',             [UserController::class, 'addYetkiliKutuphane']);
     Route::delete('/kullanicilar/{user}/yetkili/{yetkiliId}', [UserController::class, 'removeYetkiliKutuphane']);
+    Route::post('/kullanicilar/ldap/search', [UserController::class, 'ldapSearchUsers'])->name('users.ldap.search');
     Route::get('/kullanicilar/tablo',  [UserController::class, 'tableData']);
     Route::get('/kullanicilar/export', [UserController::class, 'export']);
 
@@ -129,6 +159,18 @@ Route::get('/storage/kapaklar/{file}', function (string $file) {
         abort(404);
     }
     $relative = 'kapaklar/' . $file;
+    if (!Storage::disk('public')->exists($relative)) {
+        abort(404);
+    }
+
+    return Storage::disk('public')->response($relative);
+})->where('file', '[A-Za-z0-9._-]+');
+
+Route::get('/storage/yazarlar/{file}', function (string $file) {
+    if (!preg_match('/^[A-Za-z0-9._-]+$/', $file)) {
+        abort(404);
+    }
+    $relative = 'yazarlar/' . $file;
     if (!Storage::disk('public')->exists($relative)) {
         abort(404);
     }

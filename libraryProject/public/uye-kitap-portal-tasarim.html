@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f8f6f3" />
+  <title>Kütüphane · Üye</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,500&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f2ee;
+      --bg-strong: #faf8f6;
+      --bg-elevated: #ffffff;
+      --bg-soft: rgba(30, 40, 50, 0.04);
+      --border: rgba(30, 40, 50, 0.1);
+      --border-strong: rgba(30, 40, 50, 0.14);
+      --text: #1a2028;
+      --muted: rgba(26, 32, 40, 0.55);
+      --accent: #0d7a6d;
+      --accent-dim: rgba(13, 122, 109, 0.12);
+      --accent-soft: rgba(13, 122, 109, 0.08);
+      --warning: #c45c00;
+      --danger: #c42d2d;
+      --favorite: #d9386e;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --shadow: 0 4px 24px rgba(35, 40, 48, 0.08), 0 1px 3px rgba(35, 40, 48, 0.06);
+      --shadow-lg: 0 -8px 40px rgba(35, 40, 48, 0.12);
+      --font-sans: "DM Sans", system-ui, sans-serif;
+      --font-display: "Fraunces", Georgia, serif;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --nav-h: 72px;
+      --dock-z: 40;
+      --sheet-z-backdrop: 60;
+      --sheet-z-panel: 61;
+      --sheet-green: #22c55e;
+      --sheet-green-hover: #16a34a;
+      --sheet-green-muted: #dcfce7;
+      --sheet-green-text: #166534;
+      --sheet-icon: #64748b;
+      --sheet-line: rgba(26, 32, 40, 0.1);
+    }
+
+    *,
+    *::before,
+    *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body.sheet-open {
+      overflow: hidden;
+      touch-action: none;
+    }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.45;
+      color: var(--text);
+      background: var(--bg-strong);
+      background-image:
+        radial-gradient(ellipse 100% 80% at 50% -20%, rgba(13, 122, 109, 0.09), transparent),
+        radial-gradient(ellipse 70% 50% at 100% 0%, rgba(90, 120, 180, 0.07), transparent);
+      padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+    }
+
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    img { display: block; max-width: 100%; height: auto; }
+
+    .shell {
+      max-width: 440px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      padding: 0 18px;
+    }
+
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 14px 0 10px;
+      background: linear-gradient(180deg, rgba(248, 246, 243, 0.94) 70%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0d9488 0%, #0369a1 95%);
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      box-shadow: 0 4px 14px rgba(13, 122, 109, 0.28);
+    }
+    .brand-text h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .brand-text p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+      color: var(--text);
+      transition: transform 0.12s, box-shadow 0.15s;
+    }
+    .icon-btn:active { transform: scale(0.96); }
+    .icon-btn svg { width: 20px; height: 20px; }
+
+    .search-wrap {
+      position: relative;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      padding: 13px 14px 13px 44px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: var(--shadow);
+    }
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus {
+      border-color: rgba(13, 122, 109, 0.45);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 16px 0 4px;
+      margin: 0 -4px;
+      scrollbar-width: none;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--muted);
+      transition: all 0.15s;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .chip.is-active {
+      background: var(--accent-dim);
+      border-color: rgba(13, 122, 109, 0.28);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .panel { display: none; animation: fadeIn 0.28s ease; }
+    .panel.is-active { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 22px 0 12px;
+    }
+    .section-title h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .section-title a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .book-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .book-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      gap: 14px;
+      align-items: start;
+      padding: 14px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.2s;
+    }
+    .book-card:active {
+      transform: scale(0.99);
+    }
+    .book-card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .book-cover {
+      width: 72px;
+      height: 102px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      background: #e8e6e2;
+    }
+    .book-body { min-width: 0; pointer-events: none; }
+    .book-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.28;
+    }
+    .book-meta {
+      margin: 6px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .book-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+      pointer-events: auto;
+    }
+    .row-chevron {
+      align-self: center;
+      color: var(--muted);
+      opacity: 0.5;
+    }
+    .fav-toggle {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      transition: background 0.15s;
+    }
+    .fav-toggle.is-on {
+      background: rgba(217, 56, 110, 0.1);
+      border-color: rgba(217, 56, 110, 0.25);
+      color: var(--favorite);
+    }
+    .fav-toggle svg { width: 18px; height: 18px; }
+    .fav-toggle:not(.is-on) svg { opacity: 0.45; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(13, 122, 109, 0.2);
+    }
+    .status-pill.busy {
+      background: rgba(196, 92, 0, 0.08);
+      color: var(--warning);
+      border-color: rgba(196, 92, 0, 0.22);
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.85;
+    }
+
+    .loan-list { display: flex; flex-direction: column; gap: 10px; }
+    .loan-card {
+      display: flex;
+      gap: 12px;
+      padding: 14px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .loan-card.is-tappable {
+      cursor: pointer;
+      transition: transform 0.12s;
+    }
+    .loan-card.is-tappable:active { transform: scale(0.99); }
+    .loan-card .thumb {
+      width: 52px;
+      height: 74px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      background: #e8e6e2;
+    }
+    .loan-info { flex: 1; min-width: 0; }
+    .loan-info h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .loan-info dl {
+      margin: 8px 0 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 12px;
+      font-size: 12px;
+    }
+    .loan-info dt { color: var(--muted); font-weight: 500; }
+    .loan-info dd { margin: 0; }
+    .badge {
+      align-self: flex-start;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge.out { background: var(--accent-dim); color: var(--accent); }
+    .badge.due {
+      background: rgba(196, 45, 45, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(196, 45, 45, 0.22);
+    }
+    .badge.returned {
+      background: var(--bg-soft);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 36px 20px;
+      border-radius: var(--radius-lg);
+      border: 1px dashed var(--border-strong);
+      background: var(--bg-elevated);
+      margin-top: 24px;
+      box-shadow: var(--shadow);
+    }
+    .empty-state .emoji { font-size: 40px; margin-bottom: 10px; }
+    .empty-state h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+    }
+    .empty-state p {
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .profile-card {
+      margin-top: 8px;
+      padding: 18px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 17px;
+      color: #fff;
+    }
+    .profile-card h3 { margin: 0; font-size: 16px; }
+    .profile-card p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: var(--dock-z);
+      padding: 10px 16px calc(10px + var(--safe-bottom));
+      background: linear-gradient(180deg, transparent, rgba(244, 242, 238, 0.92));
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      pointer-events: none;
+    }
+    .dock-inner {
+      pointer-events: auto;
+      max-width: 400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 6px;
+      border-radius: 22px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: 0 -4px 24px rgba(35, 40, 48, 0.1);
+    }
+    .dock-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 6px;
+      border-radius: 14px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      transition: color 0.15s, background 0.15s;
+    }
+    .dock-tab svg { width: 22px; height: 22px; }
+    .dock-tab.is-active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .demo-banner {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(196, 92, 0, 0.08);
+      border: 1px solid rgba(196, 92, 0, 0.2);
+      font-size: 12px;
+      color: var(--warning);
+      text-align: center;
+    }
+
+    /* Bottom sheet — referans kart düzeni */
+    .sheet-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: var(--sheet-z-backdrop);
+      background: rgba(25, 32, 40, 0.38);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.28s ease, visibility 0.28s;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .sheet-backdrop.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .sheet-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: var(--sheet-z-panel);
+      max-height: min(88dvh, 680px);
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.12);
+      border: none;
+      transform: translateY(104%);
+      transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+      padding-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      color: #0f172a;
+    }
+    .sheet-panel.is-open {
+      transform: translateY(0);
+    }
+    .sheet-top {
+      position: relative;
+      flex-shrink: 0;
+      padding: 12px 0 8px;
+    }
+    .sheet-handle-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 0 0 8px;
+    }
+    .sheet-handle {
+      width: 40px;
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(15, 23, 42, 0.14);
+    }
+    .sheet-close {
+      position: absolute;
+      top: 10px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--sheet-line);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      color: #475569;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    }
+    .sheet-close svg { width: 16px; height: 16px; }
+    .sheet-scroll {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 8px 20px 28px;
+      flex: 1;
+      min-height: 0;
+    }
+    .sheet-hero {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .sheet-cover {
+      width: 118px;
+      height: 168px;
+      border-radius: 14px;
+      object-fit: cover;
+      border: 1px solid var(--sheet-line);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+      flex-shrink: 0;
+      background: #e8e6e2;
+    }
+    .sheet-hero-meta {
+      flex: 1;
+      min-width: 0;
+      padding-top: 2px;
+    }
+    .sheet-badge-slot { margin-bottom: 8px; }
+    .sheet-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--sheet-green-muted);
+      color: var(--sheet-green-text);
+      letter-spacing: 0.01em;
+    }
+    .sheet-badge.busy {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+    .sheet-detail-title {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.28;
+      color: #020617;
+    }
+    .sheet-detail-author {
+      margin: 6px 0 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+    }
+    .sheet-meta-list {
+      list-style: none;
+      margin: 14px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sheet-meta-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      line-height: 1.38;
+      color: #475569;
+    }
+    .sheet-meta-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      margin-top: 1px;
+      color: var(--sheet-icon);
+    }
+    .sheet-meta-list span {
+      flex: 1;
+      word-break: break-word;
+    }
+    .sheet-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .sheet-stat-card {
+      padding: 16px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--sheet-line);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+    }
+    .sheet-stat-card svg {
+      width: 24px;
+      height: 24px;
+      color: var(--sheet-icon);
+    }
+    .sheet-stat-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .sheet-stat-card strong {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #020617;
+    }
+    .sheet-desc {
+      margin: 14px 0 0;
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.55;
+      display: none;
+    }
+    .sheet-desc.has-text {
+      display: block;
+    }
+    .sheet-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px calc(16px + var(--safe-bottom));
+      border-top: 1px solid var(--sheet-line);
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .btn-sheet-fav {
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 1px solid var(--sheet-line);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      color: #64748b;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+    .btn-sheet-fav.is-on {
+      border-color: rgba(239, 68, 113, 0.45);
+      color: #db2777;
+      background: #fef2f4;
+    }
+    .btn-sheet-fav svg { width: 22px; height: 22px; }
+    .btn-sheet-reserve {
+      flex: 1;
+      padding: 15px 20px;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 700;
+      background: var(--sheet-green);
+      color: #fff;
+      letter-spacing: 0.02em;
+      border: none;
+      box-shadow: 0 4px 14px rgba(34, 197, 94, 0.28);
+      min-height: 52px;
+    }
+    .btn-sheet-reserve:hover {
+      background: var(--sheet-green-hover);
+    }
+    .btn-sheet-reserve.secondary {
+      background: #fff;
+      color: var(--sheet-green);
+      border: 2px solid var(--sheet-green);
+      box-shadow: none;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="appShell">
+    <header class="top-bar">
+      <div class="top-row">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">📚</div>
+          <div class="brand-text">
+            <h1>Kütüphane</h1>
+            <p>Merhaba, Ayşe</p>
+          </div>
+        </div>
+        <button type="button" class="icon-btn" aria-label="Bildirimler">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 7.165 6 9.387 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0h6z"/></svg>
+        </button>
+      </div>
+      <div class="demo-banner">
+        Açık tema · Kitap satırına veya kapak fotoğrafına dokununca alta detay kartı açılır (örnek veriler).
+      </div>
+      <div class="search-wrap" role="search">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75"><circle cx="11" cy="11" r="7"/><path d="M21 21l-3.5-3.5"/></svg>
+        <input class="search-input" type="search" placeholder="Kitap, yazar veya konu ara…" autocomplete="off" aria-label="Katalog ara" />
+      </div>
+    </header>
+
+    <section class="panel is-active" id="panel-explore" data-panel="explore" aria-label="Keşfet">
+      <div class="chips" role="tablist" aria-label="Hızlı filtreler">
+        <button type="button" class="chip is-active">Tümü</button>
+        <button type="button" class="chip">Roman</button>
+        <button type="button" class="chip">Bilim</button>
+        <button type="button" class="chip">Çocuk</button>
+        <button type="button" class="chip">Sesli kitap</button>
+      </div>
+
+      <div class="section-title">
+        <h2>Yeni eklenenler</h2>
+        <a href="#">Tümünü gör</a>
+      </div>
+      <div class="book-grid">
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Sancılı Gece, detayı aç"
+          data-detail-title="Sancılı Gece"
+          data-detail-author="Ali Emrah Kurtulan"
+          data-detail-cover="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=320&h=460&fit=crop&q=80"
+          data-detail-desc=""
+          data-detail-pages="383"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Piripaşa Millet Kütüphanesi"
+          data-detail-isbn="9786052232316"
+          data-detail-demirbas="260502497"
+          data-detail-year="2019"
+          data-detail-status-kind="available"
+          data-detail-status-label="Rafta"
+          data-detail-reserve-label="Rezerve Et"
+          data-detail-reserve-variant="primary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Sancılı Gece</h3>
+            <p class="book-meta">Ali Emrah Kurtulan · Piripaşa Millet Kütüphanesi</p>
+            <div class="status-pill"><span class="dot" aria-hidden="true"></span>Rafta</div>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle js-fav-prop" aria-pressed="false" aria-label="Favoriye ekle"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Gece Treni İstanbul, detayı aç"
+          data-detail-title="Gece Treni İstanbul"
+          data-detail-author="Aylin Bal"
+          data-detail-cover="https://images.unsplash.com/photo-1524578271613-d553eacf5070?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="1920’ler İstanbul’unda geçen bu roman, tren yolculuklarıyla örülmüş eksik bir ailenin hikâyesini anlatıyor. Tarihi atmosfer ve gizemli karakterleriyle rahat okunan bir yapıt."
+          data-detail-pages="342"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Merkez · 3. kat · A blok"
+          data-detail-isbn="978-605-000-0001"
+          data-detail-demirbas="240198002"
+          data-detail-year="2024"
+          data-detail-status-kind="available"
+          data-detail-status-label="Rafta"
+          data-detail-reserve-label="Rezerve Et"
+          data-detail-reserve-variant="primary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1524578271613-d553eacf5070?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Gece Treni İstanbul</h3>
+            <p class="book-meta">Aylin Bal · Tarihi kurgu · 342 sayfa</p>
+            <div class="status-pill"><span class="dot" aria-hidden="true"></span>Rafta</div>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle is-on js-fav-prop" aria-pressed="true" aria-label="Favoriden çıkar" title="Favori"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Sessiz Gökyüzü, detayı aç"
+          data-detail-title="Sessiz Gökyüzü"
+          data-detail-author="Mehmet Kıran · Çeviri"
+          data-detail-cover="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Gezegenler, gök adaçayımları ve ışık kirliliği üzerine sade bir giriş. Gözlem önerileri ve gökyüzü fotoğrafçılığı için pratik bilgiler içerir."
+          data-detail-pages="288"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Şube Kuzey · 2. kat"
+          data-detail-isbn="978-625-000-1002"
+          data-detail-demirbas="240198015"
+          data-detail-year="2023"
+          data-detail-status-kind="busy"
+          data-detail-status-label="Ödünçte (tahmini 12 gün)"
+          data-detail-reserve-label="Sıraya yazıl"
+          data-detail-reserve-variant="secondary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Sessiz Gökyüzü</h3>
+            <p class="book-meta">Mehmet Kıran · Çeviri · Astronomi</p>
+            <div class="status-pill busy"><span class="dot" aria-hidden="true"></span>Ödünçte · 12 gün</div>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle js-fav-prop" aria-pressed="false" aria-label="Favoriye ekle"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Kent ve Hafıza, detayı aç"
+          data-detail-title="Kent ve Hafıza"
+          data-detail-author="Derleme"
+          data-detail-cover="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Şehir mekânlarının kolektif hatırası üzerine makale derlemesi; mimari, sokak kültürü ve görsel arşivleri bir araya getiriyor."
+          data-detail-pages="412"
+          data-detail-lang="Türkçe / İngilizce seçmeli"
+          data-detail-branch="Merkez · referans salonu"
+          data-detail-isbn="978-625-000-2004"
+          data-detail-demirbas="239901440"
+          data-detail-year="2022"
+          data-detail-status-kind="available"
+          data-detail-status-label="Rafta"
+          data-detail-reserve-label="Rezerve Et"
+          data-detail-reserve-variant="primary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Kent ve Hafıza</h3>
+            <p class="book-meta">Derleme · Mimari sosyoloji</p>
+            <div class="status-pill"><span class="dot" aria-hidden="true"></span>Rafta</div>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle js-fav-prop" aria-pressed="false" aria-label="Favoriye ekle"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+      </div>
+
+      <div class="section-title" style="margin-top:26px;">
+        <h2>Öne çıkan</h2>
+      </div>
+      <div class="book-grid">
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Verinin Gölgesinde, detayı aç"
+          data-detail-title="Verinin Gölgesinde"
+          data-detail-author="Ezgi Arman"
+          data-detail-cover="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Algoritmik ayrımcılık ve kişisel veri güvenliği üzerine güncel bir kaynak. Akademik okuyucuya ve meraklı üyeye uygun orta düzey bir metin."
+          data-detail-pages="296"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Merkez · 5. kat · D blok"
+          data-detail-isbn="978-605-500-3300"
+          data-detail-demirbas="250112090"
+          data-detail-year="2025"
+          data-detail-status-kind="busy"
+          data-detail-status-label="Üzerinde rezervasyon kuyruğu var"
+          data-detail-reserve-label="Bekleyenler sırasına gir"
+          data-detail-reserve-variant="secondary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Verinin Gölgesinde</h3>
+            <p class="book-meta">Data etiği · 5. kat · D-BLOK</p>
+            <div class="status-pill busy"><span class="dot" aria-hidden="true"></span>Rezervasyon var</div>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle js-fav-prop" aria-pressed="false" aria-label="Favoriye ekle"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-loans" data-panel="loans" aria-label="Ödünçlerim">
+      <div class="section-title" style="margin-top:6px;">
+        <h2>Ödünçte olanlar</h2>
+      </div>
+      <div class="loan-list">
+        <article class="loan-card is-tappable js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Deniz Çemberi detayı"
+          data-detail-title="Deniz Çemberi"
+          data-detail-author="Y. Torres · Çeviri"
+          data-detail-cover="https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Uzak bir adada yaşanan gizemli olayların anlatıldığı sıkı tempolu gerilim romanının ödünç örneği. Teslim tarihini uygulamadan takip edebilirsiniz."
+          data-detail-pages="418"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Merkez (ödünçte)"
+          data-detail-isbn="978-625-400-8801"
+          data-detail-demirbas="230901112"
+          data-detail-year="2021"
+          data-detail-status-kind="busy"
+          data-detail-status-label="Ödünçte · son 3 gün"
+          data-detail-reserve-label="Süreyi görüntüle"
+          data-detail-reserve-variant="secondary">
+          <img class="thumb" src="https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=116&amp;h=166&amp;fit=crop&amp;q=80" alt="" width="52" height="74" decoding="async" />
+          <div class="loan-info">
+            <h3>Deniz Çemberi — Y. Torres</h3>
+            <dl>
+              <dt>Alış</dt>
+              <dd>04.05.2026</dd>
+              <dt>Teslim</dt>
+              <dd>02.06.2026</dd>
+              <dt>Şube</dt>
+              <dd>Merkez</dd>
+            </dl>
+          </div>
+          <span class="badge due">Son 3 gün</span>
+        </article>
+        <article class="loan-card is-tappable js-book-card"
+          tabindex="0"
+          role="button"
+          aria-label="Makine Öğrenmesine Giriş detayı"
+          data-detail-title="Makine Öğrenmesine Giriş"
+          data-detail-author="Prof. Alan Grant"
+          data-detail-cover="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Denetimli ve denetimsiz öğrenme kavramları, Python örnekleri ve model değerlendirme bölümleriyle ders kitabı niteliğinde bir kaynak."
+          data-detail-pages="512"
+          data-detail-lang="İngilizce"
+          data-detail-branch="Merkez (ödünçte)"
+          data-detail-isbn="978-013-409341-0"
+          data-detail-demirbas="220554001"
+          data-detail-year="2020"
+          data-detail-status-kind="busy"
+          data-detail-status-label="Ödünçte"
+          data-detail-reserve-label="Uzatma talep et"
+          data-detail-reserve-variant="primary">
+          <img class="thumb" src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=116&amp;h=166&amp;fit=crop&amp;q=80" alt="" width="52" height="74" decoding="async" />
+          <div class="loan-info">
+            <h3>Makine Öğrenmesine Giriş</h3>
+            <dl>
+              <dt>Alış</dt>
+              <dd>18.04.2026</dd>
+              <dt>Teslim</dt>
+              <dd>19.05.2026</dd>
+              <dt>Şube</dt>
+              <dd>Merkez</dd>
+            </dl>
+          </div>
+          <span class="badge out">Normal</span>
+        </article>
+      </div>
+      <div class="section-title">
+        <h2>İade edilenler</h2>
+      </div>
+      <div class="loan-list">
+        <article class="loan-card is-tappable js-book-card"
+          tabindex="0"
+          role="button"
+          data-detail-title="Kısa Süreli Soğuk Savaş"
+          data-detail-author="Çoklu yazar"
+          data-detail-cover="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Makale derlemesi. Geçmiş teslim tarihi artık arşivde; tekrar ödünç almak için katalogdan arayabilirsiniz."
+          data-detail-pages="264"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Merkez"
+          data-detail-isbn="978-605-990-1100"
+          data-detail-demirbas="198804002"
+          data-detail-year="2019"
+          data-detail-status-kind="available"
+          data-detail-status-label="İade alındı"
+          data-detail-reserve-label="Tekrar ara"
+          data-detail-reserve-variant="secondary">
+          <img class="thumb" src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=116&amp;h=166&amp;fit=crop&amp;q=80" alt="" width="52" height="74" decoding="async" />
+          <div class="loan-info">
+            <h3>Kısa Süreli Soğuk Savaş</h3>
+            <dl>
+              <dt>Teslim alındı</dt>
+              <dd>22.03.2026</dd>
+              <dt>Süre</dt>
+              <dd>İade zamanında ✓</dd>
+            </dl>
+          </div>
+          <span class="badge returned">İade</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-favorites" data-panel="favorites" aria-label="Favoriler">
+      <div class="section-title" style="margin-top:8px;">
+        <h2>Favorilerin</h2>
+        <span style="font-size:13px;font-weight:600;color:var(--muted);">3 kitap</span>
+      </div>
+      <div class="book-grid">
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          data-detail-title="Gece Treni İstanbul"
+          data-detail-author="Aylin Bal"
+          data-detail-cover="https://images.unsplash.com/photo-1524578271613-d553eacf5070?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="1920’ler İstanbul’unda geçen bu roman, tren yolculuklarıyla örülmüş eksik bir ailenin hikâyesini anlatıyor."
+          data-detail-pages="342"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Merkez · 3. kat · A blok"
+          data-detail-isbn="978-605-000-0001"
+          data-detail-demirbas="240198002"
+          data-detail-year="2024"
+          data-detail-status-kind="available"
+          data-detail-status-label="Uygun · Rezervasyon açık"
+          data-detail-reserve-label="Rezerve Et"
+          data-detail-reserve-variant="primary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1524578271613-d553eacf5070?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Gece Treni İstanbul</h3>
+            <p class="book-meta">Rafında · Rezervasyon uygun</p>
+            <div class="status-pill"><span class="dot"></span>Uygun</div>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle is-on js-fav-prop" aria-pressed="true"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+        <article class="book-card js-book-card"
+          tabindex="0"
+          role="button"
+          data-detail-title="Fotoğraflarla İstanbul Kartpostalları"
+          data-detail-author="Kent Arşivi"
+          data-detail-cover="https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=320&h=460&fit=crop&q=80"
+          data-detail-desc="Nostaljik kartpostal reprodüksiyonları ve kısa açıklamalar. Yalnızca kütüphane içi okuma kuralı olan referans nüshası."
+          data-detail-pages="176"
+          data-detail-lang="Türkçe"
+          data-detail-branch="Merkez · özel koleksiyon"
+          data-detail-isbn="978-605-778-0900"
+          data-detail-demirbas="171200331"
+          data-detail-year="2017"
+          data-detail-status-kind="busy"
+          data-detail-status-label="Sadece kütüphane içi"
+          data-detail-reserve-label="Salon kullanımı planla"
+          data-detail-reserve-variant="secondary">
+          <img class="book-cover" src="https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=160&amp;h=230&amp;fit=crop&amp;q=80" alt="" width="72" height="102" decoding="async" />
+          <div class="book-body">
+            <h3 class="book-title">Fotoğraflarla İstanbul Kartpostalları</h3>
+            <p class="book-meta">Sadece kütüphane içinde</p>
+          </div>
+          <div class="book-actions">
+            <button type="button" class="fav-toggle is-on js-fav-prop" aria-pressed="true"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+            <span class="row-chevron" aria-hidden="true"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </article>
+      </div>
+      <div class="empty-state" style="margin-top:16px;">
+        <div class="emoji" aria-hidden="true">✨</div>
+        <h3>Listeni zenginleştir</h3>
+        <p>Yeni çıkanları keşfedin; satıra dokunarak özeti alta açın ve kalbi favorilere ekleyin.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-profile" data-panel="profile" aria-label="Hesap">
+      <div class="profile-card" style="margin-top:8px;">
+        <div class="avatar">A</div>
+        <div>
+          <h3>Ayşe Yılmaz</h3>
+          <p>Üye no: 452108 · Süre uzatım hakkı: 2</p>
+        </div>
+      </div>
+      <div class="section-title">
+        <h2>Hızlı erişim</h2>
+      </div>
+      <div class="book-grid" style="gap:10px;">
+        <div class="loan-card" style="align-items:center;cursor:default;">
+          <span aria-hidden="true" style="font-size:22px;">📖</span>
+          <div class="loan-info">
+            <h3 style="font-size:15px;">Aktif rezervasyonlar</h3>
+            <p style="margin:4px 0 0;color:var(--muted);font-size:13px;">1 kitap sizin için ayrılıyor · 3 gün içinde teslim</p>
+          </div>
+        </div>
+        <div class="loan-card" style="align-items:center;cursor:default;">
+          <span aria-hidden="true" style="font-size:22px;">🔔</span>
+          <div class="loan-info">
+            <h3 style="font-size:15px;">Hatırlatıcılar</h3>
+            <p style="margin:4px 0 0;color:var(--muted);font-size:13px;">Teslim ve sıra sırasında bildirim</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="sr-only">Üye portalı tasarım prototipi</footer>
+  </div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" aria-hidden="true"></div>
+  <div class="sheet-panel" id="sheetPanel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1">
+    <div class="sheet-top">
+      <div class="sheet-handle-wrap" aria-hidden="true"><span class="sheet-handle"></span></div>
+      <button type="button" class="sheet-close" id="sheetCloseBtn" aria-label="Kapat">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-scroll">
+      <div class="sheet-hero">
+        <img id="sheetCover" class="sheet-cover" src="" alt="" width="118" height="168" decoding="async" />
+        <div class="sheet-hero-meta">
+          <div class="sheet-badge-slot" id="sheetStatusSlot"></div>
+          <h2 class="sheet-detail-title" id="sheetTitle">Kitap</h2>
+          <p class="sheet-detail-author" id="sheetAuthor"></p>
+          <ul class="sheet-meta-list">
+            <li>
+              <svg class="sheet-meta-icon" fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span id="sheetLocation">—</span>
+            </li>
+            <li>
+              <svg class="sheet-meta-icon" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 8v8M9 8v8M11 8v8M14 8v8M17 8v8M18 8v8"/>
+              </svg>
+              <span id="sheetIsbn">—</span>
+            </li>
+            <li>
+              <svg class="sheet-meta-icon" fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M4 4v15.5"/><path d="M6.5 17H20V4H6.5A2.5 2.5 0 004 6.5v10A2.5 2.5 0 006.5 17z"/></svg>
+              <span id="sheetDemirbas">—</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="sheet-stat-grid">
+        <div class="sheet-stat-card">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="sheet-stat-label">Yayın Yılı</span>
+          <strong id="sheetYearStat">—</strong>
+        </div>
+        <div class="sheet-stat-card">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          <span class="sheet-stat-label">Sayfa Sayısı</span>
+          <strong id="sheetPagesStat">—</strong>
+        </div>
+      </div>
+      <p class="sheet-desc" id="sheetDesc"></p>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="btn-sheet-fav" id="sheetFavBtn" aria-pressed="false" aria-label="Favoriye ekle">
+        <svg class="fav-svg-outline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l8.72 8.72a.996.996 0 001.41 0l8.72-8.72a5.503 5.503 0 000-7.79z"/></svg>
+        <svg class="fav-svg-fill" style="display:none" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.44C11.59 5.01 13.26 4 15 4c2.5 0 4.5 2 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </button>
+      <button type="button" class="btn-sheet-reserve" id="sheetReserveBtn">Rezerve Et</button>
+    </div>
+  </div>
+
+  <nav class="dock" aria-label="Alt menü">
+    <div class="dock-inner" role="tablist">
+      <button type="button" class="dock-tab is-active" data-tab="explore" aria-selected="true">
+        <svg fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24"><path d="M4 11h6V4H4v7zm0 9h6v-7H4v7zm10 0h6v-7h-6v7zm0-13v7h6V4h-6z"/></svg>
+        Keşfet
+      </button>
+      <button type="button" class="dock-tab" data-tab="loans" aria-selected="false">
+        <svg fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24"><path d="M12 13V3m0 10l4.553 2.276a2 2 0 011.098 2.068l-.38 5.694a2 2 0 01-1.99 1.862H8.719a2 2 0 01-1.99-1.862l-.38-5.694a2 2 0 011.097-2.068L12 13z"/><path d="M5 21h14"/></svg>
+        Ödünçler
+      </button>
+      <button type="button" class="dock-tab" data-tab="favorites" aria-selected="false">
+        <svg fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 10-7.78 7.78l8.72 8.72a.996.996 0 001.41 0l8.72-8.72a5.503 5.503 0 000-7.79z"/></svg>
+        Favoriler
+      </button>
+      <button type="button" class="dock-tab" data-tab="profile" aria-selected="false">
+        <svg fill="none" stroke="currentColor" stroke-width="1.85" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3"/><path d="M5 20v-2a7 7 0 0114 0v2"/></svg>
+        Hesap
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    (function () {
+      var backdrop = document.getElementById('sheetBackdrop');
+      var panel = document.getElementById('sheetPanel');
+      var sheetCloseBtn = document.getElementById('sheetCloseBtn');
+      var sheetFavBtn = document.getElementById('sheetFavBtn');
+      var sheetReserveBtn = document.getElementById('sheetReserveBtn');
+      var lastCard = null;
+
+      function openSheetFromCard(card) {
+        lastCard = card;
+        var d = card.dataset;
+        document.getElementById('sheetTitle').textContent = d.detailTitle || 'Kitap';
+        document.getElementById('sheetAuthor').textContent = d.detailAuthor || '';
+        document.getElementById('sheetCover').src = d.detailCover || '';
+        document.getElementById('sheetCover').alt = d.detailTitle || '';
+        document.getElementById('sheetLocation').textContent = d.detailBranch || '—';
+
+        document.getElementById('sheetIsbn').textContent = d.detailIsbn || '—';
+        var dem = (d.detailDemirbas || '').trim();
+        document.getElementById('sheetDemirbas').textContent = dem
+          ? ('Demirbaş: ' + dem.replace(/^Demirbaş\s*:\s*/i, '').trim())
+          : '—';
+
+        document.getElementById('sheetYearStat').textContent = d.detailYear || '—';
+        document.getElementById('sheetPagesStat').textContent = d.detailPages || '—';
+
+        var descEl = document.getElementById('sheetDesc');
+        var desc = (d.detailDesc || '').trim();
+        descEl.textContent = desc;
+        descEl.classList.toggle('has-text', desc !== '');
+
+        var kind = (d.detailStatusKind || 'available').toLowerCase();
+        var label = d.detailStatusLabel || '';
+        var slot = document.getElementById('sheetStatusSlot');
+        slot.innerHTML = '';
+        var badge = document.createElement('span');
+        badge.className = 'sheet-badge' + (kind === 'busy' ? ' busy' : '');
+        badge.textContent = label;
+        slot.appendChild(badge);
+
+        sheetReserveBtn.textContent = d.detailReserveLabel || 'Rezerve Et';
+        sheetReserveBtn.className = 'btn-sheet-reserve';
+        if ((d.detailReserveVariant || '').toLowerCase() === 'secondary') {
+          sheetReserveBtn.classList.add('secondary');
+        }
+
+        syncSheetFavFromCard();
+
+        document.body.classList.add('sheet-open');
+        backdrop.classList.add('is-visible');
+        backdrop.setAttribute('aria-hidden', 'false');
+        panel.classList.add('is-open');
+        sheetCloseBtn.focus();
+      }
+
+      function syncSheetFavFromCard() {
+        var outline = sheetFavBtn.querySelector('.fav-svg-outline');
+        var fill = sheetFavBtn.querySelector('.fav-svg-fill');
+        if (!lastCard) return;
+        var fav = lastCard.querySelector('.js-fav-prop');
+        if (!fav) {
+          sheetFavBtn.style.display = 'none';
+          return;
+        }
+        sheetFavBtn.style.display = '';
+        var on = fav.classList.contains('is-on');
+        sheetFavBtn.classList.toggle('is-on', on);
+        sheetFavBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        sheetFavBtn.setAttribute('aria-label', on ? 'Favoriden çıkar' : 'Favoriye ekle');
+        if (outline && fill) {
+          outline.style.display = on ? 'none' : 'block';
+          fill.style.display = on ? 'block' : 'none';
+        }
+      }
+
+      function closeSheet() {
+        panel.classList.remove('is-open');
+        backdrop.classList.remove('is-visible');
+        backdrop.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sheet-open');
+        lastCard = null;
+      }
+
+      backdrop.addEventListener('click', closeSheet);
+      sheetCloseBtn.addEventListener('click', closeSheet);
+
+      sheetFavBtn.addEventListener('click', function () {
+        if (!lastCard) return;
+        var fav = lastCard.querySelector('.js-fav-prop');
+        if (!fav) return;
+        var on = fav.classList.toggle('is-on');
+        fav.setAttribute('aria-pressed', on ? 'true' : 'false');
+        syncSheetFavFromCard();
+      });
+
+      sheetReserveBtn.addEventListener('click', function () {
+        var t = sheetReserveBtn.textContent || 'İşlem';
+        alert('Tasarım ön izlemesi: «' + t + '» (gerçek uygulama bağlantısı yok)');
+      });
+
+      document.querySelectorAll('.js-book-card').forEach(function (card) {
+        card.addEventListener('click', function (ev) {
+          if (ev.target.closest('.js-fav-prop')) return;
+          openSheetFromCard(card);
+        });
+        card.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            if (document.activeElement && document.activeElement.classList.contains('js-fav-prop')) return;
+            ev.preventDefault();
+            openSheetFromCard(card);
+          }
+        });
+      });
+
+      document.querySelectorAll('.js-fav-prop').forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          var on = btn.classList.toggle('is-on');
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      });
+
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && panel.classList.contains('is-open')) closeSheet();
+      });
+
+
+      var tabs = document.querySelectorAll('[data-tab]');
+      var panels = document.querySelectorAll('[data-panel]');
+      function show(tab) {
+        panels.forEach(function (p) {
+          p.classList.toggle('is-active', p.dataset.panel === tab);
+        });
+        tabs.forEach(function (b) {
+          var on = b.dataset.tab === tab;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+      }
+      tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          show(btn.dataset.tab);
+        });
+      });
+
+      document.querySelectorAll('.chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          document.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('is-active'); });
+          chip.classList.add('is-active');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

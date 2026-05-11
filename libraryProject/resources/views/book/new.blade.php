@@ -734,6 +734,8 @@
         .ue-selected-card{border:1.5px solid var(--primary);border-radius:calc(var(--radius) - 2px);background:rgba(122,92,60,.04);padding:10px 14px;display:flex;align-items:center;gap:12px;margin-top:6px}
         .ue-selected-cover{width:28px;height:40px;border-radius:3px;object-fit:cover;flex-shrink:0}
         .ue-selected-info{flex:1;min-width:0}
+        .ue-selected-link{display:block;color:inherit;text-decoration:none}
+        .ue-selected-link:hover .ue-selected-name{text-decoration:underline}
         .ue-selected-name{font-size:14px;font-weight:600}
         .ue-selected-meta{font-size:12px;color:var(--muted-foreground);margin-top:2px}
         .ue-selected-clear{width:24px;height:24px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);flex-shrink:0;transition:background .15s}
@@ -978,20 +980,24 @@
 
                                 {{-- Üst Eser --}}
                                 <div style="margin-top:16px;">
-                                    <div class="form-field" id="ustEserSearchField">
+                                    <div class="form-field">
                                         <label class="form-label" for="ustEserSearch">Üst Eser <small style="font-weight:400;color:var(--muted-foreground);">(varsa bağlı olduğu üst eser)</small></label>
-                                        <div class="ue-autocomplete-wrap">
-                                            <input type="text" id="ustEserSearch" class="form-input"
-                                                   placeholder="Eser adı, yazar veya ISBN ile arayın…"
-                                                   autocomplete="off" />
-                                            <div class="ue-autocomplete-dropdown" id="ustEserDropdown"></div>
+                                        <div id="ustEserSearchField">
+                                            <div class="ue-autocomplete-wrap">
+                                                <input type="text" id="ustEserSearch" class="form-input"
+                                                       placeholder="Eser adı, yazar veya ISBN ile arayın…"
+                                                       autocomplete="off" />
+                                                <div class="ue-autocomplete-dropdown" id="ustEserDropdown"></div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div id="ustEserCard" style="display:none;" class="ue-selected-card">
                                         <div id="ustEserCoverWrap"></div>
                                         <div class="ue-selected-info">
-                                            <div class="ue-selected-name" id="ustEserName">—</div>
-                                            <div class="ue-selected-meta" id="ustEserMeta">—</div>
+                                            <a id="ustEserViewLink" class="ue-selected-link" href="#">
+                                                <div class="ue-selected-name" id="ustEserName">—</div>
+                                                <div class="ue-selected-meta" id="ustEserMeta">—</div>
+                                            </a>
                                         </div>
                                         <button type="button" class="ue-selected-clear" onclick="clearUstEser()" title="Üst Eseri Kaldır">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -1123,33 +1129,24 @@
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDilKN">Dil</label>
-                                        <select class="form-select" id="kunyeDilKN" name="kunyeDilKN">
-                                            @php $selectedDil = old('kunyeDilKN', 'Türkçe'); @endphp
+                                        @php
+                                            $selectedDil = old('kunyeDilKN', in_array('Türkçe', $dilSecenekleri ?? [], true) ? 'Türkçe' : ($dilSecenekleri[0] ?? ''));
+                                        @endphp
+                                        <select class="form-select" id="kunyeDilKN" name="kunyeDilKN" data-default-value="{{ $selectedDil }}">
                                             <option value="" disabled {{ $selectedDil === '' ? 'selected' : '' }}>Dil seçin</option>
-                                            <option value="Türkçe" {{ $selectedDil === 'Türkçe' ? 'selected' : '' }}>Türkçe</option>
-                                            <option value="İngilizce" {{ $selectedDil === 'İngilizce' ? 'selected' : '' }}>İngilizce</option>
-                                            <option value="Almanca" {{ $selectedDil === 'Almanca' ? 'selected' : '' }}>Almanca</option>
-                                            <option value="Fransızca" {{ $selectedDil === 'Fransızca' ? 'selected' : '' }}>Fransızca</option>
-                                            <option value="Arapça" {{ $selectedDil === 'Arapça' ? 'selected' : '' }}>Arapça</option>
-                                            <option value="İspanyolca" {{ $selectedDil === 'İspanyolca' ? 'selected' : '' }}>İspanyolca</option>
-                                            <option value="Rusça" {{ $selectedDil === 'Rusça' ? 'selected' : '' }}>Rusça</option>
-                                            <option value="Farsça" {{ $selectedDil === 'Farsça' ? 'selected' : '' }}>Farsça</option>
-                                            <option value="Diğer" {{ $selectedDil === 'Diğer' ? 'selected' : '' }}>Diğer</option>
+                                            @foreach(($dilSecenekleri ?? []) as $dil)
+                                                <option value="{{ $dil }}" {{ $selectedDil === $dil ? 'selected' : '' }}>{{ $dil }}</option>
+                                            @endforeach
                                         </select>
                                     </div>
                                     <div class="form-field">
                                         <label class="form-label" for="kunyeDil2">2. Dil <small style="font-weight:400;color:var(--muted-foreground);">(varsa)</small></label>
+                                        @php $selectedDil2 = old('kunyeDil2', ''); @endphp
                                         <select class="form-select" id="kunyeDil2" name="kunyeDil2">
-                                            <option value="" selected>— Yok —</option>
-                                            <option value="Türkçe">Türkçe</option>
-                                            <option value="İngilizce">İngilizce</option>
-                                            <option value="Almanca">Almanca</option>
-                                            <option value="Fransızca">Fransızca</option>
-                                            <option value="Arapça">Arapça</option>
-                                            <option value="İspanyolca">İspanyolca</option>
-                                            <option value="Rusça">Rusça</option>
-                                            <option value="Farsça">Farsça</option>
-                                            <option value="Diğer">Diğer</option>
+                                            <option value="" {{ $selectedDil2 === '' ? 'selected' : '' }}>— Yok —</option>
+                                            @foreach(($dilSecenekleri ?? []) as $dil)
+                                                <option value="{{ $dil }}" {{ $selectedDil2 === $dil ? 'selected' : '' }}>{{ $dil }}</option>
+                                            @endforeach
                                         </select>
                                     </div>
                                     <div class="form-field">
@@ -1884,7 +1881,7 @@
 
         // Reset dil select
         var languageSelect = document.getElementById('kunyeDilKN');
-        if (languageSelect) languageSelect.value = 'Türkçe';
+        if (languageSelect) languageSelect.value = languageSelect.dataset.defaultValue || '';
         var language2Select = document.getElementById('kunyeDil2');
         if (language2Select) language2Select.selectedIndex = 0;
         var gelisTarihiInput = document.getElementById('kunyeGelisTarihi');
@@ -2807,6 +2804,29 @@
         });
     })();
 
+    var ustEserViewBaseUrl = @json(url('/katalog'));
+
+    function getUstEserViewUrl(id) {
+        if (!id) {
+            return '#';
+        }
+        return ustEserViewBaseUrl + '/' + id + '/view';
+    }
+
+    function setUstEserLink(id) {
+        var link = document.getElementById('ustEserViewLink');
+        if (!link) {
+            return;
+        }
+        if (!id) {
+            link.href = '#';
+            link.setAttribute('aria-disabled', 'true');
+            return;
+        }
+        link.href = getUstEserViewUrl(id);
+        link.removeAttribute('aria-disabled');
+    }
+
     function selectUstEser(item) {
         selectedUstEser = item;
         document.getElementById('ustEserKatalogId').value = item.id;
@@ -2820,6 +2840,7 @@
 
         document.getElementById('ustEserName').textContent = item.label;
         document.getElementById('ustEserMeta').textContent = (item.yazar || '') + (item.demir ? ' · Demirbaş: ' + item.demir : '') + (item.isbn ? ' · ISBN: ' + item.isbn : '');
+        setUstEserLink(item.id);
         document.getElementById('ustEserSearchField').style.display = 'none';
         document.getElementById('ustEserCard').style.display = 'flex';
     }
@@ -2827,10 +2848,29 @@
     function clearUstEser() {
         selectedUstEser = null;
         document.getElementById('ustEserKatalogId').value = '';
+        setUstEserLink(null);
         document.getElementById('ustEserSearchField').style.display = 'block';
         document.getElementById('ustEserCard').style.display = 'none';
         document.getElementById('ustEserSearch').value = '';
     }
+
+    // Sayı alanlarında ok tuşu / mouse tekerleği ile değer değişimini engelle
+    (function () {
+        ['kunyeSayfaSayisi', 'kunyeKopya'].forEach(function (id) {
+            var input = document.getElementById(id);
+            if (!input) return;
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                }
+            });
+
+            input.addEventListener('wheel', function (e) {
+                e.preventDefault();
+            }, { passive: false });
+        });
+    })();
 
     // ============================
     // Sidebar active item highlight

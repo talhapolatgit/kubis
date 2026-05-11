@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Kutuphane;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,14 +16,120 @@ class KutuphaneController extends Controller
     {
         abort_unless(auth()->user()?->hasYetki(17) || auth()->user()?->hasYetki(19), 403);
         $query = Kutuphane::whereNull('deleted_at');
+        $this->applyKutuphaneListFilters($query, $request);
+        $this->applyKutuphaneListSort($query, $request);
+        $perPage = (int) $request->input('per_page', 20);
+        if (!in_array($perPage, [10, 20, 50, 100], true)) {
+            $perPage = 20;
+        }
 
+        $kutuphaneler = $query->paginate($perPage)->withQueryString();
+
+        $activeStatu = in_array((string) $request->input('statu'), ['aktif', 'pasif'], true)
+            ? (string) $request->input('statu')
+            : '';
+
+        $activeSortBy = '';
+        $activeSortDir = 'asc';
+        if ((string) $request->input('sort_by') === 'title') {
+            $activeSortBy = 'title';
+            $activeSortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+        }
+
+        if ($request->ajax()) {
+            $u = auth()->user();
+            $canEdit = $u && $u->hasYetki(19);
+
+            return response()->json([
+                'rows' => collect($kutuphaneler->items())->map(function (Kutuphane $k) {
+                    return [
+                        'id' => (int) $k->id,
+                        'title' => (string) $k->title,
+                        'address' => $k->address !== null && $k->address !== '' ? (string) $k->address : null,
+                        'phone' => $k->phone !== null && $k->phone !== '' ? (string) $k->phone : null,
+                        'email' => $k->email !== null && $k->email !== '' ? (string) $k->email : null,
+                        'statu' => (string) ($k->statu ?? ''),
+                        'created_at' => $k->created_at ? $k->created_at->format('d.m.Y') : '—',
+                    ];
+                })->values()->all(),
+                'meta' => [
+                    'total' => $kutuphaneler->total(),
+                    'from' => $kutuphaneler->firstItem(),
+                    'to' => $kutuphaneler->lastItem(),
+                    'current_page' => $kutuphaneler->currentPage(),
+                    'last_page' => $kutuphaneler->lastPage(),
+                    'per_page' => $kutuphaneler->perPage(),
+                    'can_edit' => $canEdit,
+                    'sort_by' => $activeSortBy !== '' ? $activeSortBy : null,
+                    'sort_dir' => $activeSortBy !== '' ? $activeSortDir : null,
+                    'statu' => $activeStatu !== '' ? $activeStatu : null,
+                ],
+            ]);
+        }
+
+        return view('kutuphane.list', compact(
+            'kutuphaneler',
+            'activeStatu',
+            'activeSortBy',
+            'activeSortDir',
+            'perPage'
+        ));
+    }
+
+    public function export(Request $request)
+    {
+        abort_unless(auth()->user()?->hasYetki(17) || auth()->user()?->hasYetki(19), 403);
+        $query = Kutuphane::whereNull('deleted_at');
+        $this->applyKutuphaneListFilters($query, $request);
+        $this->applyKutuphaneListSort($query, $request);
+        $rows = $query->get(['title', 'address', 'phone', 'email', 'statu', 'created_at']);
+
+        $filename = 'kutuphaneler_' . now()->format('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, ['Kütüphane Adı', 'Adres', 'Telefon', 'E-posta', 'Durum', 'Kayıt Tarihi'], ';');
+            foreach ($rows as $k) {
+                fputcsv($out, [
+                    (string) $k->title,
+                    (string) ($k->address ?? '—'),
+                    (string) ($k->phone ?? '—'),
+                    (string) ($k->email ?? '—'),
+                    (string) ($k->statu === 'aktif' ? 'Aktif' : 'Pasif'),
+                    $k->created_at ? $k->created_at->format('d.m.Y') : '—',
+                ], ';');
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function applyKutuphaneListFilters(Builder $query, Request $request): void
+    {
         if ($request->filled('search')) {
             $query->where('title', 'LIKE', '%' . $request->input('search') . '%');
         }
 
-        $kutuphaneler = $query->orderBy('id')->paginate(15)->withQueryString();
+        $statu = (string) $request->input('statu', '');
+        if ($statu === 'aktif' || $statu === 'pasif') {
+            $query->where('statu', $statu);
+        }
+    }
 
-        return view('kutuphane.list', compact('kutuphaneler'));
+    private function applyKutuphaneListSort(Builder $query, Request $request): void
+    {
+        $sortBy = (string) $request->input('sort_by', '');
+        $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        if ($sortBy === 'title') {
+            $query->orderBy('title', $sortDir)->orderBy('id');
+
+            return;
+        }
+
+        $query->orderBy('id');
     }
 
     // ─── Yeni Form ──────────────────────────────────────────────────────────────

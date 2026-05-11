@@ -785,6 +785,13 @@
         .ue-selected-card{border:1.5px solid var(--primary);border-radius:calc(var(--radius) - 2px);background:rgba(122,92,60,.04);padding:10px 14px;display:flex;align-items:center;gap:12px;margin-top:6px}
         .ue-selected-cover{width:28px;height:40px;border-radius:3px;object-fit:cover;flex-shrink:0}
         .ue-selected-info{flex:1;min-width:0}
+        .ue-selected-link{display:block;color:inherit;text-decoration:none}
+        .ue-selected-link:hover .ue-selected-name{text-decoration:underline}
+        .alt-eserler-wrap{margin-top:12px}
+        .alt-eserler-list{display:flex;flex-direction:column;gap:8px}
+        .alt-eser-item{display:flex;text-decoration:none;color:inherit}
+        .alt-eser-item:hover .ue-selected-name{text-decoration:underline}
+        .alt-eser-empty{font-size:12px;color:var(--muted-foreground)}
         .ue-selected-name{font-size:14px;font-weight:600}
         .ue-selected-meta{font-size:12px;color:var(--muted-foreground);margin-top:2px}
         .ue-selected-clear{width:24px;height:24px;border-radius:6px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted-foreground);flex-shrink:0;transition:background .15s}
@@ -1121,31 +1128,64 @@
                                 </div>
 
                                 {{-- Üst Eser --}}
+                                @php($selectedUstEser = \App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))
                                 <div style="margin-top:16px;">
-                                    <div class="form-field" id="ustEserSearchField" style="{{ \App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)) ? 'display:none;' : '' }}">
+                                    <div class="form-field">
                                         <label class="form-label" for="ustEserSearch">Üst Eser <small style="font-weight:400;color:var(--muted-foreground);">(varsa bağlı olduğu üst eser)</small></label>
-                                        <div class="ue-autocomplete-wrap">
-                                            <input type="text" id="ustEserSearch" class="form-input"
-                                                   placeholder="Eser adı, yazar veya ISBN ile arayın…"
-                                                   autocomplete="off" />
-                                            <div class="ue-autocomplete-dropdown" id="ustEserDropdown"></div>
+                                        <div id="ustEserSearchField" style="{{ $selectedUstEser ? 'display:none;' : '' }}">
+                                            <div class="ue-autocomplete-wrap">
+                                                <input type="text" id="ustEserSearch" class="form-input"
+                                                       placeholder="Eser adı, yazar veya ISBN ile arayın…"
+                                                       autocomplete="off" />
+                                                <div class="ue-autocomplete-dropdown" id="ustEserDropdown"></div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div id="ustEserCard" class="ue-selected-card" style="{{ \App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)) ? 'display:flex;' : 'display:none;' }}">
+                                    <div id="ustEserCard" class="ue-selected-card" style="{{ $selectedUstEser ? 'display:flex;' : 'display:none;' }}">
                                         <div id="ustEserCoverWrap">
-                                            @if(optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeKapakResmi)
-                                                <img src="{{ asset('storage/' . optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeKapakResmi) }}" class="ue-selected-cover" />
+                                            @if(optional($selectedUstEser)->kunyeKapakResmi)
+                                                <img src="{{ asset('storage/' . optional($selectedUstEser)->kunyeKapakResmi) }}" class="ue-selected-cover" />
                                             @endif
                                         </div>
                                         <div class="ue-selected-info">
-                                            <div class="ue-selected-name" id="ustEserName">{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeEserAdi ?? '—' }}</div>
-                                            <div class="ue-selected-meta" id="ustEserMeta">{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeYazar ?? '' }}{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeDemirbasKN ? ' · Demirbaş: ' . optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeDemirbasKN : '' }}{{ optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeISBNISSN ? ' · ISBN: ' . optional(\App\Models\Katalog::find(old('ustEserKatalogId', $kitap->ustEserKatalogId)))->kunyeISBNISSN : '' }}</div>
+                                            <a id="ustEserViewLink" class="ue-selected-link" href="{{ $selectedUstEser ? route('katalog.view', ['kitap' => $selectedUstEser->id]) : '#' }}">
+                                                <div class="ue-selected-name" id="ustEserName">{{ optional($selectedUstEser)->kunyeEserAdi ?? '—' }}</div>
+                                                <div class="ue-selected-meta" id="ustEserMeta">{{ optional($selectedUstEser)->kunyeYazar ?? '' }}{{ optional($selectedUstEser)->kunyeDemirbasKN ? ' · Demirbaş: ' . optional($selectedUstEser)->kunyeDemirbasKN : '' }}{{ optional($selectedUstEser)->kunyeISBNISSN ? ' · ISBN: ' . optional($selectedUstEser)->kunyeISBNISSN : '' }}</div>
+                                            </a>
                                         </div>
                                         <button type="button" class="ue-selected-clear" onclick="clearUstEser()" title="Üst Eseri Kaldır">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                         </button>
                                     </div>
                                     <input type="hidden" id="ustEserKatalogId" name="ustEserKatalogId" value="{{ old('ustEserKatalogId', $kitap->ustEserKatalogId) }}" />
+                                </div>
+                                <div class="alt-eserler-wrap">
+                                    <label class="form-label">Alt Eserler</label>
+                                    @if(($altEserler ?? collect())->isNotEmpty())
+                                        <div class="alt-eserler-list">
+                                            @foreach($altEserler as $altEser)
+                                                <a class="alt-eser-item" href="{{ route('katalog.view', ['kitap' => $altEser->id]) }}">
+                                                    <div class="ue-selected-card" style="width:100%;margin-top:0;">
+                                                        <div>
+                                                            @if($altEser->kapak_resim_path)
+                                                                <img src="{{ $altEser->kapak_resim_path }}" class="ue-selected-cover" />
+                                                            @endif
+                                                        </div>
+                                                        <div class="ue-selected-info">
+                                                            <div class="ue-selected-name">{{ $altEser->kunyeEserAdi ?: '—' }}</div>
+                                                            <div class="ue-selected-meta">
+                                                                {{ $altEser->kunyeYazar ?: '' }}
+                                                                {{ $altEser->kunyeDemirbasKN ? ' · Demirbaş: ' . $altEser->kunyeDemirbasKN : '' }}
+                                                                {{ $altEser->kunyeISBNISSN ? ' · ISBN: ' . $altEser->kunyeISBNISSN : '' }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="alt-eser-empty">Bu kataloğa bağlı alt eser bulunmuyor.</div>
+                                    @endif
                                 </div>
                             </div>
 
@@ -1245,7 +1285,7 @@
                                         <label class="form-label" for="kunyeDilKN">Dil</label>
                                         <select class="form-select" id="kunyeDilKN" name="kunyeDilKN">
                                             <option value="" disabled {{ old('kunyeDilKN', $kitap->kunyeDilKN) ? '' : 'selected' }}>Dil seçin</option>
-                                            @foreach(['Türkçe','İngilizce','Almanca','Fransızca','Arapça','İspanyolca','Rusça','Farsça','Diğer'] as $dil)
+                                            @foreach(($dilSecenekleri ?? []) as $dil)
                                                 <option value="{{ $dil }}" {{ old('kunyeDilKN', $kitap->kunyeDilKN) == $dil ? 'selected' : '' }}>{{ $dil }}</option>
                                             @endforeach
                                         </select>
@@ -1254,7 +1294,7 @@
                                         <label class="form-label" for="kunyeDil2">2. Dil <small style="font-weight:400;color:var(--muted-foreground);">(varsa)</small></label>
                                         <select class="form-select" id="kunyeDil2" name="kunyeDil2">
                                             <option value="" {{ old('kunyeDil2', $kitap->kunyeDil2) ? '' : 'selected' }}>— Yok —</option>
-                                            @foreach(['Türkçe','İngilizce','Almanca','Fransızca','Arapça','İspanyolca','Rusça','Farsça','Diğer'] as $dil)
+                                            @foreach(($dilSecenekleri ?? []) as $dil)
                                                 <option value="{{ $dil }}" {{ old('kunyeDil2', $kitap->kunyeDil2) == $dil ? 'selected' : '' }}>{{ $dil }}</option>
                                             @endforeach
                                         </select>
@@ -1923,6 +1963,7 @@
         } else {
             // hidden değeri sıfırla ve kaydı göster
             document.getElementById('ustEserKatalogId').value = originalValues.ustEserKatalogId;
+            setUstEserLink(originalValues.ustEserKatalogId);
             // Kart zaten Blade ile render edilmiş — sadece görünürlüğü düzelt
             document.getElementById('ustEserSearchField').style.display = 'none';
             document.getElementById('ustEserCard').style.display = 'flex';
@@ -2948,6 +2989,29 @@
         });
     })();
 
+    var ustEserViewBaseUrl = @json(url('/katalog'));
+
+    function getUstEserViewUrl(id) {
+        if (!id) {
+            return '#';
+        }
+        return ustEserViewBaseUrl + '/' + id + '/view';
+    }
+
+    function setUstEserLink(id) {
+        var link = document.getElementById('ustEserViewLink');
+        if (!link) {
+            return;
+        }
+        if (!id) {
+            link.href = '#';
+            link.setAttribute('aria-disabled', 'true');
+            return;
+        }
+        link.href = getUstEserViewUrl(id);
+        link.removeAttribute('aria-disabled');
+    }
+
     function selectUstEser(item) {
         selectedUstEser = item;
         document.getElementById('ustEserKatalogId').value = item.id;
@@ -2961,6 +3025,7 @@
 
         document.getElementById('ustEserName').textContent = item.label;
         document.getElementById('ustEserMeta').textContent = (item.yazar || '') + (item.demir ? ' · Demirbaş: ' + item.demir : '') + (item.isbn ? ' · ISBN: ' + item.isbn : '');
+        setUstEserLink(item.id);
         document.getElementById('ustEserSearchField').style.display = 'none';
         document.getElementById('ustEserCard').style.display = 'flex';
     }
@@ -2968,6 +3033,7 @@
     function clearUstEser() {
         selectedUstEser = null;
         document.getElementById('ustEserKatalogId').value = '';
+        setUstEserLink(null);
         document.getElementById('ustEserSearchField').style.display = 'block';
         document.getElementById('ustEserCard').style.display = 'none';
         document.getElementById('ustEserSearch').value = '';
@@ -3150,6 +3216,24 @@
                     window.location.href = nextBtn.href;
                 }
             }
+        });
+    })();
+
+    // Sayı alanlarında ok tuşu / mouse tekerleği ile değer değişimini engelle
+    (function () {
+        ['kunyeSayfaSayisi', 'kunyeKopya'].forEach(function (id) {
+            var input = document.getElementById(id);
+            if (!input) return;
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                }
+            });
+
+            input.addEventListener('wheel', function (e) {
+                e.preventDefault();
+            }, { passive: false });
         });
     })();
 

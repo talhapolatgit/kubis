@@ -9,6 +9,13 @@
     @if($bookListCss)
         <style>{!! $bookListCss !!}</style>
     @endif
+    <style>
+        th.sortable-th{cursor:pointer;user-select:none}
+        th.sortable-th:hover{color:var(--foreground)}
+        th.sortable-th .sort-label{display:inline-flex;align-items:center;gap:6px}
+        th.sortable-th .sort-caret{opacity:.35;font-size:10px;line-height:1}
+        th.sortable-th.sort-active .sort-caret{opacity:1}
+    </style>
 @endsection
 
 @section('breadcrumb')
@@ -155,15 +162,9 @@
                             <label class="form-label">Dil</label>
                             <select id="filterDil" class="form-select">
                                 <option value="">Tümü</option>
-                                <option value="Türkçe">Türkçe</option>
-                                <option value="İngilizce">İngilizce</option>
-                                <option value="Almanca">Almanca</option>
-                                <option value="Fransızca">Fransızca</option>
-                                <option value="Arapça">Arapça</option>
-                                <option value="İspanyolca">İspanyolca</option>
-                                <option value="Rusça">Rusça</option>
-                                <option value="Farsça">Farsça</option>
-                                <option value="Diğer">Diğer</option>
+                                @foreach(($dilSecenekleri ?? []) as $dil)
+                                    <option value="{{ $dil }}">{{ $dil }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="form-field">
@@ -251,15 +252,21 @@
                         <div class="spinner"></div>
                     </div>
                     <div style="overflow-x: auto;" id="tableContainer">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">
+                        <table id="kitaplarTable" style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;">
                             <thead>
                             <tr style="background: var(--muted); border-bottom: 1px solid var(--border);">
                                 <th style="padding: 12px 24px; font-weight: 600;">Görsel</th>
-                                <th style="padding: 12px; font-weight: 600;">Kitap Bilgisi</th>
-                                <th style="padding: 12px; font-weight: 600;">Demirbaş</th>
+                                <th class="sortable-th" data-sort="kunyeEserAdi" style="padding: 12px; font-weight: 600;" title="Sıralamak için tıklayın">
+                                    <span class="sort-label">Kitap adı</span><span class="sort-caret" aria-hidden="true">◇</span>
+                                </th>
+                                <th class="sortable-th" data-sort="kunyeDemirbasKN" style="padding: 12px; font-weight: 600;" title="Sıralamak için tıklayın">
+                                    <span class="sort-label">Demirbaş</span><span class="sort-caret" aria-hidden="true">◇</span>
+                                </th>
                                 <th style="padding: 12px; font-weight: 600;">ISBN</th>
                                 <th style="padding: 12px; font-weight: 600;">Kategori</th>
-                                <th style="padding: 12px; font-weight: 600;">Kütüphane</th>
+                                <th class="sortable-th" data-sort="kutuphane" style="padding: 12px; font-weight: 600;" title="Sıralamak için tıklayın">
+                                    <span class="sort-label">Kütüphane</span><span class="sort-caret" aria-hidden="true">◇</span>
+                                </th>
                                 <th style="padding: 12px; font-weight: 600;">Durum</th>
                                 <th style="padding: 12px; font-weight: 600;">İşlem</th>
                             </tr>
@@ -299,6 +306,8 @@
             var exportUrl  = '{{ route('katalog.export') }}';
             var searchTimer = null;
             var reqCounter  = 0; // race condition önlemi
+            var sortBy      = '';
+            var sortDir     = 'asc';
 
             // ============================
             // Filtre değerleri
@@ -335,7 +344,26 @@
                     if (s === '') return;
                     params.set(k, s);
                 });
+                if (sortBy) {
+                    params.set('sort_by', sortBy);
+                    params.set('sort_dir', sortDir || 'asc');
+                }
                 return params.toString();
+            }
+
+            function updateSortHeaderDisplay() {
+                document.querySelectorAll('#kitaplarTable th.sortable-th').forEach(function (th) {
+                    th.classList.remove('sort-active');
+                    var col = th.getAttribute('data-sort');
+                    var caret = th.querySelector('.sort-caret');
+                    if (!caret) return;
+                    if (sortBy && col === sortBy) {
+                        th.classList.add('sort-active');
+                        caret.textContent = sortDir === 'desc' ? '▼' : '▲';
+                    } else {
+                        caret.textContent = '◇';
+                    }
+                });
             }
 
             // ============================
@@ -416,6 +444,10 @@
                 var myReq = ++reqCounter;
                 var params = new URLSearchParams(getFilters());
                 params.set('page', page || 1);
+                if (sortBy) {
+                    params.set('sort_by', sortBy);
+                    params.set('sort_dir', sortDir || 'asc');
+                }
 
                 document.getElementById('tableLoading').classList.add('visible');
 
@@ -435,6 +467,14 @@
 
                         document.getElementById('tableBody').innerHTML = buildTableRowsHTML(rows);
                         buildPaginationHTML(data);
+                        if (data.sort_by) {
+                            sortBy = data.sort_by;
+                            sortDir = data.sort_dir || 'asc';
+                        } else {
+                            sortBy = '';
+                            sortDir = 'asc';
+                        }
+                        updateSortHeaderDisplay();
                         //document.getElementById('kitaplarCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
                     })
                     .catch(function() {
@@ -483,6 +523,10 @@
                 if (f.kayitBaslangic)    params.set('kayitBaslangic',    f.kayitBaslangic);
                 if (f.kayitBitis)        params.set('kayitBitis',        f.kayitBitis);
                 if (f.createdUserId)     params.set('createdUserId',     f.createdUserId);
+                if (sortBy) {
+                    params.set('sort_by', sortBy);
+                    params.set('sort_dir', sortDir || 'asc');
+                }
                 var a = document.createElement('a');
                 a.href = exportUrl + (params.toString() ? '?' + params.toString() : '');
                 a.download = '';
@@ -538,8 +582,27 @@
                 resetComboboxFace('filterCreatedUserFace', 'filterCreatedUserFaceText', 'filterCreatedUserClear', 'Kullanıcı seçin...');
                 // per-page sıfırla
                 document.getElementById('perPageSelect').value = '20';
+                sortBy = '';
+                sortDir = 'asc';
+                updateSortHeaderDisplay();
                 fetchPage(1);
             });
+
+            document.querySelectorAll('#kitaplarTable th.sortable-th').forEach(function (th) {
+                th.addEventListener('click', function () {
+                    var col = this.getAttribute('data-sort');
+                    if (!col) return;
+                    if (sortBy === col) {
+                        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortBy = col;
+                        sortDir = 'asc';
+                    }
+                    updateSortHeaderDisplay();
+                    fetchPage(1);
+                });
+            });
+            updateSortHeaderDisplay();
 
             // Enter tuşuyla arama (Filtrele butonuyla eşdeğer)
             ['filterSearch', 'filterSiniflamaYer', 'filterKonuBasligi', 'filterOzelNotlar'].forEach(function(id) {

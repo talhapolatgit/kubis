@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="KÜBİS - Kütüphane Bilgi Sistemi. Kamu kurumları için güvenli, ölçeklenebilir ve entegre kütüphane yönetim platformu.">
+  <title>KÜBİS | Kütüphane Bilgi Sistemi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f8ff;
+      --bg-soft: #e9f0ff;
+      --card: #ffffff;
+      --card-2: #f7faff;
+      --text: #16233f;
+      --muted: #5f6f8f;
+      --primary: #2f76ff;
+      --primary-soft: rgba(47, 118, 255, 0.12);
+      --accent: #0f9d76;
+      --line: rgba(44, 76, 132, 0.18);
+      --shadow: 0 10px 26px rgba(25, 56, 112, 0.12);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --max: 1160px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background: radial-gradient(1200px 700px at 80% -10%, #d8e9ff 0%, transparent 58%),
+                  radial-gradient(900px 500px at 10% 0%, #eaf2ff 0%, transparent 58%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(var(--max), 92%);
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(244, 248, 255, 0.88);
+      border-bottom: 1px solid rgba(44, 76, 132, 0.12);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .brand-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #2e73ff, #2a9fff);
+      box-shadow: var(--shadow);
+      font-size: 20px;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .top-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .hero {
+      padding: 72px 0 44px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 54px);
+      line-height: 1.06;
+      letter-spacing: -1.2px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: clamp(15px, 2vw, 18px);
+      line-height: 1.65;
+      margin: 20px 0 26px;
+      max-width: 720px;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(145deg, #2e86ff, #3bb7ff);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(51, 140, 255, 0.35);
+    }
+
+    .btn-ghost {
+      border-color: var(--line);
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    .hero-panel {
+      background: linear-gradient(160deg, #f8fbff, #ffffff);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .metric {
+      background: rgba(47, 118, 255, 0.04);
+      border: 1px solid rgba(47, 118, 255, 0.12);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 6px;
+      letter-spacing: -0.6px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    section {
+      padding: 24px 0;
+    }
+
+    .section-head {
+      margin-bottom: 16px;
+    }
+
+    .kicker {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 6px 0 0;
+      font-size: clamp(24px, 3vw, 36px);
+      letter-spacing: -0.8px;
+    }
+
+    .cards-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: linear-gradient(160deg, #ffffff, #f7faff);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      min-height: 160px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: -0.3px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.58;
+      font-size: 14px;
+    }
+
+    .feature-list {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .feature-list li::before {
+      content: "✓";
+      color: var(--accent);
+      margin-right: 8px;
+      font-weight: 700;
+    }
+
+    .process {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #ffffff;
+      padding: 14px;
+    }
+
+    .step strong {
+      display: inline-flex;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .step h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .cta-final {
+      margin: 24px 0 44px;
+      padding: 26px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, #f4f8ff, #ffffff);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .screen-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .screen-card {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      background: #ffffff;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .screen-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e8efff;
+      font-size: 12px;
+      color: var(--muted);
+      background: #f8fbff;
+    }
+
+    .dotset {
+      display: inline-flex;
+      gap: 5px;
+    }
+
+    .dotset span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #c8d8f8;
+      display: inline-block;
+    }
+
+    .screen-body {
+      padding: 12px;
+    }
+
+    .mini-sidebar {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .mini-sidebar span {
+      background: #eef4ff;
+      color: #48608a;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 6px 8px;
+      border: 1px solid #d8e5ff;
+      width: fit-content;
+    }
+
+    .mini-table {
+      border: 1px solid #dce7fb;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 11px;
+    }
+
+    .mini-table .row {
+      display: grid;
+      grid-template-columns: 1.3fr .8fr .8fr;
+      padding: 7px 8px;
+      border-bottom: 1px solid #e9f0ff;
+      color: #495e85;
+      background: #ffffff;
+    }
+
+    .mini-table .row:last-child {
+      border-bottom: 0;
+    }
+
+    .mini-table .head {
+      background: #f2f7ff;
+      color: #2f4f89;
+      font-weight: 700;
+    }
+
+    .mini-tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #e8f7ef;
+      color: #0f8a65;
+      border: 1px solid #c5ecd8;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+
+    .mini-tag.warn {
+      background: #fff5e8;
+      color: #af6a00;
+      border-color: #ffe1b8;
+    }
+
+    .mini-field {
+      height: 11px;
+      border-radius: 4px;
+      background: #e9f1ff;
+      margin-bottom: 7px;
+    }
+
+    .mini-field.w80 { width: 80%; }
+    .mini-field.w60 { width: 60%; }
+    .mini-field.w40 { width: 40%; }
+
+    .cta-final h3 {
+      margin: 0 0 8px;
+      font-size: clamp(21px, 3vw, 31px);
+      letter-spacing: -0.8px;
+    }
+
+    .cta-final p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 700px;
+      font-size: 15px;
+    }
+
+    footer {
+      border-top: 1px solid rgba(44, 76, 132, 0.12);
+      color: #6f7fa0;
+      font-size: 13px;
+      padding: 18px 0 30px;
+    }
+
+    @media (max-width: 980px) {
+      .hero-grid,
+      .cards-3,
+      .process,
+      .screen-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-panel {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .top-links {
+        display: none;
+      }
+
+      .hero {
+        padding-top: 40px;
+      }
+
+      .hero-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <span class="brand-badge" aria-hidden="true">📚</span>
+        <div>
+          KÜBİS
+          <small>Kütüphane Bilgi Sistemi</small>
+        </div>
+      </div>
+      <nav class="top-links" aria-label="Hızlı menü">
+        <a href="#cozum">Çözüm</a>
+        <a href="#moduller">Modüller</a>
+        <a href="#ekranlar">Ekranlar</a>
+        <a href="#guvenlik">Güvenlik</a>
+        <a href="#iletisim">İletişim</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <h1>Kamu kütüphaneleri için uçtan uca dijital dönüşüm platformu</h1>
+          <p>
+            KÜBİS, kurumunuzun katalog, ödünç, rezervasyon, üye ve çoklu şube yönetimini tek bir merkezde toplar.
+            Kurumsal güvenlik standartlarına uygun altyapısı, raporlama kabiliyetleri ve entegrasyon esnekliğiyle
+            vatandaş odaklı, sürdürülebilir ve ölçülebilir hizmet sunumunu destekler.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#iletisim">Canlı Demo Talep Et</a>
+            <a class="btn btn-ghost" href="#moduller">Özellikleri İncele</a>
+          </div>
+        </div>
+        <aside class="hero-panel" aria-label="Öne çıkan yetkinlikler">
+          <article class="metric">
+            <strong>2FA + LDAP</strong>
+            <span>Kurumsal kimlik doğrulama ve iki faktörlü güvenli giriş.</span>
+          </article>
+          <article class="metric">
+            <strong>Rol Bazlı Yetki</strong>
+            <span>Menü, işlem ve şube bazında ayrıntılı erişim yönetimi.</span>
+          </article>
+          <article class="metric">
+            <strong>KPS + OTP</strong>
+            <span>Kimlik/adres doğrulama ve tek kullanımlık kod desteği.</span>
+          </article>
+          <article class="metric">
+            <strong>Export Hazır</strong>
+            <span>Katalog, üye, ödünç, tanım listeleri için dışa aktarma.</span>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section id="cozum">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">Kurumsal Değer</span>
+          <h2>Neden KÜBİS?</h2>
+        </div>
+        <div class="cards-3">
+          <article class="card">
+            <h3>Merkezi Operasyon Yönetimi</h3>
+            <p>
+              Katalogtan ödünç/iadeye, rezervasyondan kullanıcı yetkilerine kadar tüm süreçler tek panelde yönetilir.
+              Farklı birimler arası süreç uyumu artar, manuel takip ihtiyacı azalır.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Vatandaş Deneyiminde Süreklilik</h3>
+            <p>
+              Hızlı üye kayıt akışları, rezervasyon kuyruk yönetimi ve işlem takibi ile hizmet süreleri kısalır.
+              Personel, hizmet kalitesine odaklanır; vatandaş daha hızlı sonuç alır.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Denetlenebilir ve Ölçülebilir Yapı</h3>
+            <p>
+              Parametrik yönetim, işlem logları, dışa aktarım ve standartlaştırılmış veri yapısı sayesinde üst yönetim
+              raporlaması kolaylaşır, kurumsal kararlar veriye dayandırılır.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="moduller">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">Fonksiyonel Kapsam</span>
+          <h2>Tek platformda güçlü modüller</h2>
+        </div>
+        <div class="cards-3">
+          <article class="card">
+            <h3>Katalog ve Envanter</h3>
+            <ul class="feature-list">
+              <li>ISBN ve kapak görseli arama destekli hızlı kataloglama</li>
+              <li>Yazar, yayınevi, dil ve parametre yönetimi</li>
+              <li>Katalog kopyalama ve şubeler arası transfer</li>
+              <li>Etiket oluşturma ve basım süreç desteği</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Ödünç, İade ve Rezervasyon</h3>
+            <ul class="feature-list">
+              <li>Hızlı üye/kitap arama ile işlem başlatma</li>
+              <li>Ödünç verme, iade alma ve süre uzatma</li>
+              <li>Aktif rezervasyon ve kuyruk takibi</li>
+              <li>Operasyon listeleri için filtre ve dışa aktarım</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Üye ve Kurum Yönetimi</h3>
+            <ul class="feature-list">
+              <li>Yeni üye kayıt, güncelleme ve doğrulama akışları</li>
+              <li>Kütüphane, kullanıcı ve yetkili eşleştirme yönetimi</li>
+              <li>Rol bazlı yetkilendirme ve kullanıcı yönetimi</li>
+              <li>Kurumsal tanımlar için parametrik yapı</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="ekranlar">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">Canlı Görünüm</span>
+          <h2>Uygulama ekranlarından kesitler</h2>
+        </div>
+        <div class="screen-grid">
+          <article class="screen-card">
+            <div class="screen-top">
+              <span class="dotset" aria-hidden="true"><span></span><span></span><span></span></span>
+              <strong>Katalog Listesi</strong>
+            </div>
+            <div class="screen-body">
+              <div class="mini-sidebar">
+                <span>Katalog Listesi</span>
+                <span>Yeni Katalog</span>
+              </div>
+              <div class="mini-table">
+                <div class="row head"><div>Kitap</div><div>Durum</div><div>Şube</div></div>
+                <div class="row"><div>Sancılı Gece</div><div>Rafta</div><div>Merkez</div></div>
+                <div class="row"><div>Kent ve Hafıza</div><div>Ödünçte</div><div>Kuzey</div></div>
+                <div class="row"><div>Verinin Gölgesinde</div><div>Rezerveli</div><div>Merkez</div></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="screen-card">
+            <div class="screen-top">
+              <span class="dotset" aria-hidden="true"><span></span><span></span><span></span></span>
+              <strong>Ödünç & Rezervasyon</strong>
+            </div>
+            <div class="screen-body">
+              <div>
+                <span class="mini-tag">Aktif Rezervasyon: 12</span>
+                <span class="mini-tag warn">Son 3 Gün: 7</span>
+              </div>
+              <div class="mini-table">
+                <div class="row head"><div>Üye</div><div>İşlem</div><div>Durum</div></div>
+                <div class="row"><div>Ayşe Y.</div><div>Ödünç</div><div>Devam</div></div>
+                <div class="row"><div>Mehmet K.</div><div>İade</div><div>Tamam</div></div>
+                <div class="row"><div>Elif T.</div><div>Rezervasyon</div><div>Bekliyor</div></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="screen-card">
+            <div class="screen-top">
+              <span class="dotset" aria-hidden="true"><span></span><span></span><span></span></span>
+              <strong>Kullanıcı Yetkileri</strong>
+            </div>
+            <div class="screen-body">
+              <div class="mini-sidebar">
+                <span>Sistem Kullanıcıları</span>
+                <span>Yetki Tanımları</span>
+                <span>Kütüphane Atamaları</span>
+              </div>
+              <div class="mini-field w80"></div>
+              <div class="mini-field w60"></div>
+              <div class="mini-field w40"></div>
+              <div>
+                <span class="mini-tag">Rol: Yönetici</span>
+                <span class="mini-tag">2FA: Açık</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="guvenlik">
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">Kurumsal Güvence</span>
+          <h2>Güvenlik, yetki ve entegrasyon altyapısı</h2>
+        </div>
+        <div class="cards-3">
+          <article class="card">
+            <h3>Kimlik Doğrulama Katmanı</h3>
+            <p>
+              LDAP kullanıcı adı desteği, iki faktörlü doğrulama (2FA) ve şifre güncelleme akışlarıyla güvenli erişim
+              modeli oluşturulur. Kurum politikalarına uyumlu giriş yönetimi sağlanır.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Detaylı Yetki Mimarisi</h3>
+            <p>
+              Modül, işlem ve menü seviyesinde rol bazlı yetkilendirme uygulanır. Şube bazlı yetki atamaları ile her
+              kullanıcının yalnızca görev alanına uygun verilere erişmesi sağlanır.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Kamu Entegrasyonlarına Uyum</h3>
+            <p>
+              KPS kimlik/adres sorgulama ve OTP doğrulama süreçleriyle veri doğruluğu güçlendirilir. API tabanlı yapı,
+              mevcut kurumsal sistemlerle kontrollü entegrasyonu kolaylaştırır.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head">
+          <span class="kicker">Uygulama Yaklaşımı</span>
+          <h2>Kısa sürede devreye alma planı</h2>
+        </div>
+        <div class="process">
+          <article class="step">
+            <strong>1</strong>
+            <h4>Keşif ve Analiz</h4>
+            <p>Kurum süreçleri, yetki matrisi ve şube operasyonları birlikte değerlendirilir.</p>
+          </article>
+          <article class="step">
+            <strong>2</strong>
+            <h4>Kurulum ve Yapılandırma</h4>
+            <p>Modüller, kullanıcı rolleri ve parametre setleri kurum ihtiyaçlarına göre uyarlanır.</p>
+          </article>
+          <article class="step">
+            <strong>3</strong>
+            <h4>Eğitim ve Pilot</h4>
+            <p>Personel eğitimleri tamamlanır; gerçek senaryolarla pilot çalışma yürütülür.</p>
+          </article>
+          <article class="step">
+            <strong>4</strong>
+            <h4>Canlıya Geçiş ve Destek</h4>
+            <p>Kontrollü geçiş sonrasında operasyonel destek ve sürekli iyileştirme sağlanır.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="iletisim">
+      <div class="container">
+        <div class="cta-final">
+          <div>
+            <h3>KÜBİS ile kurum kütüphanelerinizi tek merkezden yönetin</h3>
+            <p>
+              Satın alma biriminiz ve teknik ekibiniz için ihtiyaç analizi, canlı demo ve teklif sunumu planlayalım.
+              KÜBİS; güvenli, sürdürülebilir ve mevzuata uyumlu kütüphane yönetimi için hazırdır.
+            </p>
+          </div>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="mailto:info@kubis.gov.tr">info@kubis.gov.tr</a>
+            <a class="btn btn-ghost" href="tel:+903120000000">+90 (312) 000 00 00</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      KÜBİS — Kütüphane Bilgi Sistemi | Kamu kurumları için profesyonel kütüphane yönetim çözümü
+    </div>
+  </footer>
+</body>
+</html>

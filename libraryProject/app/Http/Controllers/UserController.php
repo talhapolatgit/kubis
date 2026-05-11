@@ -225,6 +225,7 @@ class UserController extends Controller
             'soyad'            => ['required', 'string', 'max:100'],
             'cinsiyet'         => ['nullable', 'string', 'in:erkek,kadin,diger'],
             'email'           => ['required', 'email', 'max:255', 'unique:users,email'],
+            'ldap_username'   => ['nullable', 'string', 'max:150', 'unique:users,ldap_username'],
             'telefon'         => ['required', 'string', 'max:20'],
             'il'              => ['nullable', 'string', 'max:100'],
             'ilce'            => ['nullable', 'string', 'max:100'],
@@ -247,6 +248,7 @@ class UserController extends Controller
             'email.required'     => 'E-posta adresi zorunludur.',
             'email.email'        => 'Geçerli bir e-posta adresi girin.',
             'email.unique'       => 'Bu e-posta adresi zaten kayıtlı.',
+            'ldap_username.unique' => 'Bu LDAP kullanıcı adı zaten kayıtlı.',
             'telefon.required'   => 'Telefon numarası zorunludur.',
             'password.required'  => 'Şifre zorunludur.',
             'password.confirmed' => 'Şifre tekrarı uyuşmuyor.',
@@ -264,6 +266,7 @@ class UserController extends Controller
             'soyad'    => $request->input('soyad'),
             'cinsiyet' => $request->input('cinsiyet'),
             'email'    => $request->input('email'),
+            'ldap_username' => $request->filled('ldap_username') ? trim((string) $request->input('ldap_username')) : null,
             'telefon'  => $request->input('telefon'),
             'il'       => $request->input('il'),
             'ilce'     => $request->input('ilce'),
@@ -307,7 +310,7 @@ class UserController extends Controller
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ─── Kullanıcı Yetkileri (21 maddelik izin seti) ────────────────────────────
+    // ─── Kullanıcı Yetkileri (25 maddelik izin seti) ────────────────────────────
     // ════════════════════════════════════════════════════════════════════════════
 
     public function yetkilerForm(User $user)
@@ -338,6 +341,10 @@ class UserController extends Controller
             19 => 'Kütüphaneleri görebilir ve güncelleyebilir.',
             20 => 'Etiket oluşturabilir.',
             21 => 'Dashboard ekranı görme yetkisi.',
+            22 => 'Yazarlar ekranına erişebilir.',
+            23 => 'Yazar ekleyebilir, güncelleyebilir ve silebilir.',
+            24 => 'Yayınevleri ekranına erişebilir.',
+            25 => 'Yayınevi ekleyebilir, güncelleyebilir ve silebilir.',
         ];
 
         return view('users.yetkiler', compact('user', 'row', 'yetkiler'));
@@ -348,7 +355,7 @@ class UserController extends Controller
         abort_unless(Auth::user()?->isAdmin(), 403);
 
         $data = ['user_id' => $user->id, 'updated_at' => now()];
-        for ($i = 1; $i <= 21; $i++) {
+        for ($i = 1; $i <= 25; $i++) {
             $col = 'y' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
             $data[$col] = $request->has($col) ? 1 : 0;
         }
@@ -379,6 +386,7 @@ class UserController extends Controller
             'soyad' => ['required', 'string', 'max:100'],
             'cinsiyet' => ['nullable', 'string', 'in:erkek,kadin,diger'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'ldap_username' => ['nullable', 'string', 'max:150', 'unique:users,ldap_username,' . $user->id],
             'telefon' => ['required', 'string', 'max:20'],
             'il' => ['nullable', 'string', 'max:100'],
             'ilce' => ['nullable', 'string', 'max:100'],
@@ -398,6 +406,7 @@ class UserController extends Controller
             'email.required' => 'E-posta adresi zorunludur.',
             'email.email'    => 'Geçerli bir e-posta adresi girin.',
             'email.unique'   => 'Bu e-posta adresi başka bir kullanıcıya ait.',
+            'ldap_username.unique' => 'Bu LDAP kullanıcı adı başka bir kullanıcıya ait.',
             'telefon.required' => 'Telefon numarası zorunludur.',
             'role.required'  => 'Kullanıcı rolü seçilmelidir.',
             'statu.required' => 'Hesap durumu seçilmelidir.',
@@ -412,6 +421,7 @@ class UserController extends Controller
             'soyad' => $request->input('soyad'),
             'cinsiyet' => $request->input('cinsiyet'),
             'email' => $request->input('email'),
+            'ldap_username' => $request->filled('ldap_username') ? trim((string) $request->input('ldap_username')) : null,
             'telefon' => $request->input('telefon'),
             'il' => $request->input('il'),
             'ilce' => $request->input('ilce'),
@@ -516,5 +526,156 @@ class UserController extends Controller
             ->whereNotIn('id', $mevcutIds)->orderBy('title')->limit(10)->get(['id', 'title', 'statu']);
 
         return response()->json(['success' => true, 'data' => $kutuphaneler]);
+    }
+
+    public function ldapSearchUsers(Request $request)
+    {
+        abort_unless(Auth::user()?->hasYetki(16), 403);
+
+        $data = $request->validate([
+            'bind_username' => ['required', 'string', 'max:255'],
+            'bind_password' => ['required', 'string', 'max:255'],
+            'q' => ['nullable', 'string', 'max:120'],
+        ], [
+            'bind_username.required' => 'Yetkili LDAP kullanıcı adı zorunludur.',
+            'bind_password.required' => 'Yetkili LDAP şifresi zorunludur.',
+        ]);
+
+        if (!function_exists('ldap_connect') || !function_exists('ldap_bind')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sunucuda LDAP desteği bulunamadı.',
+            ], 500);
+        }
+
+        $host = (string) config('services.ldap.host', 'ldap://dc16.beyoglu.bel.tr:389');
+        $baseDn = (string) config('services.ldap.base_dn', 'DC=beyoglu,DC=bel,DC=tr');
+        $conn = @ldap_connect($host);
+        if (!$conn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'LDAP sunucusuna bağlanılamadı.',
+            ], 500);
+        }
+
+        @ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
+        @ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
+
+        $bindPrincipal = $this->ldapBindPrincipal((string) $data['bind_username'], $baseDn);
+        $bindOk = @ldap_bind($conn, $bindPrincipal, (string) $data['bind_password']);
+        if (!$bindOk) {
+            $errno = function_exists('ldap_errno') ? (int) @ldap_errno($conn) : 0;
+            @ldap_unbind($conn);
+
+            $invalidCredentialCodes = [49];
+            $status = in_array($errno, $invalidCredentialCodes, true) ? 422 : 500;
+
+            return response()->json([
+                'success' => false,
+                'message' => $status === 422
+                    ? 'Yetkili LDAP kullanıcı bilgileri hatalı.'
+                    : 'LDAP doğrulama sırasında bir hata oluştu.',
+            ], $status);
+        }
+
+        $q = trim((string) ($data['q'] ?? ''));
+        $escapedQ = $this->ldapEscapeValue($q);
+        $filter = $escapedQ === ''
+            ? '(&(objectCategory=person)(objectClass=user)(sAMAccountName=*)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
+            : '(&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(|(sAMAccountName=*' . $escapedQ . '*)(displayName=*' . $escapedQ . '*)(cn=*' . $escapedQ . '*)(mail=*' . $escapedQ . '*)))';
+
+        $search = @ldap_search(
+            $conn,
+            $baseDn,
+            $filter,
+            ['sAMAccountName', 'displayName', 'mail', 'cn'],
+            0,
+            100
+        );
+
+        if (!$search) {
+            @ldap_unbind($conn);
+            return response()->json([
+                'success' => false,
+                'message' => 'LDAP kullanıcı araması başarısız oldu.',
+            ], 500);
+        }
+
+        $entries = @ldap_get_entries($conn, $search);
+        @ldap_unbind($conn);
+
+        $users = [];
+        $count = (int) ($entries['count'] ?? 0);
+        for ($i = 0; $i < $count; $i++) {
+            $sam = trim((string) ($entries[$i]['samaccountname'][0] ?? ''));
+            if ($sam === '') {
+                continue;
+            }
+
+            $users[] = [
+                'username' => $sam,
+                'display_name' => (string) ($entries[$i]['displayname'][0] ?? $entries[$i]['cn'][0] ?? $sam),
+                'mail' => (string) ($entries[$i]['mail'][0] ?? ''),
+            ];
+        }
+
+        usort($users, static function (array $a, array $b): int {
+            return strcasecmp($a['display_name'] ?? '', $b['display_name'] ?? '');
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
+    }
+
+    private function ldapBindPrincipal(string $ldapUsername, string $baseDn): string
+    {
+        $ldapUsername = trim($ldapUsername);
+        if ($ldapUsername === '') {
+            return '';
+        }
+
+        if (str_contains($ldapUsername, '@') || str_contains($ldapUsername, '\\') || str_contains($ldapUsername, '=')) {
+            return $ldapUsername;
+        }
+
+        $domain = $this->ldapDomainFromBaseDn($baseDn);
+        if ($domain === '') {
+            return $ldapUsername;
+        }
+
+        return $ldapUsername . '@' . $domain;
+    }
+
+    private function ldapDomainFromBaseDn(string $baseDn): string
+    {
+        if (!preg_match_all('/DC=([^,]+)/i', $baseDn, $matches)) {
+            return '';
+        }
+
+        $parts = array_map(static fn($v) => trim((string) $v), $matches[1] ?? []);
+        $parts = array_values(array_filter($parts, static fn($v) => $v !== ''));
+
+        return implode('.', $parts);
+    }
+
+    private function ldapEscapeValue(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('ldap_escape')) {
+            return (string) ldap_escape($value, '', LDAP_ESCAPE_FILTER);
+        }
+
+        return strtr($value, [
+            '\\' => '\\5c',
+            '*' => '\\2a',
+            '(' => '\\28',
+            ')' => '\\29',
+            "\x00" => '\\00',
+        ]);
     }
 }

@@ -113,9 +113,14 @@
             display: flex; align-items: center; justify-content: center;
             padding: 48px 40px;
             background: var(--background);
+            position: relative;
         }
 
         .login-form-wrap { width: 100%; max-width: 380px; }
+        .mobile-brand { display: none; margin-bottom: 24px; }
+        .mobile-brand .panel-logo-icon { background: var(--primary); }
+        .mobile-brand .panel-brand-name { color: var(--foreground); }
+        .mobile-brand .panel-brand-sub { color: var(--muted-foreground); }
 
         /* Form header */
         .form-header { margin-bottom: 32px; }
@@ -124,6 +129,29 @@
             color: var(--foreground); letter-spacing: -0.02em;
         }
         .form-subtitle { font-size: 14px; color: var(--muted-foreground); margin-top: 6px; }
+
+        .login-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+        .login-tab {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--foreground);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 9px 10px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+        }
+        .login-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--primary-foreground);
+        }
 
         /* Error alert */
         .alert-error {
@@ -210,7 +238,8 @@
 
         @media (max-width: 900px) {
             .login-panel { display: none; }
-            .login-form-side { width: 100%; }
+            .login-form-side { width: 100%; align-items: center; }
+            .mobile-brand { display: block; position: absolute; top: 18px; left: 18px; margin-bottom: 0; }
         }
         @media (max-width: 480px) {
             .login-form-side { padding: 32px 24px; }
@@ -263,6 +292,17 @@
     <!-- Sağ form paneli -->
     <div class="login-form-side">
         <div class="login-form-wrap">
+            <div class="mobile-brand">
+                <div class="panel-logo">
+                    <div class="panel-logo-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+                    </div>
+                    <div>
+                        <div class="panel-brand-name">Beyoğlu Belediyesi</div>
+                        <div class="panel-brand-sub">Kütüphane Bilgi Sistemi</div>
+                    </div>
+                </div>
+            </div>
 
             <div class="form-header">
                 <h1 class="form-title">Hoş Geldiniz</h1>
@@ -278,16 +318,34 @@
 
             <form id="loginForm" method="POST" action="{{ route('auth.login.post') }}" novalidate>
                 @csrf
+                @php($selectedLoginMethod = old('login_method', 'email'))
+                <input type="hidden" id="loginMethod" name="login_method" value="{{ in_array($selectedLoginMethod, ['email', 'ldap'], true) ? $selectedLoginMethod : 'email' }}">
 
-                <div class="form-field">
+                <div class="login-tabs" role="tablist" aria-label="Giriş yöntemi">
+                    <button type="button" class="login-tab" id="tabEmail" data-method="email" role="tab">E-posta</button>
+                    <button type="button" class="login-tab" id="tabLdap" data-method="ldap" role="tab">LDAP</button>
+                </div>
+
+                <div class="form-field login-field" id="emailField">
                     <label class="form-label" for="email">E-posta Adresi</label>
                     <div class="input-wrap">
                         <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
                         <input type="email" class="form-input @error('email') is-error @enderror"
                                id="email" name="email" value="{{ old('email') }}"
-                               placeholder="kullanici@ornek.com" autocomplete="email" autofocus />
+                               placeholder="ahmet.yilmaz@beyoglu.bel.tr" autocomplete="email" />
                     </div>
                     @error('email')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="form-field login-field" id="ldapField">
+                    <label class="form-label" for="ldap_username">LDAP Kullanıcı Adı</label>
+                    <div class="input-wrap">
+                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+                        <input type="text" class="form-input @error('ldap_username') is-error @enderror"
+                               id="ldap_username" name="ldap_username" value="{{ old('ldap_username') }}"
+                               placeholder="Örn: ahmet.yilmaz" autocomplete="username" />
+                    </div>
+                    @error('ldap_username')<div class="field-error">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="form-field">
@@ -323,6 +381,42 @@
 </div>
 
 <script>
+    // Safari bazı durumlarda password alanını otomatik focuslayabiliyor.
+    // Sayfa açılışında aktif eleman password ise focus'u kaldır.
+    function clearUnwantedPasswordFocus() {
+        var active = document.activeElement;
+        if (active && active.id === 'password') {
+            active.blur();
+        }
+    }
+    window.addEventListener('DOMContentLoaded', clearUnwantedPasswordFocus);
+    window.addEventListener('pageshow', clearUnwantedPasswordFocus);
+
+    var loginMethodInput = document.getElementById('loginMethod');
+    var tabEmail = document.getElementById('tabEmail');
+    var tabLdap = document.getElementById('tabLdap');
+    var emailField = document.getElementById('emailField');
+    var ldapField = document.getElementById('ldapField');
+    var emailInput = document.getElementById('email');
+    var ldapInput = document.getElementById('ldap_username');
+
+    function setLoginMethod(method) {
+        var m = (method === 'ldap') ? 'ldap' : 'email';
+        loginMethodInput.value = m;
+
+        var isEmail = m === 'email';
+        tabEmail.classList.toggle('active', isEmail);
+        tabLdap.classList.toggle('active', !isEmail);
+        emailField.style.display = isEmail ? '' : 'none';
+        ldapField.style.display = isEmail ? 'none' : '';
+        emailInput.required = isEmail;
+        ldapInput.required = !isEmail;
+    }
+
+    tabEmail.addEventListener('click', function () { setLoginMethod('email'); });
+    tabLdap.addEventListener('click', function () { setLoginMethod('ldap'); });
+    setLoginMethod(loginMethodInput.value || 'email');
+
     // Şifre göster/gizle
     var pwToggle = document.getElementById('pwToggle');
     var passwordInput = document.getElementById('password');
