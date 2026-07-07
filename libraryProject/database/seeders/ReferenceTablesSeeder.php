@@ -67,10 +67,10 @@ class ReferenceTablesSeeder extends Seeder
 
         $now = now();
         DB::table('koleksiyon')->upsert([
-            ['id' => 1, 'title' => 'Genel', 'statu' => 'aktif', 'created_user' => null, 'updated_user' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
-            ['id' => 2, 'title' => 'Çocuk ve Gençlik', 'statu' => 'aktif', 'created_user' => null, 'updated_user' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
-            ['id' => 3, 'title' => 'Arşiv', 'statu' => 'aktif', 'created_user' => null, 'updated_user' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
-            ['id' => 4, 'title' => 'Referans', 'statu' => 'aktif', 'created_user' => null, 'updated_user' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
-        ], ['id'], ['title', 'statu', 'created_user', 'updated_user', 'created_date', 'updated_at', 'deleted_at']);
+            ['id' => 1, 'title' => 'Genel', 'statu' => 'aktif', 'created_by' => null, 'updated_by' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
+            ['id' => 2, 'title' => 'Çocuk ve Gençlik', 'statu' => 'aktif', 'created_by' => null, 'updated_by' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
+            ['id' => 3, 'title' => 'Arşiv', 'statu' => 'aktif', 'created_by' => null, 'updated_by' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
+            ['id' => 4, 'title' => 'Referans', 'statu' => 'aktif', 'created_by' => null, 'updated_by' => null, 'created_date' => $now, 'updated_at' => $now, 'deleted_at' => null],
+        ], ['id'], ['title', 'statu', 'created_by', 'updated_by', 'created_date', 'updated_at', 'deleted_at']);
     }
 }
