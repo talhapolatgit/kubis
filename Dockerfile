@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.3-cli-alpine
 
 WORKDIR /app
 
@@ -15,12 +15,15 @@ RUN rm -f .env
 
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+RUN mkdir -p storage/framework/{cache,sessions,views} storage/app/public bootstrap/cache && \
+    chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 8000
 
 CMD php artisan package:discover --ansi && \
     php artisan migrate --force && \
+    php artisan storage:link --force && \
     php artisan config:cache && \
     php artisan route:cache && \
+    php artisan view:cache && \
     php artisan serve --host=0.0.0.0 --port=8000
