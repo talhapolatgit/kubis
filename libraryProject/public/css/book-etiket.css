@@ -339,6 +339,159 @@
             transition: border-color .15s, box-shadow .15s; }
         .filter-input:focus { border-color: var(--ring); box-shadow: 0 0 0 2px rgba(122,92,60,.15); }
         .filter-input::placeholder { color: var(--muted-foreground); opacity: .6; }
+        .combobox-wrapper { position: relative; }
+        .combobox-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) - 2px);
+            background: var(--card);
+            min-height: 33px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .combobox-input-wrap:focus-within {
+            border-color: var(--ring);
+            box-shadow: 0 0 0 2px rgba(122,92,60,.15);
+        }
+        .combobox-input-wrap .filter-input {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            flex: 1;
+            min-width: 0;
+            padding-right: 34px;
+        }
+        .combobox-face {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 0 0 0 10px;
+            cursor: pointer;
+            min-width: 0;
+            gap: 4px;
+            height: 100%;
+            min-height: 31px;
+        }
+        .combobox-face-text {
+            flex: 1;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--muted-foreground);
+            opacity: .7;
+            user-select: none;
+        }
+        .combobox-face-text.is-selected {
+            color: var(--foreground);
+            opacity: 1;
+        }
+        .combobox-clear-btn {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted-foreground);
+            border-radius: 3px;
+            padding: 0;
+            transition: background .12s, color .12s;
+        }
+        .combobox-clear-btn:hover { background: var(--muted); color: var(--foreground); }
+        .combobox-clear-btn svg { width: 11px; height: 11px; }
+        .combobox-toggle {
+            position: absolute;
+            right: 1px;
+            top: 1px;
+            bottom: 1px;
+            width: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--muted-foreground);
+            border-radius: 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px) 0;
+            transition: color .15s, background .15s;
+        }
+        .combobox-toggle:hover { color: var(--foreground); background: var(--muted); }
+        .combobox-toggle svg { width: 14px; height: 14px; transition: transform .2s; }
+        .combobox-toggle.open svg { transform: rotate(180deg); }
+        .combobox-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) - 2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+            z-index: 50;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+            padding: 4px;
+        }
+        .combobox-dropdown.visible {
+            display: block;
+            animation: combo-in .15s ease;
+        }
+        @keyframes combo-in {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .combobox-option {
+            padding: 8px 10px;
+            font-size: 13px;
+            color: var(--foreground);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background .1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .combobox-option:hover,
+        .combobox-option.highlighted { background: var(--muted); }
+        .combobox-option.selected {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .combobox-option .check-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--primary);
+            flex-shrink: 0;
+            visibility: hidden;
+        }
+        .combobox-option.selected .check-icon { visibility: visible; }
+        .combobox-no-result {
+            padding: 12px 10px;
+            font-size: 12px;
+            color: var(--muted-foreground);
+            text-align: center;
+        }
+        .ozel-notlar-wrap { position: relative; }
+        .ozel-notlar-input { padding-right: 44px; }
+        .ozel-notlar-mode-btn {
+            position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+            min-width: 30px; height: 24px; padding: 0 7px;
+            border-radius: 6px; border: 1px solid rgba(122,92,60,.2);
+            background: rgba(122,92,60,.07); color: var(--primary);
+            font-size: 11px; font-weight: 700; letter-spacing: .1px; line-height: 1;
+            cursor: pointer; transition: background .15s, border-color .15s, transform .1s;
+        }
+        .ozel-notlar-mode-btn:hover { background: rgba(122,92,60,.13); }
+        .ozel-notlar-mode-btn:active { transform: translateY(-50%) scale(.98); }
+        .ozel-notlar-mode-btn:focus-visible {
+            outline: none; border-color: var(--ring); box-shadow: 0 0 0 2px rgba(122,92,60,.15);
+        }
         .filter-sep { height: 1px; background: var(--border); margin: 4px 0; }
         .filter-toggle-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px;
             border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);

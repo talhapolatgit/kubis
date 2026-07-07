@@ -231,6 +231,31 @@
         .cover-remove-btn svg { width: 16px; height: 16px; }
 
         .cover-change-hint { font-size: 12px; color: var(--muted-foreground); }
+        .isbn-library-stock {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(122, 92, 60, 0.04);
+        }
+        .isbn-library-stock-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--foreground);
+            margin-bottom: 6px;
+        }
+        .isbn-library-stock-list {
+            margin: 0;
+            padding-left: 16px;
+            display: grid;
+            gap: 4px;
+        }
+        .isbn-library-stock-list li {
+            font-size: 12px;
+            color: var(--muted-foreground);
+            line-height: 1.4;
+        }
 
         /* Right: Form Fields */
         .fields-section {
@@ -955,6 +980,14 @@
                             @if(!$isViewOnly)
                             <p class="cover-change-hint" id="coverChangeHint" style="{{ $kitap->kunyeKapakResmi ? '' : 'display:none' }}">Değiştirmek için resme tıklayin</p>
                             @endif
+                            <div class="isbn-library-stock" id="isbnLibraryStock" style="{{ empty($isbnLibraryStock ?? []) ? 'display:none;' : '' }}">
+                                <div class="isbn-library-stock-title">Bu ISBN kütüphane dağılımı</div>
+                                <ul class="isbn-library-stock-list">
+                                    @foreach(($isbnLibraryStock ?? []) as $stockRow)
+                                        <li>{{ $stockRow['kutuphane_title'] ?? 'Kütüphane' }}: <strong>{{ (int) ($stockRow['count'] ?? 0) }} adet</strong></li>
+                                    @endforeach
+                                </ul>
+                            </div>
                         </div>
 
                         <!-- RIGHT: Form Fields -->
@@ -1592,6 +1625,39 @@
         }, 3500);
     }
 
+    var initialIsbnLibraryStock = @json($isbnLibraryStock ?? []);
+
+    function escapeStockHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderIsbnLibraryStock(rows) {
+        var stockEl = document.getElementById('isbnLibraryStock');
+        if (!stockEl) return;
+        if (!Array.isArray(rows) || rows.length === 0) {
+            stockEl.style.display = 'none';
+            stockEl.innerHTML = '';
+            return;
+        }
+        stockEl.innerHTML =
+            '<div class="isbn-library-stock-title">Bu eserin kütüphane dağılımı</div>' +
+            '<ul class="isbn-library-stock-list">' +
+            rows.map(function (r) {
+                var title = escapeStockHtml((r && r.kutuphane_title) || 'Kütüphane');
+                var count = Number((r && r.count) || 0);
+                return '<li>' + title + ': <strong>' + count + ' adet</strong></li>';
+            }).join('') +
+            '</ul>';
+        stockEl.style.display = 'block';
+    }
+
+    renderIsbnLibraryStock(initialIsbnLibraryStock);
+
     // ============================
     // Cover Image Upload
     // ============================
@@ -1765,6 +1831,7 @@
             })
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
+                    renderIsbnLibraryStock(data.library_stock || []);
                     if (data.success && data.cover) {
                         coverInput.value = '';
                         var hidden = document.getElementById('isbnCoverUrl');
@@ -1789,6 +1856,7 @@
                     }
                 })
                 .catch(function () {
+                    renderIsbnLibraryStock([]);
                     showToast('error', 'Hata', 'Kapak sorgusu sırasında bir hata oluştu.');
                 })
                 .finally(function () {
@@ -2213,6 +2281,10 @@
                 return d.innerHTML;
             }
 
+            function lowerTr(value) {
+                return String(value || '').toLocaleLowerCase('tr-TR');
+            }
+
             function syncKunyeHiddenFromKayitli() {
                 hiddenKunye.value = selectedKay.map(function (x) { return x.label; }).join(' ; ');
             }
@@ -2301,10 +2373,10 @@
                 if (pieces.length === 0) pieces = [s];
 
                 function findRowExact(token) {
-                    var t = String(token || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                    var t = lowerTr(String(token || '').replace(/\s+/g, ' ').trim());
                     if (!t) return null;
                     return rawData.find(function (r) {
-                        var a = String(r.ad || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                        var a = lowerTr(String(r.ad || '').replace(/\s+/g, ' ').trim());
                         return a === t;
                     }) || null;
                 }
@@ -2421,14 +2493,14 @@
 
             function highlight(text, term) {
                 if (!term) return esc(text);
-                var idx = text.toLowerCase().indexOf(term.toLowerCase());
+                var idx = lowerTr(text).indexOf(lowerTr(term));
                 if (idx === -1) return esc(text);
                 return esc(text.substring(0, idx)) + '<strong style="color:var(--primary)">' + esc(text.substring(idx, idx + term.length)) + '</strong>' + esc(text.substring(idx + term.length));
             }
 
             function render(filter) {
-                var term = (filter || '').toLowerCase();
-                filtered = rawData.filter(function (r) { return r.ad.toLowerCase().indexOf(term) !== -1; });
+                var term = lowerTr(filter);
+                filtered = rawData.filter(function (r) { return lowerTr(r.ad).indexOf(term) !== -1; });
                 var html = '';
                 if (filtered.length === 0) {
                     html = '<div class="combobox-no-result">Bulunamadı</div>';
@@ -2783,6 +2855,7 @@
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
                     if (data.success) {
+                        renderIsbnLibraryStock(data.library_stock || []);
                         if (window.resetYazarFormToKayitli) window.resetYazarFormToKayitli();
                         if (data.source === 'database' && data.prefill) {
                             applyDatabasePrefill(data.prefill);
@@ -2838,10 +2911,12 @@
                             ? 'Bu ISBN mevcut katalog kaydından getirildi.'
                             : 'Kitap bilgileri ISBN\'den getirildi.');
                     } else {
+                        renderIsbnLibraryStock([]);
                         showToast('error', 'Bulunamadı', data.message || 'Bu ISBN için kayıt bulunamadı.');
                     }
                 })
                 .catch(function () {
+                    renderIsbnLibraryStock([]);
                     showToast('error', 'Hata', 'ISBN sorgusu sırasında bir hata oluştu.');
                 })
                 .finally(function () {

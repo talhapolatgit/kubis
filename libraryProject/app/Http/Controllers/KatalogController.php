@@ -15,6 +15,7 @@ use App\Models\AltTur;
 use App\Models\Sekil;
 use App\Models\Ortam;
 use App\Models\User;
+use App\Support\TurkishSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -73,10 +74,26 @@ class KatalogController extends Controller
         $u = auth()->user();
         if (!$u) return [];
         if ($u->hasYetki(6)) {
-            return Kutuphane::whereNull('deleted_at')->pluck('id')->map(fn($v) => (int) $v)->values()->all();
+            return Kutuphane::whereNull('deleted_at')
+                ->where('statu', 'aktif')
+                ->pluck('id')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
         }
         if ($u->hasYetki(3)) {
-            return $u->yetkiliKutuphaneIds();
+            $yetkiliIds = array_map('intval', $u->yetkiliKutuphaneIds());
+            if ($yetkiliIds === []) {
+                return [];
+            }
+
+            return Kutuphane::whereNull('deleted_at')
+                ->where('statu', 'aktif')
+                ->whereIn('id', $yetkiliIds)
+                ->pluck('id')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
         }
         return [];
     }
@@ -86,10 +103,26 @@ class KatalogController extends Controller
         $u = auth()->user();
         if (!$u) return [];
         if ($u->hasYetki(5)) {
-            return Kutuphane::whereNull('deleted_at')->pluck('id')->map(fn($v) => (int) $v)->values()->all();
+            return Kutuphane::whereNull('deleted_at')
+                ->where('statu', 'aktif')
+                ->pluck('id')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
         }
         if ($u->hasYetki(2)) {
-            return $u->yetkiliKutuphaneIds();
+            $yetkiliIds = array_map('intval', $u->yetkiliKutuphaneIds());
+            if ($yetkiliIds === []) {
+                return [];
+            }
+
+            return Kutuphane::whereNull('deleted_at')
+                ->where('statu', 'aktif')
+                ->whereIn('id', $yetkiliIds)
+                ->pluck('id')
+                ->map(fn($v) => (int) $v)
+                ->values()
+                ->all();
         }
         return [];
     }
@@ -154,23 +187,102 @@ class KatalogController extends Controller
         $query->whereRaw('1=0');
     }
 
+    private function resolveTextMatchMode(Request $request, string $param): string
+    {
+        $mode = (string) $request->input($param, 'contains');
+        return in_array($mode, ['contains', 'starts_with', 'exact'], true) ? $mode : 'contains';
+    }
+
+    private function applyTextMatch($query, string $column, string $value, string $mode, string $boolean = 'and', bool $turkish = false): void
+    {
+        if ($value === '') {
+            return;
+        }
+
+        if ($turkish) {
+            TurkishSearch::applyTextMatch($query, $column, $value, $mode, $boolean);
+
+            return;
+        }
+
+        $operator = 'LIKE';
+        $needle = '%' . $value . '%';
+
+        if ($mode === 'starts_with') {
+            $needle = $value . '%';
+        } elseif ($mode === 'exact') {
+            $operator = '=';
+            $needle = $value;
+        }
+
+        if ($boolean === 'or') {
+            $query->orWhere($column, $operator, $needle);
+
+            return;
+        }
+
+        $query->where($column, $operator, $needle);
+    }
+
+    private function normalizeKayitTarihiFilterValue(?string $value, bool $isEnd): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1) {
+            return $value . ($isEnd ? ' 23:59:59' : ' 00:00:00');
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value) !== 1) {
+            return null;
+        }
+
+        $dt = \DateTime::createFromFormat('Y-m-d\TH:i', $value);
+        if (!$dt || $dt->format('Y-m-d\TH:i') !== $value) {
+            return null;
+        }
+
+        return $dt->format('Y-m-d H:i') . ($isEnd ? ':59' : ':00');
+    }
+
     /**
      * Katalog liste ekranındaki filtreleri sorguya uygular.
      */
     private function applyListFiltersToKatalogQuery($query, Request $request): void
     {
         if ($request->filled('search')) {
-            $s = $request->input('search');
-            $query->where(function ($q) use ($s) {
-                $q->where('kunyeEserAdi',  'LIKE', "%{$s}%")
-                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%")
-                    ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$s}%");
+            $s = trim((string) $request->input('search'));
+            $mode = $this->resolveTextMatchMode($request, 'searchMatch');
+            $query->where(function ($q) use ($s, $mode) {
+                $this->applyTextMatch($q, 'kunyeEserAdi', $s, $mode, 'and', true);
+                $this->applyTextMatch($q, 'kunyeISBNISSN', $s, $mode, 'or');
+                $this->applyTextMatch($q, 'kunyeDemirbasKN', $s, $mode, 'or');
             });
         }
+        if ($request->filled('altBaslik')) {
+            $this->applyTextMatch(
+                $query,
+                'kunyeEserAdiAlt',
+                trim((string) $request->input('altBaslik')),
+                $this->resolveTextMatchMode($request, 'altBaslikMatch'),
+                'and',
+                true
+            );
+        }
         if ($request->filled('kategori'))     $query->where('kunyeKategori', (int) $request->input('kategori'));
-        if ($request->filled('siniflamaYer')) $query->where('kunyeSiniflamaYer', 'LIKE', '%' . $request->input('siniflamaYer') . '%');
+        if ($request->filled('siniflamaYer')) {
+            $this->applyTextMatch(
+                $query,
+                'kunyeSiniflamaYer',
+                trim((string) $request->input('siniflamaYer')),
+                $this->resolveTextMatchMode($request, 'siniflamaYerMatch')
+            );
+        }
         if ($request->filled('kutuphaneId'))  $query->where('kutuphaneId', (int) $request->input('kutuphaneId'));
         if ($request->filled('turId'))        $query->where('turId', (int) $request->input('turId'));
+        if ($request->filled('altTurId'))     $query->where('altTurId', (int) $request->input('altTurId'));
         if ($request->filled('durum'))        $query->where('kunyeDurum', $request->input('durum'));
         if ($request->filled('dil')) {
             $dil = (string) $request->input('dil');
@@ -179,13 +291,42 @@ class KatalogController extends Controller
                     ->orWhere('kunyeDil2', $dil);
             });
         }
-        if ($request->filled('konuBasligi'))  $query->where('kunyeKonuBasligi', 'LIKE', '%' . $request->input('konuBasligi') . '%');
-        if ($request->filled('ozelNotlar'))   $query->where(function ($q) use ($request) {
-            $n = $request->input('ozelNotlar');
-            $q->where('ozelNotlar',  'LIKE', "%{$n}%")
-                ->orWhere('ozelNotlar2', 'LIKE', "%{$n}%")
-                ->orWhere('ozelNotlar3', 'LIKE', "%{$n}%");
-        });
+        if ($request->filled('konuBasligi')) {
+            $this->applyTextMatch(
+                $query,
+                'kunyeKonuBasligi',
+                trim((string) $request->input('konuBasligi')),
+                $this->resolveTextMatchMode($request, 'konuBasligiMatch')
+            );
+        }
+        if ($request->filled('ozelNotlar')) {
+            $n = trim((string) $request->input('ozelNotlar'));
+            $mode = $this->resolveTextMatchMode($request, 'ozelNotlarMatch');
+            $query->where(function ($q) use ($n, $mode) {
+                $this->applyTextMatch($q, 'ozelNotlar', $n, $mode);
+                $this->applyTextMatch($q, 'ozelNotlar2', $n, $mode, 'or');
+                $this->applyTextMatch($q, 'ozelNotlar3', $n, $mode, 'or');
+            });
+        }
+        if ($request->filled('aciklama')) {
+            $this->applyTextMatch(
+                $query,
+                'aciklama',
+                trim((string) $request->input('aciklama')),
+                $this->resolveTextMatchMode($request, 'aciklamaMatch')
+            );
+        }
+        if ($request->filled('cilt')) {
+            $this->applyTextMatch(
+                $query,
+                'kunyeCilt',
+                trim((string) $request->input('cilt')),
+                $this->resolveTextMatchMode($request, 'ciltMatch')
+            );
+        }
+        if ($request->filled('kopya') && is_numeric($request->input('kopya'))) {
+            $query->where('kunyeKopya', (int) $request->input('kopya'));
+        }
         if ($request->filled('oduncVerilebilir')) {
             $query->where('oduncVerilemez', $request->input('oduncVerilebilir') === 'evet' ? 0 : 1);
         }
@@ -193,15 +334,39 @@ class KatalogController extends Controller
             $query->where('etiketlendi', $request->input('etiketlendi') === 'evet' ? 1 : 0);
         }
         if ($request->filled('kayitBaslangic')) {
-            $kayitBaslangic = $request->input('kayitBaslangic');
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBaslangic)) {
-                $query->whereDate('created_at', '>=', $kayitBaslangic);
+            $kayitBaslangic = $this->normalizeKayitTarihiFilterValue(
+                (string) $request->input('kayitBaslangic'),
+                false
+            );
+            if ($kayitBaslangic !== null) {
+                $query->where('created_at', '>=', $kayitBaslangic);
             }
         }
         if ($request->filled('kayitBitis')) {
-            $kayitBitis = $request->input('kayitBitis');
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBitis)) {
-                $query->whereDate('created_at', '<=', $kayitBitis);
+            $kayitBitis = $this->normalizeKayitTarihiFilterValue(
+                (string) $request->input('kayitBitis'),
+                true
+            );
+            if ($kayitBitis !== null) {
+                $query->where('created_at', '<=', $kayitBitis);
+            }
+        }
+        if ($request->filled('guncellemeBaslangic')) {
+            $guncellemeBaslangic = $this->normalizeKayitTarihiFilterValue(
+                (string) $request->input('guncellemeBaslangic'),
+                false
+            );
+            if ($guncellemeBaslangic !== null) {
+                $query->where('updated_at', '>=', $guncellemeBaslangic);
+            }
+        }
+        if ($request->filled('guncellemeBitis')) {
+            $guncellemeBitis = $this->normalizeKayitTarihiFilterValue(
+                (string) $request->input('guncellemeBitis'),
+                true
+            );
+            if ($guncellemeBitis !== null) {
+                $query->where('updated_at', '<=', $guncellemeBitis);
             }
         }
         if ($request->filled('yazarId')) {
@@ -216,6 +381,20 @@ class KatalogController extends Controller
         }
         if ($request->filled('createdUserId')) {
             $query->where('created_user', (int) $request->input('createdUserId'));
+        }
+        if ($request->filled('updatedUserId')) {
+            $query->where('updated_user', (int) $request->input('updatedUserId'));
+        }
+        if ($request->filled('koleksiyonId')) {
+            $query->where('koleksiyon_id', (int) $request->input('koleksiyonId'));
+        }
+        if ($request->filled('diziKaydi')) {
+            $this->applyTextMatch(
+                $query,
+                'kunyeDiziKaydi',
+                trim((string) $request->input('diziKaydi')),
+                $this->resolveTextMatchMode($request, 'diziKaydiMatch')
+            );
         }
     }
 
@@ -390,9 +569,34 @@ class KatalogController extends Controller
                         'ad' => $label !== '' ? $label : (string) ($u->name ?? ('Kullanıcı #' . $u->id)),
                     ];
                 });
+            $updatedUserIds = Katalog::query()
+                ->whereNotNull('updated_user')
+                ->distinct()
+                ->pluck('updated_user')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->values();
+            $guncelleyenler = User::query()
+                ->whereIn('id', $updatedUserIds->isEmpty() ? [-1] : $updatedUserIds->all())
+                ->select(['id', 'ad', 'soyad', 'name'])
+                ->orderBy('ad')
+                ->orderBy('soyad')
+                ->get()
+                ->map(function (User $u) {
+                    $label = trim(((string) ($u->ad ?? '')) . ' ' . ((string) ($u->soyad ?? '')));
+                    return [
+                        'id' => (int) $u->id,
+                        'ad' => $label !== '' ? $label : (string) ($u->name ?? ('Kullanıcı #' . $u->id)),
+                    ];
+                });
+            $koleksiyonlar = Koleksiyon::query()
+                ->whereNull('deleted_at')
+                ->orderBy('title')
+                ->get(['id', 'title']);
             $dilSecenekleri = $this->getDilSecenekleri();
             $turler      = \App\Models\Tur::aktif()->orderBy('sira')->get(['id', 'ad']);
-            return view('book.list', compact('bookcount', 'kategoriler', 'kutuphaneler', 'yazarlar', 'yayinevleri', 'kaydedenler', 'dilSecenekleri', 'turler'));
+            $altturler   = AltTur::aktif()->orderBy('sira')->get(['id', 'ad']);
+            return view('book.list', compact('bookcount', 'kategoriler', 'kutuphaneler', 'yazarlar', 'yayinevleri', 'kaydedenler', 'guncelleyenler', 'dilSecenekleri', 'turler', 'altturler', 'koleksiyonlar'));
         }
 
         $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100, 500])
@@ -410,68 +614,7 @@ class KatalogController extends Controller
             $query->whereIn('kutuphaneId', $ids ?: [-1]);
         }
 
-        if ($request->filled('search')) {
-            $s = $request->input('search');
-            $query->where(function ($q) use ($s) {
-                $q->where('kunyeEserAdi',  'LIKE', "%{$s}%")
-                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%")
-                    ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$s}%");
-            });
-        }
-        if ($request->filled('kategori'))     $query->where('kunyeKategori', (int) $request->input('kategori'));
-        if ($request->filled('siniflamaYer')) $query->where('kunyeSiniflamaYer', 'LIKE', '%' . $request->input('siniflamaYer') . '%');
-        if ($request->filled('kutuphaneId'))  $query->where('kutuphaneId', (int) $request->input('kutuphaneId'));
-        if ($request->filled('turId'))        $query->where('turId', (int) $request->input('turId'));
-        if ($request->filled('durum'))        $query->where('kunyeDurum', $request->input('durum'));
-        if ($request->filled('dil')) {
-            $dil = (string) $request->input('dil');
-            $query->where(function ($q) use ($dil) {
-                $q->where('kunyeDilKN', $dil)
-                    ->orWhere('kunyeDil2', $dil);
-            });
-        }
-        if ($request->filled('konuBasligi'))  $query->where('kunyeKonuBasligi', 'LIKE', '%' . $request->input('konuBasligi') . '%');
-        if ($request->filled('ozelNotlar'))   $query->where(function ($q) use ($request) {
-            $n = $request->input('ozelNotlar');
-            $q->where('ozelNotlar',  'LIKE', "%{$n}%")
-                ->orWhere('ozelNotlar2', 'LIKE', "%{$n}%")
-                ->orWhere('ozelNotlar3', 'LIKE', "%{$n}%");
-        });
-        if ($request->filled('oduncVerilebilir')) {
-            $query->where('oduncVerilemez', $request->input('oduncVerilebilir') === 'evet' ? 0 : 1);
-        }
-        if ($request->filled('etiketlendi')) {
-            $query->where('etiketlendi', $request->input('etiketlendi') === 'evet' ? 1 : 0);
-        }
-        if ($request->filled('kayitBaslangic')) {
-            $kayitBaslangic = $request->input('kayitBaslangic');
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBaslangic)) {
-                $query->whereDate('created_at', '>=', $kayitBaslangic);
-            }
-        }
-        if ($request->filled('kayitBitis')) {
-            $kayitBitis = $request->input('kayitBitis');
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBitis)) {
-                $query->whereDate('created_at', '<=', $kayitBitis);
-            }
-        }
-
-        // Yazar filtresi: önce ID ile dene (dropdown), yoksa metin LIKE
-        if ($request->filled('yazarId')) {
-            $this->applyYazarIdFilter($query, (int) $request->input('yazarId'));
-        } elseif ($request->filled('yazar')) {
-            $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
-        }
-
-        // Yayınevi filtresi: önce ID ile dene, yoksa metin LIKE
-        if ($request->filled('yayineviId')) {
-            $query->where('yayineviId', (int) $request->input('yayineviId'));
-        } elseif ($request->filled('yayinevi')) {
-            $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
-        }
-        if ($request->filled('createdUserId')) {
-            $query->where('created_user', (int) $request->input('createdUserId'));
-        }
+        $this->applyListFiltersToKatalogQuery($query, $request);
 
         $activeSortBy = '';
         $activeSortDir = 'asc';
@@ -508,58 +651,7 @@ class KatalogController extends Controller
     public function export(Request $request)
     {
         $query = Katalog::query();
-        if ($request->filled('search')) {
-            $s = $request->input('search');
-            $query->where(function ($q) use ($s) {
-                $q->where('kunyeEserAdi',  'LIKE', "%{$s}%")
-                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$s}%");
-            });
-        }
-        if ($request->filled('kategori'))     $query->where('kunyeKategori', (int) $request->input('kategori'));
-        if ($request->filled('siniflamaYer')) $query->where('kunyeSiniflamaYer', 'LIKE', '%' . $request->input('siniflamaYer') . '%');
-        if ($request->filled('kutuphaneId'))  $query->where('kutuphaneId', (int) $request->input('kutuphaneId'));
-        if ($request->filled('turId'))        $query->where('turId', (int) $request->input('turId'));
-        if ($request->filled('durum'))        $query->where('kunyeDurum', $request->input('durum'));
-        if ($request->filled('dil')) {
-            $dil = (string) $request->input('dil');
-            $query->where(function ($q) use ($dil) {
-                $q->where('kunyeDilKN', $dil)
-                    ->orWhere('kunyeDil2', $dil);
-            });
-        }
-        if ($request->filled('konuBasligi'))  $query->where('kunyeKonuBasligi', 'LIKE', '%' . $request->input('konuBasligi') . '%');
-        if ($request->filled('ozelNotlar'))   $query->where(function ($q) use ($request) {
-            $n = $request->input('ozelNotlar');
-            $q->where('ozelNotlar',  'LIKE', "%{$n}%")
-                ->orWhere('ozelNotlar2', 'LIKE', "%{$n}%")
-                ->orWhere('ozelNotlar3', 'LIKE', "%{$n}%");
-        });
-        if ($request->filled('oduncVerilebilir')) {
-            $query->where('oduncVerilemez', $request->input('oduncVerilebilir') === 'evet' ? 0 : 1);
-        }
-        if ($request->filled('etiketlendi')) {
-            $query->where('etiketlendi', $request->input('etiketlendi') === 'evet' ? 1 : 0);
-        }
-        if ($request->filled('kayitBaslangic')) {
-            $kayitBaslangic = $request->input('kayitBaslangic');
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBaslangic)) {
-                $query->whereDate('created_at', '>=', $kayitBaslangic);
-            }
-        }
-        if ($request->filled('kayitBitis')) {
-            $kayitBitis = $request->input('kayitBitis');
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $kayitBitis)) {
-                $query->whereDate('created_at', '<=', $kayitBitis);
-            }
-        }
-        if ($request->filled('yazarId')) {
-            $this->applyYazarIdFilter($query, (int) $request->input('yazarId'));
-        } elseif ($request->filled('yazar')) {
-            $query->where('kunyeYazar', 'LIKE', '%' . $request->input('yazar') . '%');
-        }
-        if ($request->filled('yayineviId'))   $query->where('yayineviId', (int) $request->input('yayineviId'));
-        elseif ($request->filled('yayinevi')) $query->where('kunyeYayinlayan', 'LIKE', '%' . $request->input('yayinevi') . '%');
-        if ($request->filled('createdUserId')) $query->where('created_user', (int) $request->input('createdUserId'));
+        $this->applyListFiltersToKatalogQuery($query, $request);
 
         $this->applyKatalogListSort($query, $request);
         $kitaplar    = $query->get();
@@ -603,6 +695,44 @@ class KatalogController extends Controller
     private function normalizeIsbnForMatch(string $isbn): string
     {
         return strtoupper(preg_replace('/[^0-9X]/i', '', $isbn));
+    }
+
+    /**
+     * Verilen ISBN için silinmemiş bir katalog kaydı var mı?
+     */
+    private function hasExistingKatalogForNormalizedIsbn(string $normalized): bool
+    {
+        if ($normalized === '') {
+            return false;
+        }
+
+        $driver = DB::connection()->getDriverName();
+
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            try {
+                return Katalog::query()
+                    ->whereNull('deleted_at')
+                    ->whereRaw(
+                        "REGEXP_REPLACE(UPPER(TRIM(COALESCE(kunyeISBNISSN,''))), '[^0-9X]', '') = ?",
+                        [$normalized]
+                    )
+                    ->exists();
+            } catch (\Throwable) {
+                // MySQL fonksiyonu desteklenmiyorsa aşağıdaki tarama yoluna düş.
+            }
+        }
+
+        foreach (Katalog::query()
+            ->whereNull('deleted_at')
+            ->whereNotNull('kunyeISBNISSN')
+            ->where('kunyeISBNISSN', '!=', '')
+            ->cursor() as $row) {
+            if ($this->normalizeIsbnForMatch((string) $row->kunyeISBNISSN) === $normalized) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -681,6 +811,93 @@ class KatalogController extends Controller
         return $prefill;
     }
 
+    /**
+     * Aynı normalize ISBN'e sahip kayıtların kütüphane bazlı adet dağılımını döndürür.
+     *
+     * @return list<array{kutuphane_id:int|null,kutuphane_title:string,count:int}>
+     */
+    private function getIsbnLibraryStockSummary(string $normalized): array
+    {
+        if ($normalized === '') {
+            return [];
+        }
+
+        $countsByKutuphane = [];
+        $driver = DB::connection()->getDriverName();
+
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            try {
+                $rows = Katalog::query()
+                    ->selectRaw('kutuphaneId, COUNT(*) as adet')
+                    ->whereRaw(
+                        "REGEXP_REPLACE(UPPER(TRIM(COALESCE(kunyeISBNISSN,''))), '[^0-9X]', '') = ?",
+                        [$normalized]
+                    )
+                    ->groupBy('kutuphaneId')
+                    ->get();
+
+                foreach ($rows as $row) {
+                    $kutuphaneId = $row->kutuphaneId !== null ? (int) $row->kutuphaneId : null;
+                    $countsByKutuphane[$kutuphaneId ?? 0] = [
+                        'kutuphane_id' => $kutuphaneId,
+                        'count' => (int) ($row->adet ?? 0),
+                    ];
+                }
+            } catch (\Throwable) {
+                // MySQL fonksiyonu desteklenmiyorsa aşağıdaki PHP fallback'i kullan.
+            }
+        }
+
+        if ($countsByKutuphane === []) {
+            foreach (Katalog::query()
+                ->whereNotNull('kunyeISBNISSN')
+                ->where('kunyeISBNISSN', '!=', '')
+                ->cursor() as $row) {
+                if ($this->normalizeIsbnForMatch((string) $row->kunyeISBNISSN) !== $normalized) {
+                    continue;
+                }
+                $kutuphaneId = $row->kutuphaneId !== null ? (int) $row->kutuphaneId : null;
+                $key = $kutuphaneId ?? 0;
+                if (!isset($countsByKutuphane[$key])) {
+                    $countsByKutuphane[$key] = [
+                        'kutuphane_id' => $kutuphaneId,
+                        'count' => 0,
+                    ];
+                }
+                $countsByKutuphane[$key]['count']++;
+            }
+        }
+
+        if ($countsByKutuphane === []) {
+            return [];
+        }
+
+        $kutuphaneIds = collect($countsByKutuphane)
+            ->pluck('kutuphane_id')
+            ->filter(fn ($id) => $id !== null)
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $titleMap = Kutuphane::query()
+            ->whereIn('id', $kutuphaneIds ?: [-1])
+            ->pluck('title', 'id');
+
+        return collect($countsByKutuphane)
+            ->map(function (array $row) use ($titleMap) {
+                $id = $row['kutuphane_id'];
+                $title = $id !== null ? (string) ($titleMap[$id] ?? ('Kütüphane #' . $id)) : 'Kütüphane belirtilmemiş';
+                return [
+                    'kutuphane_id' => $id,
+                    'kutuphane_title' => $title,
+                    'count' => (int) $row['count'],
+                ];
+            })
+            ->sortBy('kutuphane_title')
+            ->values()
+            ->all();
+    }
+
     // ─── ISBN Arama ─────────────────────────────────────────────────────────────
     public function isbnSearch(Request $request)
     {
@@ -694,6 +911,7 @@ class KatalogController extends Controller
             return response()->json(['success' => false, 'message' => 'ISBN geçersiz.'], 422);
         }
 
+        $libraryStock = $this->getIsbnLibraryStockSummary($normalized);
         $existing = $this->findKatalogByNormalizedIsbn($normalized);
         if ($existing) {
             $coverPath = $existing->kunyeKapakResmi;
@@ -708,6 +926,7 @@ class KatalogController extends Controller
                 'publisher'        => $existing->kunyeYayinlayan ?: null,
                 'authors'          => $existing->kunyeYazar ?: null,
                 'prefill'          => $this->buildIsbnPrefillData($existing),
+                'library_stock'    => $libraryStock,
             ]);
         }
 
@@ -730,6 +949,7 @@ class KatalogController extends Controller
                     'cover'     => $book['image'] ?? null,
                     'publisher' => $book['publisher'] ?? null,
                     'authors'   => isset($book['authors']) ? implode(', ', (array) $book['authors']) : null,
+                    'library_stock' => $libraryStock,
                 ]);
             }
 
@@ -751,6 +971,7 @@ class KatalogController extends Controller
         if ($normalized === '') {
             return response()->json(['success' => false, 'message' => 'ISBN geçersiz.'], 422);
         }
+        $libraryStock = $this->getIsbnLibraryStockSummary($normalized);
 
         $existing = $this->findKatalogByNormalizedIsbn($normalized);
         if ($existing && $existing->kapak_resim_path) {
@@ -758,6 +979,7 @@ class KatalogController extends Controller
                 'success' => true,
                 'source'  => 'database',
                 'cover'   => $existing->kapak_resim_path,
+                'library_stock' => $libraryStock,
             ]);
         }
 
@@ -777,6 +999,7 @@ class KatalogController extends Controller
                     'success' => true,
                     'source'  => 'api',
                     'cover'   => $book['image'],
+                    'library_stock' => $libraryStock,
                 ]);
             }
             return response()->json(['success' => false, 'message' => 'Kitap bulunamadı veya API yanıt vermedi.']);
@@ -945,6 +1168,10 @@ class KatalogController extends Controller
         // Kaydı oluşturan kullanıcı otomatik atanır
         $data['created_user'] = auth()->id();
 
+        // ISBN ilk kez kullanılıyorsa ilkKayit=true, daha önce kullanıldıysa false.
+        $normalizedIsbn = $this->normalizeIsbnForMatch((string) ($data['kunyeISBNISSN'] ?? ''));
+        $data['ilkKayit'] = $normalizedIsbn !== '' && ! $this->hasExistingKatalogForNormalizedIsbn($normalizedIsbn);
+
         // ── Demirbaş No: gönderilen değer boşsa / elle geçersizse yeniden üret ──
         // DB'ye kayıt sırasında her zaman güncel ve benzersiz numara garantilensin.
         $data['kunyeDemirbasKN'] = $this->nextDemirbasNo();
@@ -1099,6 +1326,9 @@ class KatalogController extends Controller
             ->value('id');
 
         $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
+        $isbnLibraryStock = $this->getIsbnLibraryStockSummary(
+            $this->normalizeIsbnForMatch((string) ($kitap->kunyeISBNISSN ?? ''))
+        );
         $altEserler = Katalog::query()
             ->select(['id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeDemirbasKN', 'kunyeISBNISSN', 'kunyeKapakResmi'])
             ->where('ustEserKatalogId', $kitap->id);
@@ -1109,7 +1339,7 @@ class KatalogController extends Controller
             'kitap', 'kategoriler', 'girisTurleri', 'kutuphaneler',
             'yazarlar', 'yayinevleri', 'dilSecenekleri',
             'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
-            'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId', 'altEserler'
+            'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId', 'altEserler', 'isbnLibraryStock'
         ));
     }
 
@@ -1151,6 +1381,9 @@ class KatalogController extends Controller
             ->value('id');
 
         $kitap->loadMissing(['yazarlar' => fn ($q) => $q->orderByPivot('sira')]);
+        $isbnLibraryStock = $this->getIsbnLibraryStockSummary(
+            $this->normalizeIsbnForMatch((string) ($kitap->kunyeISBNISSN ?? ''))
+        );
         $altEserler = Katalog::query()
             ->select(['id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeDemirbasKN', 'kunyeISBNISSN', 'kunyeKapakResmi'])
             ->where('ustEserKatalogId', $kitap->id);
@@ -1186,6 +1419,7 @@ class KatalogController extends Controller
             'turler', 'altturler', 'sekiller', 'ortamlar', 'koleksiyonlar',
             'createdUser', 'updatedUser', 'prevKatalogId', 'nextKatalogId',
             'altEserler',
+            'isbnLibraryStock',
             'canTransferKutuphane', 'kutuphaneTransferTargets', 'currentKutuphaneTitle',
             'kutuphaneTransferAllowedJson'
         ));
@@ -1208,10 +1442,13 @@ class KatalogController extends Controller
                 'required',
                 'integer',
                 Rule::exists('kutuphane', 'id')->where(function ($q) {
-                    $q->whereNull('deleted_at');
+                    $q->whereNull('deleted_at')
+                        ->where('statu', 'aktif');
                 }),
             ],
             'aciklama' => 'nullable|string|max:5000',
+        ], [
+            'to_kutuphane_id.exists' => 'Seçilen kütüphane pasif veya geçersiz.',
         ]);
 
         $toId = (int) $validated['to_kutuphane_id'];
@@ -1227,7 +1464,7 @@ class KatalogController extends Controller
 
         $allowedIds = $this->allowedKutuphaneIdsForUpdate();
         if (!in_array($toId, $allowedIds, true)) {
-            return response()->json(['success' => false, 'message' => 'Bu kütüphaneye transfer yetkiniz yok.'], 403);
+            return response()->json(['success' => false, 'message' => 'Bu kütüphaneye transfer yetkiniz yok veya kütüphane pasif.'], 403);
         }
 
         DB::transaction(function () use ($kitap, $fromId, $toId, $aciklama) {

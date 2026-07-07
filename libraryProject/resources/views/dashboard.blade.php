@@ -27,6 +27,11 @@
         .panel-title{font-family:var(--font-serif);font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
         .panel-title a{font-size:13px;font-weight:600;color:var(--primary);text-decoration:none}
         .panel-title a:hover{text-decoration:underline}
+        .time-filter{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}
+        .time-filter-link{display:inline-flex;align-items:center;padding:4px 10px;border:1px solid var(--border);border-radius:999px;font-size:12px;font-weight:600;color:var(--muted-foreground);text-decoration:none;transition:all .12s}
+        .time-filter-link:hover{border-color:rgba(122,92,60,.45);color:var(--foreground);background:rgba(122,92,60,.06)}
+        .time-filter-link.active{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+        .time-filter-link.is-loading{opacity:.6;pointer-events:none}
         .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px}
         .bar-row:last-child{margin-bottom:0}
         .bar-name{min-width:88px;color:var(--muted-foreground);font-weight:500}
@@ -264,10 +269,17 @@
                 @endif
 
                 @if($flags['catalog'])
-                    <div class="panel">
+                    <div class="panel" id="creatorCatalogPanel">
                         <div class="panel-title">
                             <span>Kullanıcı Katalog Kayıt Sayıları</span>
                             <a href="{{ route('katalog.index') }}">Katalog</a>
+                        </div>
+                        <div class="time-filter" aria-label="Zaman aralığı seçimi">
+                            <a class="time-filter-link js-creator-range {{ ($creatorRange ?? 'all') === 'all' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['creator_range' => 'all']) }}">Tüm Zamanlar</a>
+                            <a class="time-filter-link js-creator-range {{ ($creatorRange ?? 'all') === '1y' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['creator_range' => '1y']) }}">1 Yıl</a>
+                            <a class="time-filter-link js-creator-range {{ ($creatorRange ?? 'all') === '1m' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['creator_range' => '1m']) }}">1 Ay</a>
+                            <a class="time-filter-link js-creator-range {{ ($creatorRange ?? 'all') === '1w' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['creator_range' => '1w']) }}">1 Hafta</a>
+                            <a class="time-filter-link js-creator-range {{ ($creatorRange ?? 'all') === 'today' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['creator_range' => 'today']) }}">Bugün</a>
                         </div>
                         @if($topCatalogCreators->isEmpty())
                             <p class="empty-hint" style="padding:12px 0;">Gösterecek kullanıcı kayıt verisi bulunmuyor.</p>
@@ -281,7 +293,7 @@
                                     <span class="bar-count">{{ number_format($row['count'], 0, ',', '.') }}</span>
                                 </div>
                             @endforeach
-                            <p class="panel-hint">Liste, kapsamınızdaki katalog kayıtlarında en fazla kitap kaydeden ilk 5 kullanıcıyı gösterir.</p>
+                            <p class="panel-hint">Liste, kapsamınızdaki katalog kayıtlarında en fazla kitap kaydeden ilk 10 kullanıcıyı gösterir.</p>
                         @endif
                     </div>
                 @endif
@@ -396,4 +408,56 @@
                 @endif
             </div>
             </div>
+@endsection
+
+@section('scripts')
+<script>
+    (function () {
+        function bindCreatorRangeAjax() {
+            document.querySelectorAll('.js-creator-range').forEach(function (link) {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    var href = this.getAttribute('href');
+                    if (!href) return;
+
+                    var panel = document.getElementById('creatorCatalogPanel');
+                    if (!panel) return;
+
+                    panel.querySelectorAll('.js-creator-range').forEach(function (btn) {
+                        btn.classList.add('is-loading');
+                    });
+
+                    fetch(href, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html'
+                        },
+                        credentials: 'same-origin'
+                    })
+                    .then(function (resp) {
+                        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                        return resp.text();
+                    })
+                    .then(function (html) {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(html, 'text/html');
+                        var nextPanel = doc.getElementById('creatorCatalogPanel');
+                        var currentPanel = document.getElementById('creatorCatalogPanel');
+                        if (!nextPanel || !currentPanel) throw new Error('Panel bulunamadı');
+
+                        currentPanel.outerHTML = nextPanel.outerHTML;
+                        window.history.replaceState({}, '', href);
+                        bindCreatorRangeAjax();
+                    })
+                    .catch(function () {
+                        window.location.href = href;
+                    });
+                });
+            });
+        }
+
+        bindCreatorRangeAjax();
+    })();
+</script>
 @endsection

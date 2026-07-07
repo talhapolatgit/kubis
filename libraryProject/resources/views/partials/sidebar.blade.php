@@ -104,6 +104,12 @@
                         <span style="flex:1;min-width:0;">Rezervasyon İşlemleri</span>
                         <span class="sidebar-reserve-badge {{ ($sidebarAktifRezerveSayisi ?? 0) > 0 ? 'sidebar-reserve-badge--active' : 'sidebar-reserve-badge--zero' }}" aria-label="Aktif rezervasyon: {{ $sidebarAktifRezerveSayisi ?? 0 }}">{{ $sidebarAktifRezerveSayisi ?? 0 }}</span>
                     </a></li>
+                
+                @endif
+                @if(auth()->user()->hasYetki(27) || auth()->user()->hasYetki(28) || auth()->user()->hasYetki(31) || auth()->user()->hasYetki(32) || auth()->user()->hasYetki(33))
+                <li><a href="{{ route('ziyaret.index') }}" class="sidebar-menu-item {{ request()->routeIs('ziyaret.*') ? 'active' : '' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+                        Ziyaretçi İşlemleri</a></li>
                 @endif
             </ul>
         </div>
@@ -112,10 +118,11 @@
             <div class="sidebar-group-label">Üyeler</div>
             <ul class="sidebar-menu">
                 @if(auth()->user()->hasYetki(11) || auth()->user()->hasYetki(13))
-                <li><a href="{{ route('uyeler.index') }}" class="sidebar-menu-item {{ request()->routeIs('uyeler.index') || request()->routeIs('uyeler.edit') ? 'active' : '' }}">
+                <li><a href="{{ route('uyeler.index') }}" class="sidebar-menu-item {{ request()->routeIs('uyeler.index') || request()->routeIs('uyeler.show') || request()->routeIs('uyeler.edit') ? 'active' : '' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         Üye Listesi</a></li>
                 @endif
+                
                 @if(auth()->user()->hasYetki(12))
                 <li><a href="{{ route('uyeler.new') }}" class="sidebar-menu-item {{ request()->routeIs('uyeler.new') ? 'active' : '' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
@@ -154,7 +161,7 @@
         </div>
 
         @auth
-            @if(auth()->user()->hasYetki(14) || auth()->user()->hasYetki(15) || auth()->user()->hasYetki(16) || auth()->user()->hasYetki(20))
+            @if(auth()->user()->hasYetki(14) || auth()->user()->hasYetki(15) || auth()->user()->hasYetki(16) || auth()->user()->hasYetki(20) || auth()->user()->hasYetki(26))
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">Yönetim</div>
                     <ul class="sidebar-menu">
@@ -163,6 +170,11 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                                 Sistem Kullanıcıları</a></li>
                         @endif
+                        @if(auth()->user()->hasYetki(26))
+                <li><a href="{{ route('rapor-sihirbazi.index') }}" class="sidebar-menu-item {{ request()->routeIs('rapor-sihirbazi.*') ? 'active' : '' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6"/><path d="M9 17h6"/><path d="M9 9h1"/></svg>
+                        Rapor Sihirbazı</a></li>
+                @endif
                         @if(auth()->user()->hasYetki(20))
                         <li><a href="{{ route('etiket.index') }}" class="sidebar-menu-item {{ request()->routeIs('etiket.*') ? 'active' : '' }}">
                                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#ffffff" stroke="#ffffff" stroke-width="0.00024000000000000003"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"><path d="M14.635 2.217a.74.74 0 0 0-1.048 0l-10.37 10.37a.74.74 0 0 0-.217.524v5.185a.741.741 0 0 0 .217.524l2.286 2.286c-.247.6-.513.881-.722.881-.429 0-.846-.58-.982-.86l-.086-.18-1.037.493.085.18c.029.063.728 1.518 2.02 1.518a1.853 1.853 0 0 0 1.608-1.215.732.732 0 0 0 .315.077h5.185a.741.741 0 0 0 .524-.217l10.37-10.37a.74.74 0 0 0 0-1.048zM11.782 21H6.81l-.043-.043a10.076 10.076 0 0 0 .258-1.005 2.533 2.533 0 1 0-1.056-.488c-.022.079-.05.152-.066.235-.023.115-.048.216-.072.322L4 18.189v-4.97L14.11 3.106l7.783 7.782zM6 17.5A1.5 1.5 0 1 1 7.5 19c-.021 0-.04-.005-.062-.006a2.873 2.873 0 0 1 .61-.647l.16-.114-.649-.946-.165.115A4.018 4.018 0 0 0 6.39 18.5a1.489 1.489 0 0 1-.39-1zm2.542-5.792l5.922-5.922.707.707-5.922 5.923zm2.021 2.022l5.922-5.922.707.707-5.922 5.922zm2.021 2.021l5.923-5.922.707.707-5.922 5.922z"></path><path fill="none" d="M0 0h24v24H0z"></path></g></svg>

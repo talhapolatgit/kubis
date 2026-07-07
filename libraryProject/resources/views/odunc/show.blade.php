@@ -213,7 +213,11 @@
                     <div class="detail-row"><span class="detail-label">Telefon</span><span class="detail-val">{{ $islem->uye->telefon }}</span></div>
                     <div class="detail-row"><span class="detail-label">E-posta</span><span class="detail-val">{{ $islem->uye->email ?: '—' }}</span></div>
                     <div class="detail-row"><span class="detail-label">Üyelik Durumu</span><span class="detail-val {{ $islem->uye->statu === 'aktif' ? 'green' : '' }}">{{ $islem->uye->statu_label }}</span></div>
-                    <div style="margin-top:14px;">
+                    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <a href="{{ route('uyeler.show', $islem->uye) }}" class="btn btn-primary" style="font-size:13px;padding:6px 12px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            Üye Profili
+                        </a>
                         <a href="{{ route('uyeler.edit', $islem->uye) }}" class="btn btn-outline" style="font-size:13px;padding:6px 12px;">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                             Üyeyi Düzenle
@@ -244,9 +248,9 @@
                     <div class="detail-row"><span class="detail-label">Demirbaş No</span><span class="detail-val">{{ $islem->katalog->kunyeDemirbasKN ?: '—' }}</span></div>
                     <div class="detail-row"><span class="detail-label">Kütüphane</span><span class="detail-val">{{ $islem->kutuphane?->title ?? '—' }}</span></div>
                     <div style="margin-top:14px;">
-                        <a href="{{ route('katalog.edit', $islem->katalog) }}" class="btn btn-outline" style="font-size:13px;padding:6px 12px;">
+                        <a href="{{ route('katalog.view', $islem->katalog) }}" class="btn btn-primary" style="font-size:13px;padding:6px 12px;">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            Kitabı Düzenle
+                            Kitabı Görüntüle
                         </a>
                     </div>
                 </div>

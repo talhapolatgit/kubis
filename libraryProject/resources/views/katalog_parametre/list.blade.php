@@ -46,6 +46,12 @@
     .modal-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
     .modal-body{padding:16px;display:grid;gap:12px}
     .modal-footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+    .btn-icon{width:30px;height:30px;border:none;border-radius:8px;background:transparent;cursor:pointer;color:var(--muted-foreground)}
+    .btn-icon:hover{background:var(--muted);color:var(--foreground)}
+    .modal-footer-audit{margin-right:auto;display:grid;gap:4px;font-size:12px;color:var(--muted-foreground)}
+    .audit-row{display:flex;align-items:center;gap:6px}
+    .audit-key{font-weight:600;color:var(--foreground)}
+    .modal-footer-actions{display:flex;align-items:center;gap:8px}
 </style>
 @endsection
 
@@ -62,7 +68,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">Katalog Parametreleri</h1>
-            <p class="page-subtitle" id="subTitle">Tür, Alt Tür, Şekil, Ortam ve Dil yönetimi</p>
+            <p class="page-subtitle" id="subTitle">Tür, Alt Tür, Şekil, Ortam, Dil ve Koleksiyon yönetimi</p>
         </div>
         <button type="button" class="btn btn-primary" id="openNewBtn">Yeni Kayıt</button>
     </div>
@@ -73,6 +79,7 @@
         <button class="tab-btn" data-tab="sekil">Şekil</button>
         <button class="tab-btn" data-tab="ortam">Ortam</button>
         <button class="tab-btn" data-tab="dil">Dil</button>
+        <button class="tab-btn" data-tab="koleksiyon">Koleksiyon</button>
     </div>
 
     <div class="form-card" style="margin-bottom:14px;">
@@ -137,7 +144,7 @@
 
 <div class="modal-backdrop" id="editModal">
     <div class="modal">
-        <div class="modal-header"><strong id="modalTitle">Yeni Kayıt</strong><button type="button" class="btn btn-outline btn-sm" data-close="#editModal">Kapat</button></div>
+        <div class="modal-header"><strong id="modalTitle">Yeni Kayıt</strong><button class="btn-icon" type="button" data-close-modal="#editModal">✕</button></div>
         <form id="editForm">
             @csrf
             <input type="hidden" id="editId">
@@ -147,8 +154,14 @@
                 <div><label class="field-label">Durum</label><select class="field-input" name="aktif" id="editAktif"><option value="aktif">Aktif</option><option value="pasif">Pasif</option></select></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" data-close="#editModal">Vazgeç</button>
-                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <div class="modal-footer-audit" aria-label="Kayıt bilgisi">
+                    <div class="audit-row"><span class="audit-key">Kayıt tarihi:</span> <span id="editMetaKayitSatiri">—</span></div>
+                    <div class="audit-row"><span class="audit-key">Güncelleme tarihi:</span> <span id="editMetaGuncellemeSatiri">—</span></div>
+                </div>
+                <div class="modal-footer-actions">
+                    <button type="button" class="btn btn-outline" data-close-modal="#editModal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
             </div>
         </form>
     </div>
@@ -169,11 +182,22 @@ function setActiveTab(){
 }
 function openModal(){document.getElementById('editModal').classList.add('open')}
 function closeModal(){document.getElementById('editModal').classList.remove('open')}
+function formatAuditLine(dateValue, userValue){
+  const dateText = dateValue || '—';
+  const userText = userValue || '';
+  return userText && userText !== '—' ? (dateText + ' (' + userText + ')') : dateText;
+}
+function setEditAuditFromDataset(ds){
+  const k = document.getElementById('editMetaKayitSatiri');
+  const g = document.getElementById('editMetaGuncellemeSatiri');
+  if(k) k.textContent = formatAuditLine(ds.kayitTarihi || '—', ds.kaydeden || '');
+  if(g) g.textContent = formatAuditLine(ds.guncellemeTarihi || '—', ds.guncelleyen || '');
+}
 
 function buildRow(r){
   const badge = r.aktif === 'aktif' ? '<span class="badge badge-green">Aktif</span>' : '<span class="badge badge-red">Pasif</span>';
   return '<tr><td>'+esc(r.ad)+'</td><td>'+r.sira+'</td><td>'+ (r.eser_sayisi || 0) +'</td><td>'+badge+'</td><td>'
-      + '<button class="btn btn-outline btn-sm editBtn" data-id="'+r.id+'" data-ad="'+esc(r.ad)+'" data-sira="'+r.sira+'" data-aktif="'+r.aktif+'">Düzenle</button> '
+      + '<button class="btn btn-outline btn-sm editBtn" data-id="'+r.id+'" data-ad="'+esc(r.ad)+'" data-sira="'+r.sira+'" data-aktif="'+r.aktif+'" data-kayit-tarihi="'+esc(r.kayit_tarihi || '—')+'" data-kaydeden="'+esc(r.kaydeden || '—')+'" data-guncelleme-tarihi="'+esc(r.guncelleme_tarihi || '—')+'" data-guncelleyen="'+esc(r.guncelleyen || '—')+'">Düzenle</button> '
       + '<button class="btn btn-outline btn-sm delBtn" data-id="'+r.id+'">Sil</button></td></tr>';
 }
 function bindRowBtns(){
@@ -183,6 +207,7 @@ function bindRowBtns(){
     document.getElementById('editAd').value = this.dataset.ad || '';
     document.getElementById('editSira').value = this.dataset.sira || '0';
     document.getElementById('editAktif').value = this.dataset.aktif || 'aktif';
+    setEditAuditFromDataset(this.dataset);
     openModal();
   });
   document.querySelectorAll('.delBtn').forEach(b=>b.onclick=function(){
@@ -248,13 +273,22 @@ function fetchTable(){
     .finally(()=>setTableLoading(false));
 }
 
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal());
+document.querySelectorAll('[data-close-modal]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    const modal = document.querySelector(this.getAttribute('data-close-modal'));
+    closeModal(modal);
+  });
+});
+document.getElementById('editModal').addEventListener('click', function(e){
+  if(e.target === this) closeModal(this);
+});
 document.getElementById('openNewBtn').addEventListener('click', function(){
   document.getElementById('modalTitle').textContent = 'Yeni Kayıt';
   document.getElementById('editId').value = '';
   document.getElementById('editForm').reset();
   document.getElementById('editSira').value = '0';
   document.getElementById('editAktif').value = 'aktif';
+  setEditAuditFromDataset({ kayitTarihi: '—', kaydeden: '', guncellemeTarihi: '—', guncelleyen: '' });
   openModal();
 });
 document.getElementById('editForm').addEventListener('submit', function(e){

@@ -39,6 +39,10 @@ class DashboardController extends Controller
         $kutuphaneAktifKatalog = collect();
         $kutuphaneAktifMax = 1;
         $topCatalogCreators = collect();
+        $creatorRange = (string) $request->input('creator_range', 'all');
+        if (!in_array($creatorRange, ['all', 'today', '1y', '1m', '1w'], true)) {
+            $creatorRange = 'all';
+        }
         $uyeCinsiyetBreakdown = collect();
         $uyeCinsiyetMax = 1;
         $uyeYasBreakdown = collect();
@@ -111,23 +115,36 @@ class DashboardController extends Controller
             })->values();
             $kutuphaneAktifMax = max((int) $kutuphaneAktifKatalog->max('count'), 1);
 
-            $creatorRows = (clone $base)
-                ->whereNotNull('created_user')
+            $creatorBase = (clone $base)->whereNotNull('created_user');
+            if ($creatorRange === 'today') {
+                $creatorBase->whereDate('created_at', today());
+            } elseif ($creatorRange === '1y') {
+                $creatorBase->where('created_at', '>=', now()->subYear());
+            } elseif ($creatorRange === '1m') {
+                $creatorBase->where('created_at', '>=', now()->subMonth());
+            } elseif ($creatorRange === '1w') {
+                $creatorBase->where('created_at', '>=', now()->subWeek());
+            }
+
+            $creatorRows = $creatorBase
                 ->select('created_user', DB::raw('count(*) as c'))
                 ->groupBy('created_user')
                 ->orderByDesc('c')
-                ->limit(5)
+                ->limit(10)
                 ->get();
             $creatorIds = $creatorRows->pluck('created_user')->map(fn ($id) => (int) $id)->all();
             $creatorNames = $creatorIds === []
                 ? collect()
                 : User::query()
                     ->whereIn('id', $creatorIds)
-                    ->get(['id', 'name', 'soyad'])
+                    ->get(['id', 'name', 'ad', 'soyad'])
                     ->keyBy('id');
             $topCatalogCreators = $creatorRows->map(function ($row) use ($creatorNames) {
                 $user = $creatorNames->get((int) $row->created_user);
-                $fullName = trim((string) ($user->name ?? '') . ' ' . (string) ($user->soyad ?? ''));
+                $fullName = trim((string) ($user->ad ?? '') . ' ' . (string) ($user->soyad ?? ''));
+                if ($fullName === '') {
+                    $fullName = trim((string) ($user->name ?? ''));
+                }
                 if ($fullName === '') {
                     $fullName = 'Kullanıcı #' . (int) $row->created_user;
                 }
@@ -205,6 +222,7 @@ class DashboardController extends Controller
             'kutuphaneAktifKatalog',
             'kutuphaneAktifMax',
             'topCatalogCreators',
+            'creatorRange',
             'uyeCinsiyetBreakdown',
             'uyeCinsiyetMax',
             'uyeYasBreakdown',

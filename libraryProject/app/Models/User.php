@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -85,26 +86,61 @@ class User extends Authenticatable
     }
 
     /**
-     * Kullanıcı yetkileri (user_yetkiler tablosu).
+     * Kullanıcının atanmış yetkileri (permissions + user_permission).
+     */
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'user_permission')
+            ->using(UserPermission::class)
+            ->withPivot(['granted_by', 'created_at', 'updated_at']);
+    }
+
+    /**
+     * Kullanıcı yetkileri.
      *
      * Not: Admin kullanıcılar varsayılan olarak tüm yetkilere sahip kabul edilir.
      */
     public function hasYetki(int $yetkiNo): bool
     {
-        if ($this->isAdmin()) return true;
-        if ($yetkiNo < 1 || $yetkiNo > 25) return false;
+        if ($this->isAdmin()) {
+            return true;
+        }
 
-        $row = $this->yetkilerRow();
-        if (!$row) return false;
+        if ($yetkiNo < 1 || ! in_array($yetkiNo, self::definedPermissionLegacyNos(), true)) {
+            return false;
+        }
 
-        $col = 'y' . str_pad((string) $yetkiNo, 2, '0', STR_PAD_LEFT);
-        return (bool) ($row->{$col} ?? false);
+        return in_array($yetkiNo, $this->permissionLegacyNos(), true);
     }
 
     /**
-     * Yetki satırını getirir (request süresince cache).
+     * Sistemde tanımlı yetki numaraları (request süresince cache).
+     *
+     * @return list<int>
      */
-    public function yetkilerRow(): ?object
+    protected static function definedPermissionLegacyNos(): array
+    {
+        static $cache;
+
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = Permission::query()
+            ->pluck('legacy_no')
+            ->map(fn ($v) => (int) $v)
+            ->values()
+            ->all();
+
+        return $cache;
+    }
+
+    /**
+     * Kullanıcının sahip olduğu yetki numaraları (request süresince cache).
+     *
+     * @return list<int>
+     */
+    public function permissionLegacyNos(): array
     {
         static $cache = [];
 
@@ -113,7 +149,12 @@ class User extends Authenticatable
             return $cache[$uid];
         }
 
-        $cache[$uid] = DB::table('user_yetkiler')->where('user_id', $uid)->first();
+        $cache[$uid] = $this->permissions()
+            ->pluck('permissions.legacy_no')
+            ->map(fn ($v) => (int) $v)
+            ->values()
+            ->all();
+
         return $cache[$uid];
     }
 

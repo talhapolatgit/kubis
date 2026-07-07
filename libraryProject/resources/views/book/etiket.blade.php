@@ -73,20 +73,63 @@
                                 {{-- Özel Notlar --}}
                                 <div class="filter-field span-2">
                                     <span class="filter-label">Özel Notlar</span>
-                                    <input type="text" id="filterOzelNotlar" class="filter-input"
-                                           placeholder="Notlar içinde ara…"
-                                           autocomplete="off" />
+                                    <div class="ozel-notlar-wrap">
+                                        <input type="text" id="filterOzelNotlar" class="filter-input ozel-notlar-input"
+                                               placeholder="Notlar ara…"
+                                               autocomplete="off" />
+                                        <input type="hidden" id="filterOzelNotlarMode" value="contains" />
+                                        <button type="button"
+                                                id="filterOzelNotlarModeBtn"
+                                                class="ozel-notlar-mode-btn"
+                                                onclick="cycleOzelNotlarMode()"
+                                                title="Özel notlar eşleşme tipi: İçinde Geçen">
+                                            %%
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {{-- Kütüphane --}}
                                 <div class="filter-field span-2">
                                     <span class="filter-label">Kütüphane</span>
-                                    <select id="filterKutuphaneId" class="filter-input">
-                                        <option value="">Tüm Yetkili Kütüphaneler</option>
-                                        @foreach(($kutuphaneler ?? []) as $kutuphane)
-                                            <option value="{{ $kutuphane->id }}">{{ $kutuphane->title }}</option>
-                                        @endforeach
-                                    </select>
+                                    <div class="combobox-wrapper" id="filterKutuphaneCombobox">
+                                        <div class="combobox-input-wrap">
+                                            <div class="combobox-face" id="filterKutuphaneFace">
+                                                <span class="combobox-face-text" id="filterKutuphaneFaceText">Tüm Yetkili Kütüphaneler</span>
+                                                <button type="button" class="combobox-clear-btn" id="filterKutuphaneClear" title="Seçimi kaldır" style="display:none;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                                </button>
+                                            </div>
+                                            <input type="text" class="filter-input" id="filterKutuphaneSearch" placeholder="Kütüphane ara..." autocomplete="off" style="display:none;" />
+                                            <button type="button" class="combobox-toggle" tabindex="-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                            </button>
+                                        </div>
+                                        <div class="combobox-dropdown"></div>
+                                    </div>
+                                    <input type="hidden" id="filterKutuphaneId" value="" />
+                                    <script id="filterKutuphaneData" type="application/json">@json(($kutuphaneler ?? collect())->map(fn($k) => ['id' => $k->id, 'ad' => $k->title])->values())</script>
+                                </div>
+
+                                {{-- Kaydeden (arama özellikli) --}}
+                                <div class="filter-field span-2">
+                                    <span class="filter-label">Kaydeden</span>
+                                    <div class="combobox-wrapper" id="filterCreatedUserCombobox">
+                                        <div class="combobox-input-wrap">
+                                            <div class="combobox-face" id="filterCreatedUserFace">
+                                                <span class="combobox-face-text" id="filterCreatedUserFaceText">Kullanıcı seçin...</span>
+                                                <button type="button" class="combobox-clear-btn" id="filterCreatedUserClear" title="Seçimi kaldır" style="display:none;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                                </button>
+                                            </div>
+                                            <input type="text" class="filter-input" id="filterCreatedUserSearch" placeholder="Kullanıcı ara..." autocomplete="off" style="display:none;" />
+                                            <button type="button" class="combobox-toggle" tabindex="-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                            </button>
+                                        </div>
+                                        <div class="combobox-dropdown"></div>
+                                    </div>
+                                    <input type="hidden" id="filterCreatedUser" value="" />
+                                    <script id="filterCreatedUserData" type="application/json">@json($kaydedenler ?? [])</script>
                                 </div>
 
                                 {{-- Kayıt Tarihi Aralığı --}}
@@ -122,11 +165,15 @@
                             <div class="filter-sep"></div>
 
                             {{-- Tümünü Seç (arama sonrası görünür) --}}
-                            <div id="selectAllRow" style="display:none;">
-                                <button class="btn btn-ghost" id="btnSelectAll" onclick="selectAllResults()" style="width:100%;justify-content:flex-start;gap:8px;">
+                            <div id="selectAllRow" style="display:none;gap:8px;align-items:stretch;">
+                                <button class="btn btn-ghost" id="btnSelectAll" onclick="selectAllResults()" style="flex:1;justify-content:flex-start;gap:8px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 22 4"/></svg>
                                     Tümünü Seç
                                     <span id="selectAllCount" style="margin-left:auto;font-size:11px;color:var(--muted-foreground);"></span>
+                                </button>
+                                <button class="btn btn-ghost" id="btnClearSelection" onclick="clearSelectedBooks()" style="width:auto;flex:0 0 auto;padding:0 12px;justify-content:center;gap:6px;white-space:nowrap;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                    Temizle
                                 </button>
                             </div>
 
@@ -207,6 +254,19 @@
                                         <div class="label-type-text">
                                             <div class="label-type-name">Tip 4 (İkili Barkod)</div>
                                             <div class="label-type-desc">A4 · 4×9 düzen · Tip 2 + Tip 3 içerik</div>
+                                        </div>
+                                        <div class="label-type-radio"></div>
+                                    </div>
+                                </label>
+                                <label class="label-type-card">
+                                    <input type="radio" name="etiketTipi" value="tip8" />
+                                    <div class="label-type-inner">
+                                        <div class="label-type-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="3" width="6" height="18" rx="1"/><rect x="16" y="3" width="6" height="18" rx="1"/><line x1="5" y1="8" x2="5" y2="8.01"/><line x1="12" y1="8" x2="12" y2="8.01"/><line x1="19" y1="8" x2="19" y2="8.01"/></svg>
+                                        </div>
+                                        <div class="label-type-text">
+                                            <div class="label-type-name">Tip 8 (Üçlü Barkod)</div>
+                                            <div class="label-type-desc">A4 · 4×9 düzen · 2× Tip 2 + 1× Tip 3 içerik</div>
                                         </div>
                                         <div class="label-type-radio"></div>
                                     </div>
@@ -355,31 +415,112 @@
     var lastPdfUrl     = null;
     var generatedBookIds = [];
 
-    // ── Tahoma font (Tip 2 için) ──────────────────────────────────────────────────
-    // public/fonts/tahoma.ttf dosyasını sayfa açılışında yükler.
-    var tahomaB64 = null;   // null → henüz yüklenmedi / başarısız
+    var ozelNotlarMatchModes = ['contains', 'starts_with', 'exact'];
 
-    (function loadTahoma() {
-        fetch('/fonts/tahoma.ttf')
+    function modeSymbolFor(mode) {
+        if (mode === 'starts_with') return '%';
+        if (mode === 'exact') return '=';
+        return '%%';
+    }
+
+    function modeTooltipFor(mode) {
+        if (mode === 'starts_with') return 'İle başlayanları arar';
+        if (mode === 'exact') return 'Tam eşleşenleri arar';
+        return 'İçinde geçenleri arar';
+    }
+
+    function syncOzelNotlarModeButton() {
+        var modeEl = document.getElementById('filterOzelNotlarMode');
+        var btnEl  = document.getElementById('filterOzelNotlarModeBtn');
+        if (!modeEl || !btnEl) return;
+        var mode = modeEl.value || 'contains';
+        btnEl.textContent = modeSymbolFor(mode);
+        btnEl.title = modeTooltipFor(mode);
+    }
+
+    function cycleOzelNotlarMode() {
+        var modeEl = document.getElementById('filterOzelNotlarMode');
+        if (!modeEl) return;
+        var currentIdx = ozelNotlarMatchModes.indexOf(modeEl.value);
+        var nextIdx = (currentIdx + 1) % ozelNotlarMatchModes.length;
+        modeEl.value = ozelNotlarMatchModes[nextIdx];
+        syncOzelNotlarModeButton();
+    }
+
+    // ── Tahoma fontlar ──────────────────────────────────────────────────────────────
+    // /fonts/tahoma.ttf (normal), /fonts/tahomabd.ttf (tercih edilen bold),
+    // /fonts/tahoma-semibold.ttf (opsiyonel fallback)
+    var tahomaB64 = null;           // normal
+    var tahomaSemiBoldB64 = null;   // semi-bold (opsiyonel, fallback)
+    var tahomaBoldB64 = null;       // bold (opsiyonel, öncelikli)
+
+    function bufferToB64(buf) {
+        var bytes  = new Uint8Array(buf);
+        var binary = '';
+        var CHUNK  = 8192;
+        for (var i = 0; i < bytes.length; i += CHUNK) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+        }
+        return btoa(binary);
+    }
+
+    function loadFontB64(url) {
+        return fetch(url)
             .then(function(r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.arrayBuffer();
             })
-            .then(function(buf) {
-                var bytes  = new Uint8Array(buf);
-                var binary = '';
-                // Büyük dosya için chunked btoa
-                var CHUNK  = 8192;
-                for (var i = 0; i < bytes.length; i += CHUNK) {
-                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
-                }
-                tahomaB64 = btoa(binary);
+            .then(bufferToB64);
+    }
+
+    (function loadTahomaFonts() {
+        loadFontB64('/fonts/tahoma.ttf')
+            .then(function(b64) {
+                tahomaB64 = b64;
             })
             .catch(function(e) {
                 console.warn('Tahoma yüklenemedi:', e.message,
-                    '— public/fonts/tahoma.ttf dosyasının var olduğundan emin olun.');
+                    '— /fonts/tahoma.ttf dosyasının var olduğundan emin olun.');
+            });
+
+        loadFontB64('/fonts/tahoma-semibold.ttf')
+            .then(function(b64) {
+                tahomaSemiBoldB64 = b64;
+            })
+            .catch(function() {
+                // Semi-bold opsiyonel.
+            });
+
+        loadFontB64('/fonts/tahomabd.ttf')
+            .then(function(b64) {
+                tahomaBoldB64 = b64;
+            })
+            .catch(function() {
+                // Bold font opsiyonel: yoksa normal font bold style adıyla kaydedilir.
             });
     })();
+
+    function registerTahomaFonts(doc) {
+        if (!tahomaB64) {
+            throw new Error(
+                'Tahoma fontu henüz yüklenmedi.\n' +
+                '/fonts/tahoma.ttf dosyasının var olduğundan emin olun.'
+            );
+        }
+
+        doc.addFileToVFS('tahoma.ttf', tahomaB64);
+        doc.addFont('tahoma.ttf', 'tahoma', 'normal');
+
+        if (tahomaBoldB64) {
+            doc.addFileToVFS('tahomabd.ttf', tahomaBoldB64);
+            doc.addFont('tahomabd.ttf', 'tahoma', 'bold');
+        } else if (tahomaSemiBoldB64) {
+            doc.addFileToVFS('tahoma-semibold.ttf', tahomaSemiBoldB64);
+            doc.addFont('tahoma-semibold.ttf', 'tahoma', 'bold');
+        } else {
+            doc.addFont('tahoma.ttf', 'tahoma', 'bold');
+        }
+    }
 
     // ── Search & Filters ─────────────────────────────────────────────────────────
     var lastSearchRows = [];   // arama sonucundaki tüm kayıtlar (Tümünü Seç için)
@@ -388,7 +529,12 @@
         document.getElementById('searchInput').value             = '';
         document.getElementById('filterDemirbas').value          = '';
         document.getElementById('filterOzelNotlar').value        = '';
+        document.getElementById('filterOzelNotlarMode').value    = 'contains';
+        syncOzelNotlarModeButton();
         document.getElementById('filterKutuphaneId').value       = '';
+        resetComboboxFace('filterKutuphaneFaceText', 'filterKutuphaneClear', 'Tüm Yetkili Kütüphaneler');
+        document.getElementById('filterCreatedUser').value       = '';
+        resetComboboxFace('filterCreatedUserFaceText', 'filterCreatedUserClear', 'Kullanıcı seçin...');
         document.getElementById('filterKayitBaslangic').value    = '';
         document.getElementById('filterKayitBitis').value        = '';
         document.getElementById('filterEtiketOlusmayanlar').checked = false;
@@ -402,6 +548,7 @@
             || document.getElementById('filterDemirbas').value.trim().length > 0
             || document.getElementById('filterOzelNotlar').value.trim().length > 0
             || document.getElementById('filterKutuphaneId').value.trim().length > 0
+            || document.getElementById('filterCreatedUser').value.trim().length > 0
             || document.getElementById('filterKayitBaslangic').value.trim().length > 0
             || document.getElementById('filterKayitBitis').value.trim().length > 0
             || document.getElementById('filterEtiketOlusmayanlar').checked;
@@ -424,16 +571,21 @@
         var dm = document.getElementById('filterDemirbas').value.trim();
         if (dm) params.set('demirbasNo', dm);
         var on = document.getElementById('filterOzelNotlar').value.trim();
-        if (on) params.set('ozelNotlar', on);
+        if (on) {
+            params.set('ozelNotlar', on);
+            params.set('ozelNotlarMatch', document.getElementById('filterOzelNotlarMode').value);
+        }
         var kt = document.getElementById('filterKutuphaneId').value.trim();
         if (kt) params.set('kutuphaneId', kt);
+        var cu = document.getElementById('filterCreatedUser').value.trim();
+        if (cu) params.set('createdUserId', cu);
         var kb = document.getElementById('filterKayitBaslangic').value;
         if (kb) params.set('kayitBaslangic', kb);
         var ke = document.getElementById('filterKayitBitis').value;
         if (ke) params.set('kayitBitis', ke);
         var eo = document.getElementById('filterEtiketOlusmayanlar').checked;
         if (eo) params.set('etiketOlusmayanlar', '1');
-        params.set('per_page', '200');
+        params.set('per_page', '540');
 
         fetch('/etiket/ara?' + params.toString(), {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
@@ -466,7 +618,7 @@
         }
 
         // Tümünü Seç satırını göster
-        selectAllRow.style.display = 'block';
+        selectAllRow.style.display = 'flex';
         countEl.textContent = rows.length + ' kayıt';
 
         el.innerHTML = rows.map(function(k) {
@@ -510,6 +662,24 @@
 
         renderSelectedBooks();
         showToast('success', 'Tümü seçildi', lastSearchRows.length + ' kayıt seçime eklendi.');
+    }
+
+    function clearSelectedBooks() {
+        if (!selectedBooks.length) {
+            showToast('info', 'Seçim yok', 'Temizlenecek seçili kitap bulunmuyor.');
+            return;
+        }
+
+        var removedCount = selectedBooks.length;
+        selectedBooks = [];
+
+        // Sonuç listesindeki seçili vurgularını kaldır
+        document.querySelectorAll('#resultsList .result-item.selected').forEach(function(el) {
+            el.classList.remove('selected');
+        });
+
+        renderSelectedBooks();
+        showToast('success', 'Seçim temizlendi', removedCount + ' kayıt seçimden çıkarıldı.');
     }
 
     function toggleBook(k) {
@@ -646,6 +816,9 @@
                 } else if (tip === 'tip4') {
                     pdf     = buildTip4PDF(selectedBooks, skip);
                     perPage = TIP2.cols * TIP2.rows;
+                } else if (tip === 'tip8') {
+                    pdf     = buildTip8PDF(selectedBooks, skip);
+                    perPage = TIP2.cols * TIP2.rows;
                 } else if (tip === 'tip5') {
                     pdf     = buildTip5PDF(selectedBooks, skip);
                     perPage = 1;   // Ribonlu yazıcı: sayfa başına 1 etiket
@@ -675,6 +848,7 @@
 
                 var skipNote = skip > 0 ? ' · ' + skip + ' boş etiket' : '';
                 var pageCalcCount = (tip === 'tip4') ? selectedBooks.length * 2
+                                  : (tip === 'tip8') ? selectedBooks.length * 3
                                   : (tip === 'tip6') ? selectedBooks.length * 2
                                   : selectedBooks.length;
                 var perPageForToast = (tip === 'tip5' || tip === 'tip6') ? 1 : perPage;
@@ -701,6 +875,9 @@ window.scrollTo({
         var cfg      = TIP1;
         var jsPDF    = window.jspdf.jsPDF;
         var doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        registerTahomaFonts(doc);
+
         var perPage  = cfg.cols * cfg.rows;
         var total    = skip + books.length;
         var pageCount = Math.ceil(total / perPage);
@@ -745,21 +922,12 @@ window.scrollTo({
      * Örnek: 8 kitap → 16 slot → sütun dizilimi: [T2 T3 T2 T3 | T2 T3 T2 T3 | …]
      */
     function buildTip4PDF(books, skip) {
-        if (!tahomaB64) {
-            throw new Error(
-                'Tahoma fontu henüz yüklenmedi.\n' +
-                'public/fonts/tahoma.ttf dosyasının var olduğundan emin olun.'
-            );
-        }
-
         skip = skip || 0;
         var cfg       = TIP2;   // Aynı sayfa ızgarası
         var jsPDF     = window.jspdf.jsPDF;
         var doc       = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-        // Tahoma embed (Tip 2 çizimi için gerekli)
-        doc.addFileToVFS('tahoma.ttf', tahomaB64);
-        doc.addFont('tahoma.ttf', 'tahoma', 'normal');
+        registerTahomaFonts(doc);
 
         var perPage    = cfg.cols * cfg.rows;          // 36
         // Her kitap 2 slot kullanır (1 × Tip2 + 1 × Tip3)
@@ -796,6 +964,56 @@ window.scrollTo({
 
     // ─────────────────────────────────────────────────────────────────────────────
     /*
+     * Tip 8 — Kitap başına 3 etiket: 2× Tip 2 (arka barkod) + 1× Tip 3 (sırt barkod)
+     *
+     * Sayfa düzeni Tip 2/3 ile aynı (A4, 4×9, 45×30mm).
+     * Her kitap için ardışık üç slot kullanılır:
+     *   Slot 0 → Tip 2 (Arka barkod)
+     *   Slot 1 → Tip 2 (Arka barkod)
+     *   Slot 2 → Tip 3 (Sırt barkod)
+     */
+    function buildTip8PDF(books, skip) {
+        skip = skip || 0;
+        var cfg       = TIP2;   // Aynı sayfa ızgarası
+        var jsPDF     = window.jspdf.jsPDF;
+        var doc       = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        registerTahomaFonts(doc);
+
+        var perPage    = cfg.cols * cfg.rows;          // 36
+        var totalSlots = skip + books.length * 3;      // Her kitap 3 slot
+        var pageCount  = Math.ceil(totalSlots / perPage);
+
+        for (var page = 0; page < pageCount; page++) {
+            if (page > 0) doc.addPage();
+            for (var i = 0; i < perPage; i++) {
+                var slot = page * perPage + i;
+                if (slot >= totalSlots) break;
+                if (slot < skip) continue;             // boş etiket — atla
+
+                var bookSlot   = slot - skip;
+                var bookIdx    = Math.floor(bookSlot / 3);
+                var labelType3 = bookSlot % 3;         // 0/1 = Tip 2, 2 = Tip 3
+
+                var col = i % cfg.cols;
+                var row = Math.floor(i / cfg.cols);
+                var lx  = cfg.marginLeft + col * (cfg.labelW + cfg.gapX);
+                var ly  = cfg.marginTop  + row * (cfg.labelH + cfg.gapY);
+
+                var book = books[bookIdx];
+                if (labelType3 === 2) {
+                    drawLabel3(doc, book, lx, ly, cfg.labelW, cfg.labelH);
+                } else {
+                    drawLabel2(doc, book, lx, ly, cfg.labelW, cfg.labelH);
+                }
+            }
+        }
+
+        return doc;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    /*
      * Tip 5 — Ribonlu / termal etiket yazıcısı · 60×40mm · Yatay (Landscape)
      *
      * PDF boyutu: 60mm × 40mm, her sayfa = 1 etiket.
@@ -819,13 +1037,6 @@ window.scrollTo({
     };
 
     function buildTip5PDF(books, skip) {
-        if (!tahomaB64) {
-            throw new Error(
-                'Tahoma fontu henüz yüklenmedi.\n' +
-                'public/fonts/tahoma.ttf dosyasının var olduğundan emin olun.'
-            );
-        }
-
         skip = skip || 0;
         var cfg   = TIP5;
         var jsPDF = window.jspdf.jsPDF;
@@ -837,9 +1048,7 @@ window.scrollTo({
             format:      [cfg.labelH, cfg.labelW]   // jsPDF: portrait=[kısa,uzun] → landscape=[kısa,uzun] aynı sıra
         });
 
-        // Tahoma embed
-        doc.addFileToVFS('tahoma.ttf', tahomaB64);
-        doc.addFont('tahoma.ttf', 'tahoma', 'normal');
+        registerTahomaFonts(doc);
 
         var total = skip + books.length;
 
@@ -940,13 +1149,6 @@ window.scrollTo({
     };
 
     function buildTip6PDF(books, skip) {
-        if (!tahomaB64) {
-            throw new Error(
-                'Tahoma fontu henüz yüklenmedi.\n' +
-                'public/fonts/tahoma.ttf dosyasının var olduğundan emin olun.'
-            );
-        }
-
         skip = skip || 0;
         var jsPDF      = window.jspdf.jsPDF;
         var labelW     = TIP5.labelW;     // 60mm
@@ -959,9 +1161,7 @@ window.scrollTo({
             format:      [labelH, labelW]
         });
 
-        // Tahoma embed (Tip 2 çizimi için)
-        doc.addFileToVFS('tahoma.ttf', tahomaB64);
-        doc.addFont('tahoma.ttf', 'tahoma', 'normal');
+        registerTahomaFonts(doc);
 
         // Her kitap için 2 sayfa: [Tip2, Tip3]
         var totalPages = skip + books.length * 2;
@@ -1012,10 +1212,10 @@ window.scrollTo({
             drawBarcode39Vertical(doc, barcodeVal3, barX, barY, barW, barH);
         }
 
-        var demText  = normTR(rawDem3);
+        var demText  = rawDem3;
         var textColX = barX + barW + cfg.BAR_GAP;
         if (demText) {
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('tahoma', 'bold');
             doc.setFontSize(cfg.DEM_FS);
             doc.setTextColor(0, 0, 0);
             var textCX      = textColX + (cfg.DEM_W - cfg.DEM_PAD - barW - cfg.BAR_GAP) / 2;
@@ -1029,7 +1229,7 @@ window.scrollTo({
         }
 
         // ── Sağ veri sütunu ──────────────────────────────────────────────────
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('tahoma', 'bold');
         doc.setFontSize(FS);
         doc.setTextColor(0, 0, 0);
 
@@ -1069,6 +1269,8 @@ window.scrollTo({
             unit:        'mm',
             format:      [labelH, labelW]
         });
+
+        registerTahomaFonts(doc);
 
         var total = skip + books.length;
 
@@ -1127,6 +1329,9 @@ window.scrollTo({
         var cfg      = TIP3;
         var jsPDF    = window.jspdf.jsPDF;
         var doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        registerTahomaFonts(doc);
+
         var perPage  = cfg.cols * cfg.rows;
         var total    = skip + books.length;
         var pageCount = Math.ceil(total / perPage);
@@ -1190,10 +1395,10 @@ window.scrollTo({
         }
 
         // Demirbaş no metni: barkodun sağında, dikey (90° CCW)
-        var demText  = normTR(rawDem3);
+        var demText  = rawDem3;
         var textColX = barX + barW + cfg.BAR_GAP;   // metin sütununun sol kenarı
         if (demText) {
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('tahoma', 'bold');
             doc.setFontSize(cfg.DEM_FS);
             doc.setTextColor(0, 0, 0);
             // Metnin orta noktası: sütunun yatay ortası
@@ -1209,7 +1414,7 @@ window.scrollTo({
         }
 
         // ── Sağ veri sütunu ──────────────────────────────────────────────────
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('tahoma', 'bold');
         doc.setFontSize(FS);
         doc.setTextColor(0, 0, 0);
 
@@ -1217,7 +1422,7 @@ window.scrollTo({
         var rightX = divX + cfg.COL_GAP;
         var rightW = w - cfg.DEM_W - cfg.COL_GAP - cfg.PAD_RIGHT;
 
-        // buildLines ile aynı mantık (normTR uygulanmış)
+        // buildLines ile aynı mantık
         var lines   = buildLines3(book);
 
         var n      = lines.length;
@@ -1234,16 +1439,29 @@ window.scrollTo({
     }
 
     /**
-     * Tip 3 için veri satırlarını üretir (normTR uygulanmış).
+     * kunyeSiniflamaYer parçasını etiket satırlarına ekler.
+     * Boşluk karakterlerinde de satır kırımı yapılır.
+     */
+    function pushSiniflamaLines(lines, part) {
+        String(part || '')
+            .trim()
+            .split(/\s+/)
+            .forEach(function(token) {
+                if (token) lines.push(token);
+            });
+    }
+
+    /**
+     * Tip 3 için veri satırlarını üretir.
      *
      * kunyeSiniflamaYer "Ç\nT813.42/DÖLy" gibi gelebilir:
-     *   "/" öncesi → her \n satırı ayrı çizgi
-     *   "/" sonrası → bir çizgi
+     *   "/" öncesi → her \n satırı ayrı çizgi, boşluklarda alt satıra kırılır
+     *   "/" sonrası → boşluklarda alt satıra kırılır
      *   yayinTarihi → bir çizgi
      *   k.X veya k.X/c.X → bir çizgi
      */
     function buildLines3(book) {
-        var raw      = normTR(String(book.siniflamaYer || '').trim());
+        var raw      = String(book.siniflamaYer || '').trim();
         var lines    = [];
 
         var slashIdx = raw.indexOf('/');
@@ -1253,11 +1471,13 @@ window.scrollTo({
         before
             .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
             .split('\n')
-            .forEach(function(s) { s = s.trim(); if (s) lines.push(s); });
+            .forEach(function(s) {
+                pushSiniflamaLines(lines, s);
+            });
 
-        if (after) lines.push(after);
+        pushSiniflamaLines(lines, after);
 
-        var yt = normTR(String(book.yayinTarihi || '').trim());
+        var yt = String(book.yayinTarihi || '').trim();
         if (yt) lines.push(yt);
 
         var kc = buildKCLine(
@@ -1298,21 +1518,12 @@ window.scrollTo({
     };
 
     function buildTip2PDF(books, skip) {
-        if (!tahomaB64) {
-            throw new Error(
-                'Tahoma fontu henüz yüklenmedi.\n' +
-                'public/fonts/tahoma.ttf dosyasının var olduğundan emin olup sayfayı yenileyin.'
-            );
-        }
-
         skip = skip || 0;
         var cfg      = TIP2;
         var jsPDF    = window.jspdf.jsPDF;
         var doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-        // Tahoma embed
-        doc.addFileToVFS('tahoma.ttf', tahomaB64);
-        doc.addFont('tahoma.ttf', 'tahoma', 'normal');
+        registerTahomaFonts(doc);
 
         var perPage  = cfg.cols * cfg.rows;
         var total    = skip + books.length;
@@ -1343,23 +1554,6 @@ window.scrollTo({
         }
 
         return doc;
-    }
-
-    /**
-     * jsPDF'in standart Helvetica fontu cp1252 (Windows-1252) encoding kullanır.
-     * Türkçe'ye özgü ş, Ş, ğ, Ğ, ı, İ bu encoding'de yer almaz; etikette
-     * boş/bozuk görünür. Bunları ASCII karşılıklarıyla değiştiriyoruz.
-     * ü, Ü, ö, Ö, ç, Ç Latin-1'de var, doğrudan geçer.
-     * (Sadece Tip 1 — Helvetica için kullanılır.)
-     */
-    function normTR(str) {
-        return String(str || '')
-            .replace(/[\u015F]/g, 's')   // ş
-            .replace(/[\u015E]/g, 'S')   // Ş
-            .replace(/[\u011F]/g, 'g')   // ğ
-            .replace(/[\u011E]/g, 'G')   // Ğ
-            .replace(/[\u0131]/g, 'i')   // ı
-            .replace(/[\u0130]/g, 'I');  // İ
     }
 
     /**
@@ -1572,6 +1766,7 @@ window.scrollTo({
      *   "956.102092/KUTo"      → ["956.102092", "KUTo"]
      *
      * Ardından yayinTarihi ve k.X/c.X eklenir.
+     * kunyeSiniflamaYer içindeki boşluklar satır kırımı olarak değerlendirilir.
      */
     function buildLines(book) {
         var raw      = String(book.siniflamaYer || '').trim();
@@ -1588,12 +1783,11 @@ window.scrollTo({
             .replace(/\r/g, '\n')
             .split('\n')
             .forEach(function(s) {
-                s = s.trim();
-                if (s) lines.push(s);
+                pushSiniflamaLines(lines, s);
             });
 
         // "/" sonrası
-        if (after) lines.push(after);
+        pushSiniflamaLines(lines, after);
 
         // Yayın tarihi
         var yt = String(book.yayinTarihi || '').trim();
@@ -1630,7 +1824,7 @@ window.scrollTo({
         var LINE_H   = TIP1.LINE_H_MM;
         var CHAR_H   = FS * 0.3528;        // tek karakter yüksekliği
 
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('tahoma', 'bold');
         doc.setFontSize(FS);
         doc.setTextColor(0, 0, 0);
 
@@ -1747,6 +1941,7 @@ window.scrollTo({
 
     // ── Enter tuşu ile arama ─────────────────────────────────────────────────────
     (function() {
+        syncOzelNotlarModeButton();
         var textInputIds = ['searchInput', 'filterDemirbas', 'filterOzelNotlar'];
         textInputIds.forEach(function(id) {
             var el = document.getElementById(id);
@@ -1755,6 +1950,206 @@ window.scrollTo({
                     if (e.key === 'Enter') { e.preventDefault(); runSearch(); }
                 });
             }
+        });
+
+        function resetComboboxFace(faceTextId, clearBtnId, placeholder) {
+            var faceText = document.getElementById(faceTextId);
+            var clearBtn = document.getElementById(clearBtnId);
+            if (faceText) {
+                faceText.textContent = placeholder;
+                faceText.className = 'combobox-face-text';
+            }
+            if (clearBtn) clearBtn.style.display = 'none';
+        }
+        window.resetComboboxFace = resetComboboxFace;
+
+        function initFilterCombobox(cfg) {
+            var wrapper     = document.getElementById(cfg.wrapperId);
+            var searchInput = document.getElementById(cfg.searchInputId);
+            var hiddenId    = document.getElementById(cfg.hiddenId);
+            var faceEl      = document.getElementById(cfg.faceId);
+            var faceText    = document.getElementById(cfg.faceTextId);
+            var clearBtn    = document.getElementById(cfg.clearBtnId);
+            if (!wrapper || !searchInput || !hiddenId || !faceEl || !faceText || !clearBtn) return;
+
+            var dropdown    = wrapper.querySelector('.combobox-dropdown');
+            var toggle      = wrapper.querySelector('.combobox-toggle');
+            var placeholder = cfg.placeholder || 'Seçin...';
+
+            var rawData = [];
+            try { rawData = JSON.parse(document.getElementById(cfg.dataScriptId).textContent || '[]'); } catch(e) {}
+
+            var highlightedIndex = -1;
+            var filtered = rawData.slice();
+
+            function esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s || '')); return d.innerHTML; }
+            function lowerTr(value) { return String(value || '').toLocaleLowerCase('tr-TR'); }
+            function displayText(item) { return String(item.ad || ''); }
+
+            function highlight(text, term) {
+                if (!term) return esc(text);
+                var idx = lowerTr(text).indexOf(lowerTr(term));
+                if (idx === -1) return esc(text);
+                return esc(text.substring(0, idx)) +
+                    '<strong style="color:var(--primary)">' + esc(text.substring(idx, idx + term.length)) + '</strong>' +
+                    esc(text.substring(idx + term.length));
+            }
+
+            function updateFace() {
+                if (hiddenId.value) {
+                    var sel = null;
+                    for (var i = 0; i < rawData.length; i++) {
+                        if (String(rawData[i].id) === String(hiddenId.value)) { sel = rawData[i]; break; }
+                    }
+                    if (sel) {
+                        faceText.textContent = displayText(sel);
+                        faceText.className = 'combobox-face-text is-selected';
+                        clearBtn.style.display = 'flex';
+                        return;
+                    }
+                }
+                faceText.textContent = placeholder;
+                faceText.className = 'combobox-face-text';
+                clearBtn.style.display = 'none';
+            }
+
+            function render(filter) {
+                var term = lowerTr(filter);
+                filtered = rawData.filter(function(r) {
+                    return lowerTr(displayText(r)).indexOf(term) !== -1;
+                });
+
+                var html = '';
+                var allSel = hiddenId.value === '';
+                html += '<div class="combobox-option' + (allSel ? ' selected' : '') + (highlightedIndex === -1 && allSel ? ' highlighted' : '') + '" data-id="" data-ad="">' +
+                    '<svg class="check-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+                    '<span>Tümü</span></div>';
+
+                if (filtered.length === 0 && term) {
+                    html += '<div class="combobox-no-result">Eşleşen kayıt bulunamadı.</div>';
+                } else {
+                    filtered.forEach(function(r, i) {
+                        var label = displayText(r);
+                        var sel  = (hiddenId.value !== '' && String(hiddenId.value) === String(r.id));
+                        var high = (i === highlightedIndex);
+                        html += '<div class="combobox-option' + (sel ? ' selected' : '') + (high ? ' highlighted' : '') + '" data-id="' + r.id + '" data-ad="' + esc(label) + '">' +
+                            '<svg class="check-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+                            '<span>' + highlight(label, filter) + '</span></div>';
+                    });
+                }
+
+                dropdown.innerHTML = html;
+                dropdown.querySelectorAll('.combobox-option').forEach(function(el) {
+                    el.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        selectOption(this.getAttribute('data-id'));
+                    });
+                });
+            }
+
+            function selectOption(id) {
+                hiddenId.value = id;
+                updateFace();
+                close();
+            }
+
+            function open() {
+                if (isOpen()) return;
+                highlightedIndex = -1;
+                faceEl.style.display = 'none';
+                searchInput.style.display = '';
+                searchInput.value = '';
+                render('');
+                dropdown.classList.add('visible');
+                toggle.classList.add('open');
+                searchInput.focus();
+            }
+
+            function close() {
+                dropdown.classList.remove('visible');
+                toggle.classList.remove('open');
+                highlightedIndex = -1;
+                searchInput.style.display = 'none';
+                faceEl.style.display = '';
+            }
+
+            function isOpen() { return dropdown.classList.contains('visible'); }
+
+            clearBtn.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                hiddenId.value = '';
+                updateFace();
+            });
+
+            toggle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                isOpen() ? close() : open();
+            });
+
+            faceEl.addEventListener('mousedown', function(e) {
+                if (e.target === clearBtn || clearBtn.contains(e.target)) return;
+                e.preventDefault();
+                open();
+            });
+
+            searchInput.addEventListener('input', function() {
+                highlightedIndex = -1;
+                render(this.value);
+            });
+            searchInput.addEventListener('blur', function() { setTimeout(close, 160); });
+            searchInput.addEventListener('keydown', function(e) {
+                if (!isOpen() && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); open(); return; }
+                if (!isOpen()) return;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    highlightedIndex = Math.min(highlightedIndex + 1, filtered.length - 1);
+                    render(searchInput.value);
+                    var h = dropdown.querySelector('.highlighted'); if (h) h.scrollIntoView({block: 'nearest'});
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    highlightedIndex = Math.max(highlightedIndex - 1, -1);
+                    render(searchInput.value);
+                    var h2 = dropdown.querySelector('.highlighted'); if (h2) h2.scrollIntoView({block: 'nearest'});
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (highlightedIndex >= 0 && filtered[highlightedIndex]) {
+                        selectOption(filtered[highlightedIndex].id);
+                    } else if (highlightedIndex === -1) {
+                        selectOption('');
+                    }
+                } else if (e.key === 'Escape') {
+                    close();
+                }
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!wrapper.contains(e.target)) close();
+            });
+
+            updateFace();
+            searchInput.style.display = 'none';
+        }
+
+        initFilterCombobox({
+            wrapperId:    'filterKutuphaneCombobox',
+            searchInputId:'filterKutuphaneSearch',
+            hiddenId:     'filterKutuphaneId',
+            faceId:       'filterKutuphaneFace',
+            faceTextId:   'filterKutuphaneFaceText',
+            clearBtnId:   'filterKutuphaneClear',
+            dataScriptId: 'filterKutuphaneData',
+            placeholder:  'Tüm Yetkili Kütüphaneler'
+        });
+
+        initFilterCombobox({
+            wrapperId:    'filterCreatedUserCombobox',
+            searchInputId:'filterCreatedUserSearch',
+            hiddenId:     'filterCreatedUser',
+            faceId:       'filterCreatedUserFace',
+            faceTextId:   'filterCreatedUserFaceText',
+            clearBtnId:   'filterCreatedUserClear',
+            dataScriptId: 'filterCreatedUserData',
+            placeholder:  'Kullanıcı seçin...'
         });
     })();
 

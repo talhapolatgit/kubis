@@ -3,6 +3,7 @@
 use App\Http\Controllers\EtiketController;
 use App\Http\Controllers\OduncController;
 use App\Http\Controllers\RezerveController;
+use App\Http\Controllers\ZiyaretController;
 use App\Http\Controllers\SoapController;
 use App\Http\Controllers\UyeController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,7 @@ use App\Http\Controllers\DilController;
 use App\Http\Controllers\KatalogParametreController;
 use App\Http\Controllers\KatalogController;
 use App\Http\Controllers\KutuphaneController;
+use App\Http\Controllers\RaporSihirbaziController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\YazarController;
 use App\Http\Controllers\YayineviController;
@@ -47,6 +49,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/etiket',     [EtiketController::class, 'index'])->name('etiket.index');
     Route::get('/etiket/ara', [EtiketController::class, 'ara'])->name('etiket.ara');
     Route::post('/etiket/isaretle', [EtiketController::class, 'isaretle'])->name('etiket.isaretle');
+    Route::get('/rapor-sihirbazi', [RaporSihirbaziController::class, 'index'])->name('rapor-sihirbazi.index');
+    Route::get('/rapor-sihirbazi/uye-listesi-data', [RaporSihirbaziController::class, 'uyeListesiData'])->name('rapor-sihirbazi.uye-listesi.data');
+    Route::get('/rapor-sihirbazi/kullanici-katalog-kayit-sayilari-data', [RaporSihirbaziController::class, 'kullaniciKatalogKayitSayilariData'])->name('rapor-sihirbazi.kullanici-katalog-kayit-sayilari.data');
+    Route::get('/rapor-sihirbazi/odunc-listesi-data', [RaporSihirbaziController::class, 'oduncListesiData'])->name('rapor-sihirbazi.odunc-listesi.data');
     Route::get('/dil', [DilController::class, 'index'])->name('dil.index');
     Route::get('/dil/export', [DilController::class, 'export'])->name('dil.export');
     Route::post('/dil', [DilController::class, 'store'])->name('dil.store');
@@ -122,6 +128,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/uyeler/tablo',  [UyeController::class, 'tableData'])->name('uyeler.tableData');
     Route::get('/uyeler/export', [UyeController::class, 'export'])->name('uyeler.export');
     // wildcard rotalar en sona
+    Route::get('/uyeler/{uye}',                                [UyeController::class, 'show'])->name('uyeler.show');
+    Route::get('/uyeler/{uye}/odunc-tablo',                    [UyeController::class, 'profileOduncTable'])->name('uyeler.oduncTable');
+    Route::get('/uyeler/{uye}/rezerve-tablo',                  [UyeController::class, 'profileRezerveTable'])->name('uyeler.rezerveTable');
+    Route::get('/uyeler/{uye}/ziyaret-tablo',                  [UyeController::class, 'profileZiyaretTable'])->name('uyeler.ziyaretTable');
     Route::get('/uyeler/{uye}/edit',                         [UyeController::class, 'edit'])->name('uyeler.edit');
     Route::put('/uyeler/{uye}',                              [UyeController::class, 'update'])->name('uyeler.update');
     Route::delete('/uyeler/{uye}',                           [UyeController::class, 'destroy'])->name('uyeler.destroy');
@@ -139,6 +149,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/rezerve/tablo',           [RezerveController::class, 'tableData'])->name('rezerve.tableData');
     Route::post('/rezerve',                [RezerveController::class, 'store'])->name('rezerve.store');
     Route::post('/rezerve/{rezerve}/iptal',[RezerveController::class, 'cancel'])->name('rezerve.cancel');
+
+    Route::get('/ziyaretci',               [ZiyaretController::class, 'index'])->name('ziyaret.index');
+    Route::get('/ziyaretci/tablo',         [ZiyaretController::class, 'tableData'])->name('ziyaret.tableData');
+    Route::get('/ziyaretci/export',        [ZiyaretController::class, 'export'])->name('ziyaret.export');
+    Route::post('/ziyaretci',              [ZiyaretController::class, 'store'])->name('ziyaret.store');
+    Route::put('/ziyaretci/{ziyaretKaydi}',[ZiyaretController::class, 'update'])->name('ziyaret.update');
 
     Route::get('/odunc/ara/uye',           [OduncController::class, 'uyeAra'])->name('odunc.uyeAra');
     Route::get('/odunc/ara/kitap',         [OduncController::class, 'kitapAra'])->name('odunc.kitapAra');

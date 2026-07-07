@@ -21,13 +21,37 @@
         .btn-outline{background:transparent;color:var(--foreground);border:1px solid var(--border)}
         .btn-outline:hover{background:var(--muted)}
 
+        .perm-groups{display:flex;flex-direction:column;gap:20px}
+        .perm-group{border:1px solid rgba(217,208,194,.75);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.35)}
+        .perm-group-h{padding:14px 16px;background:rgba(237,232,222,.55);border-bottom:1px solid rgba(217,208,194,.6)}
+        .perm-group-title{font-family:var(--font-serif);font-size:16px;font-weight:800;color:var(--foreground)}
+        .perm-group-desc{font-size:12px;color:var(--muted-foreground);margin-top:4px;line-height:1.45}
+        .perm-group-b{padding:14px}
+        .perm-subsections{display:flex;flex-direction:column;gap:16px}
+        .perm-subsection{padding-top:2px}
+        .perm-subsection + .perm-subsection{border-top:1px dashed rgba(217,208,194,.85);padding-top:16px}
+        .perm-subsection-h{margin-bottom:10px}
+        .perm-subsection-title{font-size:13px;font-weight:800;color:var(--primary);letter-spacing:.01em}
+        .perm-subsection-desc{font-size:11px;color:var(--muted-foreground);margin-top:3px;line-height:1.4}
         .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
         .perm{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(217,208,194,.7);border-radius:10px;background:rgba(237,232,222,.45)}
         .perm:hover{border-color:var(--border)}
-        .perm input{margin-top:4px}
-        .perm-title{font-weight:700;font-size:13px}
+        .perm.is-checked{border-color:rgba(122,92,60,.45);background:rgba(122,92,60,.08)}
+        .perm input{margin-top:4px;flex-shrink:0}
+        .perm-no{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 6px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(122,92,60,.14);color:var(--primary)}
+        .perm-title{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px}
         .perm-desc{font-size:13px;color:var(--muted-foreground);margin-top:2px}
+        .perm-meta{font-size:11px;color:var(--muted-foreground);margin-top:6px;line-height:1.4}
+        .perm-meta strong{font-weight:600;color:var(--foreground)}
         .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(122,92,60,.12);color:var(--primary)}
+        .log-table{width:100%;border-collapse:collapse;font-size:13px}
+        .log-table th,.log-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+        .log-table th{font-size:12px;font-weight:700;color:var(--muted-foreground)}
+        .log-action{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+        .log-action-granted{background:rgba(34,139,34,.12);color:#1f6b1f}
+        .log-action-revoked{background:rgba(180,50,50,.12);color:#8b2525}
+        .log-empty{font-size:13px;color:var(--muted-foreground)}
+        .log-group{font-size:11px;color:var(--muted-foreground);margin-top:2px}
 
         @media(max-width:900px){.grid{grid-template-columns:1fr}}
     </style>
@@ -63,7 +87,7 @@
                     <div>
                         <div style="font-family:var(--font-serif);font-size:18px;font-weight:800;">Yetki Tanımla</div>
                         <div style="font-size:13px;color:var(--muted-foreground);margin-top:3px;">
-                            Bu sayfada seçilen yetkiler, kullanıcı arayüzünde butonları ve erişimleri etkiler.
+                            Yetkiler modüllere göre gruplandırılmıştır. Kütüphane kapsamı için ayrıca kullanıcıya kütüphane yetkisi atanmalıdır.
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
@@ -79,24 +103,95 @@
                 </div>
                 <div class="card-sep"></div>
                 <div class="card-b">
-                    <div class="grid">
-                        @foreach($yetkiler as $no => $label)
-                            @php
-                                $col = 'y' . str_pad((string)$no, 2, '0', STR_PAD_LEFT);
-                                $checked = (bool)($row->{$col} ?? false);
-                            @endphp
-                            <label class="perm">
-                                <input type="checkbox" name="{{ $col }}" {{ $checked ? 'checked' : '' }} />
-                                <div>
-                                    <div class="perm-title">{{ $no }}. Yetki</div>
-                                    <div class="perm-desc">{{ $label }}</div>
+                    <div class="perm-groups">
+                        @foreach($permissionGroups as $group)
+                            <section class="perm-group">
+                                <div class="perm-group-h">
+                                    <div class="perm-group-title">{{ $group['title'] }}</div>
+                                    @if($group['description'])
+                                        <div class="perm-group-desc">{{ $group['description'] }}</div>
+                                    @endif
                                 </div>
-                            </label>
+                                <div class="perm-group-b">
+                                    @if(!empty($group['subsections']))
+                                        <div class="perm-subsections">
+                                            @foreach($group['subsections'] as $subsection)
+                                                <div class="perm-subsection">
+                                                    <div class="perm-subsection-h">
+                                                        <div class="perm-subsection-title">{{ $subsection['title'] }}</div>
+                                                        @if($subsection['description'])
+                                                            <div class="perm-subsection-desc">{{ $subsection['description'] }}</div>
+                                                        @endif
+                                                    </div>
+                                                    <div class="grid">
+                                                        @foreach($subsection['permissions'] as $perm)
+                                                            @include('users.partials.yetki-checkbox', ['perm' => $perm, 'assigned' => $assigned, 'granters' => $granters])
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="grid">
+                                            @foreach($group['permissions'] as $perm)
+                                                @include('users.partials.yetki-checkbox', ['perm' => $perm, 'assigned' => $assigned, 'granters' => $granters])
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            </section>
                         @endforeach
                     </div>
                 </div>
             </form>
+
+            <div class="card">
+                <div class="card-h">
+                    <div>
+                        <div style="font-family:var(--font-serif);font-size:18px;font-weight:800;">Yetki Geçmişi</div>
+                        <div style="font-size:13px;color:var(--muted-foreground);margin-top:3px;">
+                            Son 50 yetki verme / kaldırma kaydı.
+                        </div>
+                    </div>
+                </div>
+                <div class="card-sep"></div>
+                <div class="card-b" style="padding:0;">
+                    @if($logs->isEmpty())
+                        <div class="log-empty" style="padding:18px 20px;">Henüz kayıt yok.</div>
+                    @else
+                        <table class="log-table">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Yetki</th>
+                                    <th>İşlem</th>
+                                    <th>İşlemi Yapan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($logs as $log)
+                                    <tr>
+                                        <td>{{ $log->created_at?->format('d.m.Y H:i') ?? '—' }}</td>
+                                        <td>
+                                            <strong>{{ $log->permission?->legacy_no }}.</strong>
+                                            {{ $log->permission?->label ?? '—' }}
+                                            @php $groupTitle = \App\Models\Permission::breadcrumbForLegacyNo((int) ($log->permission?->legacy_no ?? 0)); @endphp
+                                            @if($groupTitle)
+                                                <div class="log-group">{{ $groupTitle }}</div>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="log-action {{ $log->action === 'granted' ? 'log-action-granted' : 'log-action-revoked' }}">
+                                                {{ $log->actionLabel() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ $log->performedBy?->name ?? '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+            </div>
         </div>
 @endsection
-
-

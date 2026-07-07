@@ -135,7 +135,9 @@
             Üyeler
         </a>
         <span class="breadcrumb-sep">›</span>
-        <span class="breadcrumb-current">{{ $uye->ad }} {{ $uye->soyad }}</span>
+        <a href="{{ route('uyeler.show', $uye) }}" class="breadcrumb-link">{{ $uye->ad }} {{ $uye->soyad }}</a>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Düzenle</span>
     </nav>
 @endsection
 

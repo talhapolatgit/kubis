@@ -16,6 +16,7 @@ class KutuphaneController extends Controller
     {
         abort_unless(auth()->user()?->hasYetki(17) || auth()->user()?->hasYetki(19), 403);
         $query = Kutuphane::whereNull('deleted_at');
+        $this->applyKutuphaneEserSayisiSelect($query);
         $this->applyKutuphaneListFilters($query, $request);
         $this->applyKutuphaneListSort($query, $request);
         $perPage = (int) $request->input('per_page', 20);
@@ -31,8 +32,9 @@ class KutuphaneController extends Controller
 
         $activeSortBy = '';
         $activeSortDir = 'asc';
-        if ((string) $request->input('sort_by') === 'title') {
-            $activeSortBy = 'title';
+        $sortByReq = (string) $request->input('sort_by');
+        if (in_array($sortByReq, ['title', 'eser_sayisi'], true)) {
+            $activeSortBy = $sortByReq;
             $activeSortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
         }
 
@@ -45,6 +47,7 @@ class KutuphaneController extends Controller
                     return [
                         'id' => (int) $k->id,
                         'title' => (string) $k->title,
+                        'eser_sayisi' => (int) ($k->eser_sayisi ?? 0),
                         'address' => $k->address !== null && $k->address !== '' ? (string) $k->address : null,
                         'phone' => $k->phone !== null && $k->phone !== '' ? (string) $k->phone : null,
                         'email' => $k->email !== null && $k->email !== '' ? (string) $k->email : null,
@@ -80,9 +83,10 @@ class KutuphaneController extends Controller
     {
         abort_unless(auth()->user()?->hasYetki(17) || auth()->user()?->hasYetki(19), 403);
         $query = Kutuphane::whereNull('deleted_at');
+        $this->applyKutuphaneEserSayisiSelect($query);
         $this->applyKutuphaneListFilters($query, $request);
         $this->applyKutuphaneListSort($query, $request);
-        $rows = $query->get(['title', 'address', 'phone', 'email', 'statu', 'created_at']);
+        $rows = $query->get();
 
         $filename = 'kutuphaneler_' . now()->format('Ymd_His') . '.csv';
 
@@ -128,8 +132,25 @@ class KutuphaneController extends Controller
 
             return;
         }
+        if ($sortBy === 'eser_sayisi') {
+            $query->orderBy('eser_sayisi', $sortDir)->orderBy('id');
+
+            return;
+        }
 
         $query->orderBy('id');
+    }
+
+    private function applyKutuphaneEserSayisiSelect(Builder $query): void
+    {
+        $query->select('kutuphane.*');
+        $query->selectSub(
+            DB::table('katalog')
+                ->selectRaw('COUNT(*)')
+                ->whereNull('katalog.deleted_at')
+                ->whereColumn('katalog.kutuphaneId', 'kutuphane.id'),
+            'eser_sayisi'
+        );
     }
 
     // ─── Yeni Form ──────────────────────────────────────────────────────────────

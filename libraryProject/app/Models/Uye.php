@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Uye extends Model
@@ -75,5 +76,20 @@ class Uye extends Model
     public function scopeAktif($query)
     {
         return $query->where('statu', 'aktif');
+    }
+
+    public function oduncIslemleri(): HasMany
+    {
+        return $this->hasMany(OduncIslem::class, 'uye_id');
+    }
+
+    public function rezervasyonlar(): HasMany
+    {
+        return $this->hasMany(UyeRezerve::class, 'uye_id');
+    }
+
+    public function ziyaretKayitlari(): HasMany
+    {
+        return $this->hasMany(ZiyaretKaydi::class, 'uye_id');
     }
 }

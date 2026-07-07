@@ -18,12 +18,13 @@
         .form-card-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin:0}
         .form-card-body{padding:14px 16px}
         .toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-        .filter-wrap{position:relative;flex:1;min-width:280px;max-width:460px}
-        .filter-wrap .fi{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted-foreground);pointer-events:none}
+        .filter-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;width:100%}
+        .filter-field{flex:1;min-width:140px;max-width:220px}
+        .field-label{display:block;font-size:12px;font-weight:600;color:var(--muted-foreground);margin-bottom:4px}
         .filter-input,.filter-select,.per-page-select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);font-size:14px;outline:none}
-        .filter-input{padding-left:34px}
         .filter-input:focus,.filter-select:focus,.per-page-select:focus{border-color:var(--ring);box-shadow:0 0 0 2px rgba(122,92,60,.12)}
         .filter-input.filter-active,.filter-select.filter-active{border-color:var(--ring)}
+        .filter-actions{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-left:auto}
         .table-card-header{padding:14px 16px;border-bottom:1px solid rgba(217,208,194,.5);display:flex;align-items:center;justify-content:space-between;gap:12px}
         .table-wrap{overflow-x:auto}
         table{width:100%;border-collapse:collapse}
@@ -34,6 +35,7 @@
         .member-cell{display:flex;align-items:center;gap:10px}
         .member-avatar{width:34px;height:34px;border-radius:999px;background:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted-foreground)}
         .member-name{font-weight:600}
+        .member-name:hover{color:var(--primary)}
         .member-sub{font-size:12px;color:var(--muted-foreground)}
         .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
         .badge-aktif{background:rgba(34,139,34,.12);color:#1a6b1a}
@@ -130,20 +132,40 @@
                 </div>
                 <div class="form-card-body">
                     <div class="toolbar">
-                        <div class="filter-wrap">
-                            <svg class="fi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                            <input type="text" class="filter-input" id="searchInput" placeholder="Ad, soyad, TC kimlik, telefon, e-posta ara…" autocomplete="off" />
+                        <div class="filter-row">
+                            <div class="filter-field">
+                                <label class="field-label" for="filterAdInput">Ad</label>
+                                <input type="text" class="filter-input" id="filterAdInput" placeholder="Ada göre..." autocomplete="off" />
+                            </div>
+                            <div class="filter-field">
+                                <label class="field-label" for="filterSoyadInput">Soyad</label>
+                                <input type="text" class="filter-input" id="filterSoyadInput" placeholder="Soyada göre..." autocomplete="off" />
+                            </div>
+                            <div class="filter-field">
+                                <label class="field-label" for="filterTcInput">TC Kimlik No</label>
+                                <input type="text" class="filter-input" id="filterTcInput" placeholder="TC kimlik..." autocomplete="off" inputmode="numeric" />
+                            </div>
+                            <div class="filter-field">
+                                <label class="field-label" for="filterTelefonInput">Telefon</label>
+                                <input type="text" class="filter-input" id="filterTelefonInput" placeholder="Telefon..." autocomplete="off" />
+                            </div>
+                            <div class="filter-field">
+                                <label class="field-label" for="filterEmailInput">E-posta</label>
+                                <input type="text" class="filter-input" id="filterEmailInput" placeholder="E-posta..." autocomplete="off" />
+                            </div>
+                            <div class="filter-field" style="min-width:180px;max-width:200px;">
+                                <label class="field-label" for="statuFilter">Durum</label>
+                                <select class="filter-select" id="statuFilter">
+                                    <option value="">Tüm Durumlar</option>
+                                    <option value="aktif">Aktif</option>
+                                    <option value="pasif">Pasif</option>
+                                </select>
+                            </div>
+                            <div class="filter-actions">
+                                <button type="button" class="btn btn-outline" id="clearFiltersBtn" style="display:none;">Filtreyi Temizle</button>
+                                <button type="button" class="btn btn-primary" id="applyFiltersBtn">Ara</button>
+                            </div>
                         </div>
-                        <div style="min-width:180px;">
-                            <label class="field-label" for="statuFilter">Durum</label>
-                            <select class="filter-select" id="statuFilter">
-                                <option value="">Tüm Durumlar</option>
-                                <option value="aktif">Aktif</option>
-                                <option value="pasif">Pasif</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-outline" id="clearFiltersBtn" style="display:none;">Filtreyi Temizle</button>
-                        <button class="btn btn-primary" id="applyFiltersBtn">Ara</button>
                     </div>
                 </div>
             </div>
@@ -202,6 +224,11 @@
 
 <!-- Floating İşlemler Menüsü (overflow:hidden'dan etkilenmemesi için body'de) -->
 <div id="uyeFloatingMenu">
+    <a id="fmProfil" href="#" class="row-actions-item primary">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Profil
+    </a>
+    <div class="row-actions-sep"></div>
     <a id="fmDuzenle" href="#" class="row-actions-item">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
         Düzenle
@@ -270,16 +297,70 @@
     var initialSortBy = urlParams.get('sort_by') || '';
     if (!['ad_soyad', 'uyelik_baslangic'].includes(initialSortBy)) initialSortBy = '';
     var initialSortDir = (urlParams.get('sort_dir') || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+    var legacySearch = (urlParams.get('search') || '').trim();
     var state      = {
-        search: (urlParams.get('search') || '').trim(),
+        filter_ad: (urlParams.get('filter_ad') || '').trim(),
+        filter_soyad: (urlParams.get('filter_soyad') || '').trim(),
+        filter_tc_kimlik: (urlParams.get('filter_tc_kimlik') || '').trim(),
+        filter_telefon: (urlParams.get('filter_telefon') || '').trim(),
+        filter_email: (urlParams.get('filter_email') || '').trim(),
         statu: (urlParams.get('statu') || ''),
         per_page: initialPerPage,
         page: initialPage,
         sort_by: initialSortBy,
         sort_dir: initialSortDir
     };
+    var filterInputIds = ['filterAdInput', 'filterSoyadInput', 'filterTcInput', 'filterTelefonInput', 'filterEmailInput'];
+    var filterStateKeys = ['filter_ad', 'filter_soyad', 'filter_tc_kimlik', 'filter_telefon', 'filter_email'];
     var fetchTimer = null;
     var reqCounter = 0;   // yalnızca en son isteğin yanıtı işlenir
+
+    function readFiltersFromDom() {
+        return {
+            filter_ad: (document.getElementById('filterAdInput').value || '').trim(),
+            filter_soyad: (document.getElementById('filterSoyadInput').value || '').trim(),
+            filter_tc_kimlik: (document.getElementById('filterTcInput').value || '').trim(),
+            filter_telefon: (document.getElementById('filterTelefonInput').value || '').trim(),
+            filter_email: (document.getElementById('filterEmailInput').value || '').trim(),
+            statu: document.getElementById('statuFilter').value || ''
+        };
+    }
+
+    function syncFilterInputsFromState() {
+        document.getElementById('filterAdInput').value = state.filter_ad || '';
+        document.getElementById('filterSoyadInput').value = state.filter_soyad || '';
+        document.getElementById('filterTcInput').value = state.filter_tc_kimlik || '';
+        document.getElementById('filterTelefonInput').value = state.filter_telefon || '';
+        document.getElementById('filterEmailInput').value = state.filter_email || '';
+        document.getElementById('statuFilter').value = state.statu || '';
+    }
+
+    function appendFilterParams(params) {
+        if (state.filter_ad) params.set('filter_ad', state.filter_ad);
+        if (state.filter_soyad) params.set('filter_soyad', state.filter_soyad);
+        if (state.filter_tc_kimlik) params.set('filter_tc_kimlik', state.filter_tc_kimlik);
+        if (state.filter_telefon) params.set('filter_telefon', state.filter_telefon);
+        if (state.filter_email) params.set('filter_email', state.filter_email);
+        if (state.statu) params.set('statu', state.statu);
+    }
+
+    function syncUrlFromState() {
+        var u = new URL(window.location.href);
+        ['search','filter_ad','filter_soyad','filter_tc_kimlik','filter_telefon','filter_email','statu','per_page','page','sort_by','sort_dir'].forEach(function(k){ u.searchParams.delete(k); });
+        appendFilterParams(u.searchParams);
+        if (state.per_page) u.searchParams.set('per_page', String(state.per_page));
+        if (state.page > 1) u.searchParams.set('page', String(state.page));
+        if (state.sort_by) {
+            u.searchParams.set('sort_by', state.sort_by);
+            u.searchParams.set('sort_dir', state.sort_dir || 'asc');
+        }
+        window.history.replaceState({}, '', u.toString());
+    }
+
+    function hasActiveFilters(filters) {
+        filters = filters || state;
+        return filterStateKeys.some(function(k) { return (filters[k] || '') !== ''; }) || (filters.statu || '') !== '';
+    }
 
     // ══════════════════════════════════════════════════════════════════════════════
     // HTML helpers
@@ -300,12 +381,13 @@
         var stateBadge = '<span class="badge badge-' + u.statu + '">' + esc(u.statu_label) + '</span>';
 
         var safeAd = esc(u.ad_soyad).replace(/'/g, "\\'");
+        var profileUrl = u.profile_url || ('/uyeler/' + u.id);
         return '<tr>' +
             '<td>' +
             '<div class="member-cell">' +
             '<div class="member-avatar">' + esc(u.initials || '?') + '</div>' +
             '<div>' +
-            '<div class="member-name">' + esc(u.ad_soyad) + '</div>' +
+            '<a href="' + esc(profileUrl) + '" class="member-name" style="color:var(--foreground);text-decoration:none;font-weight:600;">' + esc(u.ad_soyad) + '</a>' +
             '<div class="member-sub">' + esc(u.email || '—') + '</div>' +
             '</div>' +
             '</div>' +
@@ -316,7 +398,7 @@
             '<td>' + stateBadge + '</td>' +
             '<td style="font-size:13px;color:var(--muted-foreground);">' + esc(u.uyelik_baslangic) + '</td>' +
             '<td style="text-align:right;padding-right:12px;">' +
-            '<button class="row-actions-btn" onclick="toggleUyeMenu(' + u.id + ', \'' + u.edit_url + '\', \'' + u.delete_url + '\', \'' + safeAd + '\', event)" title="İşlemler">' +
+            '<button class="row-actions-btn" onclick="toggleUyeMenu(' + u.id + ', \'' + profileUrl + '\', \'' + u.edit_url + '\', \'' + u.delete_url + '\', \'' + safeAd + '\', event)" title="İşlemler">' +
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>' +
             '</button>' +
             '</td>' +
@@ -390,11 +472,13 @@
         document.getElementById('tableVeil').classList.add('visible');
 
         var params = new URLSearchParams({
-            search:   state.search,
-            statu:    state.statu,
             per_page: state.per_page,
             page:     state.page,
         });
+        appendFilterParams(params);
+        if (legacySearch && !hasActiveFilters()) {
+            params.set('search', legacySearch);
+        }
         if (state.sort_by) {
             params.set('sort_by', state.sort_by);
             params.set('sort_dir', state.sort_dir || 'asc');
@@ -438,18 +522,7 @@
                 buildPagination(m);
                 updateSortHeaderDisplay();
                 updateClearBtn();
-
-                var u = new URL(window.location.href);
-                ['search','statu','per_page','page','sort_by','sort_dir'].forEach(function(k){ u.searchParams.delete(k); });
-                if (state.search) u.searchParams.set('search', state.search);
-                if (state.statu) u.searchParams.set('statu', state.statu);
-                if (state.per_page) u.searchParams.set('per_page', String(state.per_page));
-                if (state.page > 1) u.searchParams.set('page', String(state.page));
-                if (state.sort_by) {
-                    u.searchParams.set('sort_by', state.sort_by);
-                    u.searchParams.set('sort_dir', state.sort_dir || 'asc');
-                }
-                window.history.replaceState({}, '', u.toString());
+                syncUrlFromState();
             })
             .catch(function() {
                 if (myReq !== reqCounter) return;
@@ -462,30 +535,40 @@
     // Filtre dinleyiciler
     // ══════════════════════════════════════════════════════════════════════════════
     function updateClearBtn() {
-        var uiSearch = (document.getElementById('searchInput').value || '').trim();
-        var uiStatu = document.getElementById('statuFilter').value || '';
-        var has = uiSearch !== '' || uiStatu !== '';
+        var filters = readFiltersFromDom();
+        var has = hasActiveFilters(filters);
         document.getElementById('clearFiltersBtn').style.display = has ? '' : 'none';
-        document.getElementById('searchInput').classList.toggle('filter-active', uiSearch !== '');
-        document.getElementById('statuFilter').classList.toggle('filter-active', uiStatu !== '');
+        filterInputIds.forEach(function(id, i) {
+            var el = document.getElementById(id);
+            if (el) el.classList.toggle('filter-active', (filters[filterStateKeys[i]] || '') !== '');
+        });
+        document.getElementById('statuFilter').classList.toggle('filter-active', (filters.statu || '') !== '');
     }
 
     function applyFilters() {
-        state.search = (document.getElementById('searchInput').value || '').trim();
-        state.statu = document.getElementById('statuFilter').value || '';
+        var filters = readFiltersFromDom();
+        state.filter_ad = filters.filter_ad;
+        state.filter_soyad = filters.filter_soyad;
+        state.filter_tc_kimlik = filters.filter_tc_kimlik;
+        state.filter_telefon = filters.filter_telefon;
+        state.filter_email = filters.filter_email;
+        state.statu = filters.statu;
+        legacySearch = '';
         fetchTable(true);
     }
 
-    document.getElementById('searchInput').addEventListener('input', updateClearBtn);
+    filterInputIds.forEach(function(id) {
+        document.getElementById(id).addEventListener('input', updateClearBtn);
+        document.getElementById(id).addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyFilters();
+            }
+        });
+    });
     document.getElementById('statuFilter').addEventListener('change', updateClearBtn);
     document.getElementById('applyFiltersBtn').addEventListener('click', function () {
         applyFilters();
-    });
-    document.getElementById('searchInput').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            applyFilters();
-        }
     });
     document.getElementById('statuFilter').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
@@ -501,9 +584,16 @@
     });
 
     document.getElementById('clearFiltersBtn').addEventListener('click', function() {
-        state.search = ''; state.statu = ''; state.sort_by = ''; state.sort_dir = 'asc';
-        document.getElementById('searchInput').value = '';
-        document.getElementById('statuFilter').value = '';
+        state.filter_ad = '';
+        state.filter_soyad = '';
+        state.filter_tc_kimlik = '';
+        state.filter_telefon = '';
+        state.filter_email = '';
+        state.statu = '';
+        state.sort_by = '';
+        state.sort_dir = 'asc';
+        legacySearch = '';
+        syncFilterInputsFromState();
         updateSortHeaderDisplay();
         fetchTable(true);
     });
@@ -527,7 +617,11 @@
     // Excel Export
     // ══════════════════════════════════════════════════════════════════════════════
     document.getElementById('exportBtn').addEventListener('click', function() {
-        var params = new URLSearchParams({ search: state.search, statu: state.statu });
+        var params = new URLSearchParams();
+        appendFilterParams(params);
+        if (legacySearch && !hasActiveFilters()) {
+            params.set('search', legacySearch);
+        }
         var a = document.createElement('a');
         a.href = '/uyeler/export?' + params.toString();
         a.download = '';
@@ -561,7 +655,7 @@
         openUyeMenuBtn = null;
     }
 
-    function toggleUyeMenu(id, editUrl, deleteUrl, adSoyad, event) {
+    function toggleUyeMenu(id, profileUrl, editUrl, deleteUrl, adSoyad, event) {
         event.stopPropagation();
         var btn = event.currentTarget;
 
@@ -569,6 +663,7 @@
         if (openUyeMenuBtn === btn) { closeUyeMenu(); return; }
 
         // Menü bağlantılarını güncelle
+        document.getElementById('fmProfil').href  = profileUrl;
         document.getElementById('fmDuzenle').href  = editUrl;
         document.getElementById('fmOduncVer').href = '/odunc/new?uye_id=' + id;
         document.getElementById('fmSil').onclick   = function(e) {
@@ -617,9 +712,9 @@
     // ══════════════════════════════════════════════════════════════════════════════
     // Boot
     // ══════════════════════════════════════════════════════════════════════════════
-    document.getElementById('searchInput').value = state.search || '';
-    document.getElementById('statuFilter').value = state.statu || '';
+    syncFilterInputsFromState();
     document.getElementById('perPageSelect').value = String(state.per_page || 10);
+    updateClearBtn();
     updateSortHeaderDisplay();
     fetchTable();
 </script>

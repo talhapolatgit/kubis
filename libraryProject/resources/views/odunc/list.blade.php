@@ -41,7 +41,7 @@
 
         /* ── Toolbar ── */
         .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-        .search-wrap{position:relative;flex:1;max-width:340px}
+        .search-wrap{position:relative;flex:1;min-width:200px;max-width:280px}
         .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted-foreground);pointer-events:none}
         .search-input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--foreground);font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s}
         .search-input:focus{border-color:var(--ring);box-shadow:0 0 0 2px rgba(122,92,60,.15)}
@@ -249,7 +249,11 @@
             <div class="toolbar">
                 <div class="search-wrap">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                    <input type="text" id="searchInput" class="search-input" placeholder="Üye adı, TC, kitap adı, ISBN…" autocomplete="off" />
+                    <input type="text" id="uyeSearchInput" class="search-input" placeholder="Üye adı veya TC…" autocomplete="off" />
+                </div>
+                <div class="search-wrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" id="kitapSearchInput" class="search-input" placeholder="Kitap adı veya ISBN…" autocomplete="off" />
                 </div>
                 <input type="text" id="demirbasInput" class="search-input" style="max-width:180px;" placeholder="Demirbaş No…" autocomplete="off" />
                 <select id="kutuphaneFilter" class="filter-select">
@@ -432,8 +436,11 @@
     @if(session('error'))   showToast('error',   @json(session('error'))); @endif
 
     // ── State ────────────────────────────────────────────────────────────────
+    var urlParams = new URLSearchParams(window.location.search);
+    var legacySearch = (urlParams.get('search') || '').trim();
     var state = {
-        search:          '',
+        filter_uye:   (urlParams.get('filter_uye') || '').trim(),
+        filter_kitap: (urlParams.get('filter_kitap') || '').trim(),
         demirbasNo:      '',
         kutuphaneId:     '',
         statu:           '{{ $statu }}',
@@ -442,14 +449,30 @@
         per_page:        20,
         page:            1,
     };
+    function appendOduncFilterParams(params) {
+        if (state.filter_uye) params.set('filter_uye', state.filter_uye);
+        if (state.filter_kitap) params.set('filter_kitap', state.filter_kitap);
+        if (legacySearch && !state.filter_uye && !state.filter_kitap) {
+            params.set('search', legacySearch);
+        }
+        if (state.demirbasNo) params.set('demirbasNo', state.demirbasNo);
+        if (state.kutuphaneId) params.set('kutuphaneId', state.kutuphaneId);
+        if (state.statu) params.set('statu', state.statu);
+        if (state.tarih_baslangic) params.set('tarih_baslangic', state.tarih_baslangic);
+        if (state.tarih_bitis) params.set('tarih_bitis', state.tarih_bitis);
+    }
+
     var fetchTimer = null;
     var activeXhr  = null; // AbortController — race condition önlemi
 
     // ── İlk yükleme: stat kartından gelen statu değerini select'e yansıt ────
     document.getElementById('statuFilter').value = state.statu;
+    document.getElementById('uyeSearchInput').value = state.filter_uye || '';
+    document.getElementById('kitapSearchInput').value = state.filter_kitap || '';
 
     // ── HTML helpers ─────────────────────────────────────────────────────────
     function esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
+    function jsEsc(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '\\r').replace(/\n/g, '\\n'); }
 
     var bookIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>';
     var clockIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
@@ -502,7 +525,7 @@
         var actions = '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">' +
             '<a href="' + i.detay_url + '" class="btn btn-outline btn-sm">' + eyeIcon + ' Detay</a>';
         if (i.statu === 'aktif') {
-            actions += '<button class="btn btn-outline btn-sm" onclick="openUzatModal(' + i.id + ', \'' + esc(i.iade_planlanan) + '\', \'' + esc(i.uye_ad) + '\', \'' + esc(i.kitap) + '\')" title="Süre Uzat">' + uzatIcon + ' Süre Uzat</button>';
+            actions += '<button class="btn btn-outline btn-sm" onclick="openUzatModal(' + i.id + ', \'' + jsEsc(i.iade_planlanan) + '\', \'' + jsEsc(i.uye_ad) + '\', \'' + jsEsc(i.kitap) + '\')" title="Süre Uzat">' + uzatIcon + ' Süre Uzat</button>';
             actions += '<button class="btn btn-success btn-sm" onclick="openIadeModal(' + i.id + ')">' + iadeIcon + ' İade Al</button>';
         }
         actions += '</div>';
@@ -560,15 +583,10 @@
         document.getElementById('tableVeil').classList.add('visible');
 
         var params = new URLSearchParams({
-            search:          state.search,
-            demirbasNo:      state.demirbasNo,
-            kutuphaneId:     state.kutuphaneId,
-            statu:           state.statu,
-            tarih_baslangic: state.tarih_baslangic,
-            tarih_bitis:     state.tarih_bitis,
-            per_page:        state.per_page,
-            page:            state.page,
+            per_page: state.per_page,
+            page:     state.page,
         });
+        appendOduncFilterParams(params);
 
         fetch('/odunc/tablo?' + params.toString(), {
             signal:  ctrl.signal,
@@ -613,8 +631,14 @@
         fetchTimer = setTimeout(fn, 400);
     }
 
-    document.getElementById('searchInput').addEventListener('input', function() {
-        state.search = this.value.trim();
+    document.getElementById('uyeSearchInput').addEventListener('input', function() {
+        state.filter_uye = this.value.trim();
+        legacySearch = '';
+        debounce(function() { fetchTable(true); });
+    });
+    document.getElementById('kitapSearchInput').addEventListener('input', function() {
+        state.filter_kitap = this.value.trim();
+        legacySearch = '';
         debounce(function() { fetchTable(true); });
     });
     document.getElementById('demirbasInput').addEventListener('input', function() {
@@ -663,14 +687,8 @@
 
     // ── Excel Export ─────────────────────────────────────────────────────────
     document.getElementById('exportBtn').addEventListener('click', function() {
-        var params = new URLSearchParams({
-            search:          state.search,
-            demirbasNo:      state.demirbasNo,
-            kutuphaneId:     state.kutuphaneId,
-            statu:           state.statu,
-            tarih_baslangic: state.tarih_baslangic,
-            tarih_bitis:     state.tarih_bitis,
-        });
+        var params = new URLSearchParams();
+        appendOduncFilterParams(params);
         var a = document.createElement('a');
         a.href = '/odunc/export?' + params.toString();
         a.download = '';

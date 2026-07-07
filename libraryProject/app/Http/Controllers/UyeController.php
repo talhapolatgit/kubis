@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Uye;
 use App\Models\User;
+use App\Models\OduncIslem;
+use App\Models\UyeRezerve;
+use App\Models\ZiyaretKaydi;
 use App\Services\OtpService;
 use App\Services\BeyogluWebhookService;
+use App\Support\TurkishSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -16,6 +20,80 @@ class UyeController extends Controller
         private readonly BeyogluWebhookService $webhookService
     ) {}
 
+    private function memberFilterValues(Request $request): array
+    {
+        return [
+            'filter_ad'         => trim((string) $request->input('filter_ad', '')),
+            'filter_soyad'      => trim((string) $request->input('filter_soyad', '')),
+            'filter_tc_kimlik'  => trim((string) $request->input('filter_tc_kimlik', '')),
+            'filter_telefon'    => trim((string) $request->input('filter_telefon', '')),
+            'filter_email'      => trim((string) $request->input('filter_email', '')),
+        ];
+    }
+
+    private function applyMemberListFilters($query, array $filters): void
+    {
+        if ($filters['filter_ad'] !== '') {
+            TurkishSearch::applyTextMatch($query, 'ad', $filters['filter_ad']);
+        }
+        if ($filters['filter_soyad'] !== '') {
+            TurkishSearch::applyTextMatch($query, 'soyad', $filters['filter_soyad']);
+        }
+        if ($filters['filter_tc_kimlik'] !== '') {
+            $query->where('tc_kimlik', 'LIKE', '%' . $filters['filter_tc_kimlik'] . '%');
+        }
+        if ($filters['filter_telefon'] !== '') {
+            $query->where('telefon', 'LIKE', '%' . $filters['filter_telefon'] . '%');
+        }
+        if ($filters['filter_email'] !== '') {
+            $query->where('email', 'LIKE', '%' . $filters['filter_email'] . '%');
+        }
+    }
+
+    /** Eski tek alan `search` (yer imleri) — yeni filtreler boşsa uygulanır. */
+    private function applyLegacyMemberSearchFilter($query, string $search): void
+    {
+        $search = trim($search);
+        if ($search === '') {
+            return;
+        }
+
+        $normalizedSearch = preg_replace('/\s+/', ' ', $search);
+
+        $query->where(function ($q) use ($search, $normalizedSearch) {
+            TurkishSearch::applyTextMatch($q, 'ad', $search, 'contains', 'and');
+            TurkishSearch::applyTextMatch($q, 'soyad', $search, 'contains', 'or');
+
+            $adCol = $q->qualifyColumn('ad');
+            $soyadCol = $q->qualifyColumn('soyad');
+            $q->orWhereRaw(
+                "CONCAT({$adCol}, ' ', {$soyadCol}) COLLATE utf8mb4_turkish_ci LIKE ?",
+                ['%' . $normalizedSearch . '%']
+            );
+
+            $q->orWhere('tc_kimlik', 'LIKE', "%{$search}%")
+                ->orWhere('telefon', 'LIKE', "%{$search}%")
+                ->orWhere('email', 'LIKE', "%{$search}%");
+        });
+    }
+
+    private function applyMemberFiltersFromRequest($query, Request $request): void
+    {
+        $filters = $this->memberFilterValues($request);
+        $hasNewFilters = collect($filters)->contains(fn ($v) => $v !== '');
+
+        if ($hasNewFilters) {
+            $this->applyMemberListFilters($query, $filters);
+
+            return;
+        }
+
+        $legacySearch = trim((string) $request->input('search', ''));
+        if ($legacySearch !== '') {
+            $this->applyLegacyMemberSearchFilter($query, $legacySearch);
+        }
+    }
+
     // ─── Liste Sayfası (sadece view, veri AJAX ile yükleniyor) ──────────────────
     public function index()
     {
@@ -24,31 +102,22 @@ class UyeController extends Controller
     }
 
     // ─── AJAX Tablo Verisi ───────────────────────────────────────────────────────
-    // GET /uyeler/tablo?search=&statu=&per_page=20&page=1
+    // GET /uyeler/tablo?filter_ad=&filter_soyad=&filter_tc_kimlik=&filter_telefon=&filter_email=&statu=&per_page=20&page=1
     public function tableData(Request $request)
     {
         abort_unless(auth()->user()?->hasYetki(11) || auth()->user()?->hasYetki(13), 403);
         $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100, 500])
             ? (int) $request->input('per_page')
             : 10;
-        $search = trim($request->input('search', ''));
         $statu  = $request->input('statu', '');
         $sortBy = (string) $request->input('sort_by', '');
         $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $query = Uye::query();
 
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('ad',         'LIKE', "%{$search}%")
-                    ->orWhere('soyad',    'LIKE', "%{$search}%")
-                    ->orWhere('tc_kimlik','LIKE', "%{$search}%")
-                    ->orWhere('telefon',  'LIKE', "%{$search}%")
-                    ->orWhere('email',    'LIKE', "%{$search}%");
-            });
-        }
+        $this->applyMemberFiltersFromRequest($query, $request);
 
-        if ($statu !== null) {
+        if (in_array($statu, ['aktif', 'pasif'], true)) {
             $query->where('statu', $statu);
         }
 
@@ -86,6 +155,7 @@ class UyeController extends Controller
                         ? Carbon::parse($uye->uyelik_baslangic)->format('d.m.Y')
                         : '—',
                     'edit_url'           => route('uyeler.edit', $uye->id),
+                    'profile_url'        => route('uyeler.show', $uye->id),
                     'delete_url'         => '/uyeler/' . $uye->id,
                 ];
             })
@@ -108,27 +178,230 @@ class UyeController extends Controller
         ]);
     }
 
+    // ─── Üye Profil Sayfası ─────────────────────────────────────────────────────
+    public function show(Uye $uye)
+    {
+        abort_unless(auth()->user()?->hasYetki(11) || auth()->user()?->hasYetki(13), 403);
+
+        $isMinor     = Carbon::parse($uye->dogum_tarihi)->age < 18;
+        $createdUser = $uye->created_user ? User::find($uye->created_user) : null;
+        $updatedUser = $uye->updated_user ? User::find($uye->updated_user) : null;
+        $canEdit     = (bool) auth()->user()?->hasYetki(13);
+        $canViewLoans    = $this->canViewLoans();
+        $canViewRezerve  = $this->canViewRezerve();
+        $canViewZiyaret  = $this->canViewZiyaret();
+        $canLend         = $this->canDoLoans();
+        $stats           = $this->memberStats($uye);
+
+        return view('uye.show', compact(
+            'uye', 'isMinor', 'createdUser', 'updatedUser',
+            'canEdit', 'canViewLoans', 'canViewRezerve', 'canViewZiyaret', 'canLend', 'stats'
+        ));
+    }
+
+    // GET /uyeler/{uye}/odunc-tablo
+    public function profileOduncTable(Request $request, Uye $uye)
+    {
+        abort_unless($this->canViewLoans(), 403);
+        abort_unless(auth()->user()?->hasYetki(11) || auth()->user()?->hasYetki(13), 403);
+
+        $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 10;
+        $statu = $request->input('statu', 'hepsi');
+
+        $query = OduncIslem::with(['katalog', 'kutuphane', 'oduncVeren'])
+            ->where('uye_id', $uye->id);
+        $this->scopeOduncForUser($query);
+
+        if ($statu === 'aktif') {
+            $query->where('statu', 'aktif');
+        } elseif ($statu === 'gecikti') {
+            $query->where('statu', 'aktif')
+                ->where('iade_tarihi_planlanan', '<', now()->toDateString());
+        } elseif ($statu === 'iade_edildi') {
+            $query->where('statu', 'iade_edildi');
+        } elseif ($statu === 'kayip') {
+            $query->where('statu', 'kayip');
+        }
+
+        $islemler = $query->orderByRaw("
+            CASE statu WHEN 'aktif' THEN 0 ELSE 1 END,
+            iade_tarihi_planlanan ASC
+        ")->paginate($perPage);
+
+        $todayStr = now()->toDateString();
+        $items = collect($islemler->items())->map(function ($i) use ($todayStr) {
+            $gecikiyor = $i->statu === 'aktif' && $todayStr > $i->iade_tarihi_planlanan->toDateString();
+
+            return [
+                'id'             => $i->id,
+                'kitap'          => $i->katalog->kunyeEserAdi,
+                'kitap_isbn'     => $i->katalog->kunyeISBNISSN,
+                'kitap_demir'    => $i->katalog->kunyeDemirbasKN,
+                'kitap_kapak'    => $i->katalog->kapak_resim_path,
+                'odunc_tarihi'   => $i->odunc_tarihi->format('d.m.Y'),
+                'iade_planlanan' => $i->iade_tarihi_planlanan->format('d.m.Y'),
+                'iade_gercek'    => $i->iade_tarihi_gercek?->format('d.m.Y'),
+                'statu'          => $i->statu,
+                'statu_label'    => $i->statu_label,
+                'gecikiyor'      => $gecikiyor,
+                'gecikme_gun'    => $gecikiyor ? Carbon::today()->diffInDays($i->iade_tarihi_planlanan) : 0,
+                'kalan_gun'      => (!$gecikiyor && $i->statu === 'aktif')
+                    ? Carbon::today()->diffInDays($i->iade_tarihi_planlanan, false)
+                    : null,
+                'kutuphane'      => $i->kutuphane?->title ?? '—',
+                'detay_url'      => route('odunc.show', $i->id),
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $items,
+            'meta'    => [
+                'current_page' => $islemler->currentPage(),
+                'last_page'    => $islemler->lastPage(),
+                'per_page'     => $islemler->perPage(),
+                'total'        => $islemler->total(),
+                'from'         => $islemler->firstItem() ?? 0,
+                'to'           => $islemler->lastItem() ?? 0,
+            ],
+        ]);
+    }
+
+    // GET /uyeler/{uye}/rezerve-tablo
+    public function profileRezerveTable(Request $request, Uye $uye)
+    {
+        abort_unless($this->canViewRezerve(), 403);
+        abort_unless(auth()->user()?->hasYetki(11) || auth()->user()?->hasYetki(13), 403);
+
+        $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 10;
+        $filtre = $request->input('filtre', 'hepsi');
+
+        $query = UyeRezerve::with(['katalog.kutuphane', 'kutuphane'])
+            ->where('uye_id', $uye->id);
+        $this->scopeRezerveForUser($query);
+
+        if ($filtre === 'aktif') {
+            $query->where('iptalMi', 'false')
+                ->where('oduncAldiMi', 'false')
+                ->where('rezerve_bitis', '>', now());
+        } elseif ($filtre === 'tamamlanan') {
+            $query->where('oduncAldiMi', 'true');
+        } elseif ($filtre === 'iptal') {
+            $query->where('iptalMi', 'true');
+        } elseif ($filtre === 'suresi_doldu') {
+            $query->where('iptalMi', 'false')
+                ->where('oduncAldiMi', 'false')
+                ->where('rezerve_bitis', '<=', now());
+        }
+
+        $rows = $query->orderByDesc('id')->paginate($perPage);
+
+        $canManage = $this->canManageRezerve();
+        $items = collect($rows->items())->map(function (UyeRezerve $r) use ($canManage) {
+            $kat = $r->katalog;
+            $simdiGecerli = $r->iptalMi === 'false'
+                && $r->oduncAldiMi === 'false'
+                && $r->rezerve_bitis
+                && $r->rezerve_bitis->isFuture();
+
+            return [
+                'id'                => $r->id,
+                'kitap'             => $kat?->kunyeEserAdi ?? '—',
+                'kitap_isbn'        => $kat?->kunyeISBNISSN,
+                'kitap_demir'       => $kat?->kunyeDemirbasKN,
+                'kitap_kapak'       => $kat?->kapak_resim_path,
+                'rezerve_baslangic' => $r->rezerve_baslangic?->format('d.m.Y H:i') ?? '—',
+                'rezerve_bitis'     => $r->rezerve_bitis?->format('d.m.Y H:i') ?? '—',
+                'durum_etiket'      => $this->rezerveDurumEtiket($r),
+                'kutuphane'         => $r->kutuphane?->title ?? $kat?->kutuphane?->title ?? '—',
+                'odunc_yapilabilir' => $simdiGecerli && $canManage,
+                'odunc_new_url'     => ($simdiGecerli && $canManage)
+                    ? route('odunc.new', ['katalog_id' => $r->katalog_id, 'uye_id' => $r->uye_id])
+                    : null,
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $items,
+            'meta'    => [
+                'current_page' => $rows->currentPage(),
+                'last_page'    => $rows->lastPage(),
+                'per_page'     => $rows->perPage(),
+                'total'        => $rows->total(),
+                'from'         => $rows->firstItem() ?? 0,
+                'to'           => $rows->lastItem() ?? 0,
+            ],
+        ]);
+    }
+
+    // GET /uyeler/{uye}/ziyaret-tablo
+    public function profileZiyaretTable(Request $request, Uye $uye)
+    {
+        abort_unless($this->canViewZiyaret(), 403);
+        abort_unless(auth()->user()?->hasYetki(11) || auth()->user()?->hasYetki(13), 403);
+
+        $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 10;
+        $filtre = $request->input('filtre', 'hepsi');
+
+        $query = ZiyaretKaydi::with(['kutuphane'])
+            ->where('uye_id', $uye->id);
+        $this->scopeZiyaretForUser($query);
+
+        if ($filtre === 'icinde') {
+            $query->whereNull('cikis_saati');
+        } elseif ($filtre === 'bugun') {
+            $query->whereDate('giris_saati', now()->toDateString());
+        } elseif ($filtre === 'cikisli') {
+            $query->whereNotNull('cikis_saati');
+        }
+
+        $rows = $query->orderByDesc('giris_saati')->paginate($perPage);
+
+        $items = collect($rows->items())->map(function (ZiyaretKaydi $z) {
+            return [
+                'id'          => $z->id,
+                'kutuphane'   => $z->kutuphane?->title ?? '—',
+                'giris_saati' => $z->giris_saati?->format('d.m.Y H:i') ?? '—',
+                'cikis_saati' => $z->cikis_saati?->format('d.m.Y H:i'),
+                'sure_label'  => $z->sure_label,
+                'icinde_mi'   => $z->icinde_mi,
+                'notlar'      => $z->notlar,
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $items,
+            'meta'    => [
+                'current_page' => $rows->currentPage(),
+                'last_page'    => $rows->lastPage(),
+                'per_page'     => $rows->perPage(),
+                'total'        => $rows->total(),
+                'from'         => $rows->firstItem() ?? 0,
+                'to'           => $rows->lastItem() ?? 0,
+            ],
+        ]);
+    }
+
     // ─── CSV / Excel İndir ───────────────────────────────────────────────────────
-    // GET /uyeler/export?search=&statu=
+    // GET /uyeler/export?filter_ad=&filter_soyad=&...
     public function export(Request $request)
     {
         abort_unless(auth()->user()?->hasYetki(11), 403);
-        $search = trim($request->input('search', ''));
         $statu  = $request->input('statu', '');
 
         $query = Uye::query();
 
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('ad',         'LIKE', "%{$search}%")
-                    ->orWhere('soyad',    'LIKE', "%{$search}%")
-                    ->orWhere('tc_kimlik','LIKE', "%{$search}%")
-                    ->orWhere('telefon',  'LIKE', "%{$search}%")
-                    ->orWhere('email',    'LIKE', "%{$search}%");
-            });
-        }
+        $this->applyMemberFiltersFromRequest($query, $request);
 
-        if ($statu !== null) {
+        if (in_array($statu, ['aktif', 'pasif'], true)) {
             $query->where('statu', $statu);
         }
 
@@ -549,6 +822,126 @@ class UyeController extends Controller
     }
 
     // ─── Yardımcı ───────────────────────────────────────────────────────────────
+    private function canViewLoans(): bool
+    {
+        $u = auth()->user();
+
+        return $u && ($u->hasYetki(7) || $u->hasYetki(8) || $u->hasYetki(9) || $u->hasYetki(10));
+    }
+
+    private function canViewAllLoans(): bool
+    {
+        $u = auth()->user();
+
+        return $u && ($u->hasYetki(9) || $u->hasYetki(10));
+    }
+
+    private function canDoLoans(): bool
+    {
+        $u = auth()->user();
+
+        return $u && ($u->hasYetki(8) || $u->hasYetki(10));
+    }
+
+    private function canViewRezerve(): bool
+    {
+        return $this->canViewLoans();
+    }
+
+    private function canViewZiyaret(): bool
+    {
+        return $this->canViewLoans();
+    }
+
+    private function canViewAllLibraries(): bool
+    {
+        $u = auth()->user();
+
+        return $u && ($u->hasYetki(9) || $u->hasYetki(10));
+    }
+
+    private function canManageRezerve(): bool
+    {
+        $u = auth()->user();
+
+        return $u && ($u->hasYetki(8) || $u->hasYetki(10));
+    }
+
+    private function scopeOduncForUser($query): void
+    {
+        if ($this->canViewAllLoans()) {
+            return;
+        }
+
+        $ids = auth()->user()->yetkiliKutuphaneIds();
+        $query->where(function ($q) use ($ids) {
+            $q->whereIn('kutuphane_id', $ids ?: [-1])
+                ->orWhere(function ($q2) use ($ids) {
+                    $q2->whereNull('kutuphane_id')
+                        ->whereHas('katalog', function ($k) use ($ids) {
+                            $k->whereIn('kutuphaneId', $ids ?: [-1]);
+                        });
+                });
+        });
+    }
+
+    private function scopeRezerveForUser($query): void
+    {
+        if ($this->canViewAllLibraries()) {
+            return;
+        }
+
+        $ids = auth()->user()->yetkiliKutuphaneIds();
+        $query->whereHas('katalog', function ($k) use ($ids) {
+            $k->whereIn('kutuphaneId', $ids ?: [-1]);
+        });
+    }
+
+    private function scopeZiyaretForUser($query): void
+    {
+        if ($this->canViewAllLibraries()) {
+            return;
+        }
+
+        $ids = auth()->user()->yetkiliKutuphaneIds();
+        $query->whereIn('kutuphane_id', $ids ?: [-1]);
+    }
+
+    private function memberStats(Uye $uye): array
+    {
+        $oduncQ = OduncIslem::query()->where('uye_id', $uye->id);
+        $this->scopeOduncForUser($oduncQ);
+
+        $rezQ = UyeRezerve::query()->where('uye_id', $uye->id);
+        $this->scopeRezerveForUser($rezQ);
+
+        return [
+            'aktif_odunc'    => (clone $oduncQ)->where('statu', 'aktif')->count(),
+            'gecikmis_odunc' => (clone $oduncQ)->where('statu', 'aktif')
+                ->where('iade_tarihi_planlanan', '<', now()->toDateString())->count(),
+            'toplam_odunc'   => (clone $oduncQ)->count(),
+            'aktif_rezerve'  => (clone $rezQ)->where('iptalMi', 'false')
+                ->where('oduncAldiMi', 'false')
+                ->where('rezerve_bitis', '>', now())->count(),
+            'toplam_rezerve' => (clone $rezQ)->count(),
+        ];
+    }
+
+    private function rezerveDurumEtiket(UyeRezerve $r): string
+    {
+        if ($r->iptalMi === 'true') {
+            return 'İptal';
+        }
+        if ($r->oduncAldiMi === 'true') {
+            return 'Ödünç verildi';
+        }
+        if ($r->rezerve_bitis && $r->rezerve_bitis->isPast()) {
+            return 'Süresi doldu';
+        }
+
+        return 'Aktif';
+    }
+
     private function maskPhone(string $telefon): string
     {
         $clean = preg_replace('/\D/', '', $telefon);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Katalog;
 use App\Models\Yazar;
+use App\Support\TurkishSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -59,20 +60,16 @@ class YazarController extends Controller
         $filterSoyad = trim((string) $request->input('filter_soyad', ''));
 
         if ($filterAd !== '') {
-            $query->where('ad', 'like', '%' . $filterAd . '%');
+            TurkishSearch::whereLike($query, 'ad', $filterAd);
         }
         if ($filterSoyad !== '') {
-            $query->where('soyad', 'like', '%' . $filterSoyad . '%');
+            TurkishSearch::whereLike($query, 'soyad', $filterSoyad);
         }
 
         // Eski tek alan `search` (yer imleri) — yeni filtreler boşsa uygulanır
         $legacySearch = trim((string) $request->input('search', ''));
         if ($filterAd === '' && $filterSoyad === '' && $legacySearch !== '') {
-            $query->where(function ($q) use ($legacySearch) {
-                $q->where('ad', 'like', '%' . $legacySearch . '%')
-                    ->orWhere('soyad', 'like', '%' . $legacySearch . '%')
-                    ->orWhere('siralama_adi', 'like', '%' . $legacySearch . '%');
-            });
+            TurkishSearch::whereLikeAny($query, ['ad', 'soyad', 'siralama_adi'], $legacySearch);
         }
 
         $activeEserDurumu = (string) $request->input('eser_durumu', 'tum');

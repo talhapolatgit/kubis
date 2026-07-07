@@ -9,6 +9,7 @@ use App\Models\Kutuphane;
 use App\Models\UyeBekleme;
 use App\Models\UyeRezerve;
 use App\Services\BeyogluWebhookService;
+use App\Support\TurkishSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +49,115 @@ class OduncController extends Controller
     private function canExtendLoans(): bool
     {
         $u = auth()->user();
-        return $u && ($u->hasYetki(8) || $u->hasYetki(10));
+        return $u && ($u->hasYetki(35));
+    }
+
+    private function oduncFilterValues(Request $request): array
+    {
+        return [
+            'filter_uye'   => trim((string) $request->input('filter_uye', '')),
+            'filter_kitap' => trim((string) $request->input('filter_kitap', '')),
+        ];
+    }
+
+    private function applyUyeFilterOnRelation($uyeQuery, string $term): void
+    {
+        $normalized = preg_replace('/\s+/', ' ', $term);
+        $uyeQuery->where(function ($uq) use ($term, $normalized) {
+            TurkishSearch::applyTextMatch($uq, 'ad', $term, 'contains', 'and');
+            TurkishSearch::applyTextMatch($uq, 'soyad', $term, 'contains', 'or');
+            $uq->orWhere('tc_kimlik', 'LIKE', '%' . $term . '%');
+
+            $adCol = $uq->qualifyColumn('ad');
+            $soyadCol = $uq->qualifyColumn('soyad');
+            $uq->orWhereRaw(
+                "CONCAT({$adCol}, ' ', {$soyadCol}) COLLATE utf8mb4_turkish_ci LIKE ?",
+                ['%' . $normalized . '%']
+            );
+        });
+    }
+
+    private function applyKitapFilterOnRelation($katalogQuery, string $term): void
+    {
+        $katalogQuery->where(function ($kq) use ($term) {
+            TurkishSearch::applyTextMatch($kq, 'kunyeEserAdi', $term, 'contains', 'and');
+            $kq->orWhere('kunyeISBNISSN', 'LIKE', '%' . $term . '%');
+        });
+    }
+
+    private function applyKitapAraFilterOnRelation($katalogQuery, string $term): void
+    {
+        $katalogQuery->where(function ($kq) use ($term) {
+            TurkishSearch::applyTextMatch($kq, 'kunyeEserAdi', $term, 'contains', 'and');
+            TurkishSearch::applyTextMatch($kq, 'kunyeYazar', $term, 'contains', 'or');
+            $kq->orWhere('kunyeISBNISSN', 'LIKE', '%' . $term . '%')
+                ->orWhere('kunyeDemirbasKN', 'LIKE', '%' . $term . '%');
+        });
+    }
+
+    private function applyUyeAraFilterOnRelation($uyeQuery, string $term): void
+    {
+        $uyeQuery->where(function ($q) use ($term) {
+            $this->applyUyeFilterOnRelation($q, $term);
+            $q->orWhere('telefon', 'LIKE', '%' . $term . '%');
+        });
+    }
+
+    private function applyLegacyOduncSearchFilter($query, string $search): void
+    {
+        if ($search === '') {
+            return;
+        }
+
+        $query->where(function ($q) use ($search) {
+            $q->whereHas('uye', function ($u) use ($search) {
+                $this->applyUyeFilterOnRelation($u, $search);
+            })->orWhereHas('katalog', function ($k) use ($search) {
+                $this->applyKitapFilterOnRelation($k, $search);
+            });
+        });
+    }
+
+    private function applyOduncTextFilters($query, Request $request): void
+    {
+        $filters = $this->oduncFilterValues($request);
+        $hasNewFilters = $filters['filter_uye'] !== '' || $filters['filter_kitap'] !== '';
+
+        if ($hasNewFilters) {
+            if ($filters['filter_uye'] !== '') {
+                $term = $filters['filter_uye'];
+                $query->whereHas('uye', function ($u) use ($term) {
+                    $this->applyUyeFilterOnRelation($u, $term);
+                });
+            }
+            if ($filters['filter_kitap'] !== '') {
+                $term = $filters['filter_kitap'];
+                $query->whereHas('katalog', function ($k) use ($term) {
+                    $this->applyKitapFilterOnRelation($k, $term);
+                });
+            }
+
+            return;
+        }
+
+        $legacySearch = trim((string) $request->input('search', ''));
+        if ($legacySearch !== '') {
+            $this->applyLegacyOduncSearchFilter($query, $legacySearch);
+        }
+    }
+
+    private function applyOduncStatuFilter($query, string $statu): void
+    {
+        if ($statu === 'aktif') {
+            $query->where('statu', 'aktif');
+        } elseif ($statu === 'gecikti') {
+            $query->where('statu', 'aktif')
+                ->where('iade_tarihi_planlanan', '<', now()->toDateString());
+        } elseif ($statu === 'iade_edildi') {
+            $query->where('statu', 'iade_edildi');
+        } elseif ($statu === 'kayip') {
+            $query->where('statu', 'kayip');
+        }
     }
 
     // ─── İstatistik yardımcısı ──────────────────────────────────────────────────
@@ -84,7 +193,7 @@ class OduncController extends Controller
     }
 
     // ─── AJAX Tablo Verisi ───────────────────────────────────────────────────────
-    // GET /odunc/tablo?search=&demirbasNo=&statu=&tarih_baslangic=&tarih_bitis=&per_page=20&page=1
+    // GET /odunc/tablo?filter_uye=&filter_kitap=&demirbasNo=&statu=&tarih_baslangic=&tarih_bitis=&per_page=20&page=1
     public function tableData(Request $request)
     {
         abort_unless($this->canViewAllLoans() || $this->canViewScopedLoans(), 403);
@@ -93,7 +202,6 @@ class OduncController extends Controller
             : 20;
 
         $statu      = $request->input('statu', 'aktif');
-        $search     = trim($request->input('search', ''));
         $demirbasNo = trim($request->input('demirbasNo', ''));
         $kutuphaneId= (int) $request->input('kutuphaneId', 0);
 
@@ -112,32 +220,8 @@ class OduncController extends Controller
             });
         }
 
-        // ── Durum filtresi ─────────────────────────────────────────────────────
-        if ($statu === 'aktif') {
-            $query->where('statu', 'aktif');
-        } elseif ($statu === 'gecikti') {
-            $query->where('statu', 'aktif')
-                ->where('iade_tarihi_planlanan', '<', now()->toDateString());
-        } elseif ($statu === 'iade_edildi') {
-            $query->where('statu', 'iade_edildi');
-        } elseif ($statu === 'kayip') {
-            $query->where('statu', 'kayip');
-        }
-        // 'hepsi' → filtre yok
-
-        // ── Metin arama ───────────────────────────────────────────────────────
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('uye', function ($u) use ($search) {
-                    $u->where('ad',         'LIKE', "%{$search}%")
-                        ->orWhere('soyad',    'LIKE', "%{$search}%")
-                        ->orWhere('tc_kimlik','LIKE', "%{$search}%");
-                })->orWhereHas('katalog', function ($k) use ($search) {
-                    $k->where('kunyeEserAdi',   'LIKE', "%{$search}%")
-                        ->orWhere('kunyeISBNISSN','LIKE', "%{$search}%");
-                });
-            });
-        }
+        $this->applyOduncStatuFilter($query, $statu);
+        $this->applyOduncTextFilters($query, $request);
 
         // ── Demirbaş No filtresi ──────────────────────────────────────────────
         if ($demirbasNo !== '') {
@@ -227,12 +311,11 @@ class OduncController extends Controller
     }
 
     // ─── CSV / Excel Export ──────────────────────────────────────────────────────
-    // GET /odunc/export?search=&demirbasNo=&statu=&tarih_baslangic=&tarih_bitis=
+    // GET /odunc/export?filter_uye=&filter_kitap=&demirbasNo=&statu=&tarih_baslangic=&tarih_bitis=
     public function export(Request $request)
     {
         abort_unless($this->canViewAllLoans() || $this->canViewScopedLoans(), 403);
         $statu      = $request->input('statu', 'aktif');
-        $search     = trim($request->input('search', ''));
         $demirbasNo = trim($request->input('demirbasNo', ''));
         $kutuphaneId= (int) $request->input('kutuphaneId', 0);
 
@@ -251,29 +334,8 @@ class OduncController extends Controller
             });
         }
 
-        if ($statu === 'aktif') {
-            $query->where('statu', 'aktif');
-        } elseif ($statu === 'gecikti') {
-            $query->where('statu', 'aktif')
-                ->where('iade_tarihi_planlanan', '<', now()->toDateString());
-        } elseif ($statu === 'iade_edildi') {
-            $query->where('statu', 'iade_edildi');
-        } elseif ($statu === 'kayip') {
-            $query->where('statu', 'kayip');
-        }
-
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('uye', function ($u) use ($search) {
-                    $u->where('ad',         'LIKE', "%{$search}%")
-                        ->orWhere('soyad',    'LIKE', "%{$search}%")
-                        ->orWhere('tc_kimlik','LIKE', "%{$search}%");
-                })->orWhereHas('katalog', function ($k) use ($search) {
-                    $k->where('kunyeEserAdi',   'LIKE', "%{$search}%")
-                        ->orWhere('kunyeISBNISSN','LIKE', "%{$search}%");
-                });
-            });
-        }
+        $this->applyOduncStatuFilter($query, $statu);
+        $this->applyOduncTextFilters($query, $request);
 
         if ($demirbasNo !== '') {
             $query->whereHas('katalog', function ($k) use ($demirbasNo) {
@@ -404,10 +466,7 @@ class OduncController extends Controller
 
         $uyeler = Uye::where('statu', 'aktif')
             ->where(function ($q) use ($term) {
-                $q->where('ad',        'LIKE', "%{$term}%")
-                    ->orWhere('soyad',    'LIKE', "%{$term}%")
-                    ->orWhere('tc_kimlik','LIKE', "%{$term}%")
-                    ->orWhere('telefon',  'LIKE', "%{$term}%");
+                $this->applyUyeAraFilterOnRelation($q, $term);
             })
             ->select('id', 'ad', 'soyad', 'tc_kimlik', 'telefon', 'notlar', 'statu')
             ->limit(8)->get()
@@ -494,10 +553,7 @@ class OduncController extends Controller
 
         if ($this->canDoAllLoans()) {
             $kitaplar = Katalog::where(function ($q) use ($term) {
-                $q->where('kunyeEserAdi', 'LIKE', "%{$term}%")
-                    ->orWhere('kunyeYazar', 'LIKE', "%{$term}%")
-                    ->orWhere('kunyeISBNISSN', 'LIKE', "%{$term}%")
-                    ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$term}%");
+                $this->applyKitapAraFilterOnRelation($q, $term);
             })
                 ->select('id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeISBNISSN', 'kunyeDemirbasKN', 'kunyeKapakResmi', 'kunyeDurum', 'oduncVerilemez')
                 ->limit(8)->get()
@@ -506,10 +562,7 @@ class OduncController extends Controller
             $ids = auth()->user()->yetkiliKutuphaneIds();
             $kitaplar = Katalog::whereIn('kutuphaneId', $ids ?: [-1])
                 ->where(function ($q) use ($term) {
-                    $q->where('kunyeEserAdi', 'LIKE', "%{$term}%")
-                        ->orWhere('kunyeYazar', 'LIKE', "%{$term}%")
-                        ->orWhere('kunyeISBNISSN', 'LIKE', "%{$term}%")
-                        ->orWhere('kunyeDemirbasKN', 'LIKE', "%{$term}%");
+                    $this->applyKitapAraFilterOnRelation($q, $term);
                 })
                 ->select('id', 'kunyeEserAdi', 'kunyeYazar', 'kunyeISBNISSN', 'kunyeDemirbasKN', 'kunyeKapakResmi', 'kunyeDurum', 'oduncVerilemez')
                 ->limit(8)->get()
@@ -777,7 +830,7 @@ class OduncController extends Controller
     // ─── Süre Uzat ──────────────────────────────────────────────────────────────
     public function sureUzat(Request $request, OduncIslem $islem)
     {
-        abort_unless($this->canExtendLoans(), 403);
+        abort_unless($this->canExtendLoans(), 403, 'Ödünç süresini uzatma yetkiniz yok. Sistem yöneticinize başvurunuz.');
         if (!$this->canViewAllLoans()) {
             $ids = auth()->user()->yetkiliKutuphaneIds();
             $kutuphaneId = (int) ($islem->kutuphane_id ?? $islem->katalog?->kutuphaneId ?? 0);

@@ -350,6 +350,35 @@
 
 .input-icon svg { width: 16px; height: 16px; }
 
+.text-filter-wrap { position: relative; }
+.text-filter-input { padding-right: 44px; }
+.text-filter-mode-btn {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    min-width: 30px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 6px;
+    border: 1px solid rgba(122, 92, 60, 0.2);
+    background: rgba(122, 92, 60, 0.07);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.text-filter-mode-btn:hover { background: rgba(122, 92, 60, 0.13); }
+.text-filter-mode-btn:active { transform: translateY(-50%) scale(0.98); }
+.text-filter-mode-btn:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px rgba(122, 92, 60, 0.15);
+}
+
 /* Section Separator */
 .section-sep {
     height: 1px;
@@ -778,3 +807,22 @@
 .row-actions-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--foreground); text-decoration: none; cursor: pointer; transition: background 0.12s; white-space: nowrap; border: none; background: transparent; width: 100%; text-align: left; font-family: inherit; }
 .row-actions-item:hover { background: var(--secondary); }
 .row-actions-item svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--muted-foreground); }
+
+/* Katalog tablosu: uzun ad/yazar metinleri için güvenli genişlik */
+#kitaplarTable .book-title-cell {
+    max-width: 250px;
+}
+
+#kitaplarTable .book-title-link,
+#kitaplarTable .book-author-line {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+#kitaplarTable .book-subtitle-part {
+    font-weight: 500;
+    color: var(--muted-foreground);
+}

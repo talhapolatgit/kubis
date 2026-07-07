@@ -56,6 +56,8 @@
         .user-cell { display: flex; align-items: center; gap: 12px; }
         .user-avatar-sm { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
         .user-name { font-weight: 600; font-size: 14px; }
+        .user-name-link { color: inherit; text-decoration: none; }
+        .user-name-link:hover { text-decoration: underline; }
         .user-email { font-size: 12px; color: var(--muted-foreground); }
 
         /* Role badge */
@@ -361,7 +363,7 @@
             '<td style="color:var(--muted-foreground);font-size:13px;">' + u.id + '</td>' +
             '<td><div class="user-cell">' +
             '<div class="user-avatar-sm" style="background:' + avatarColor + ';">' + initial + '</div>' +
-            '<div><div class="user-name">' + esc(u.name) + (u.is_self ? ' <span style="font-size:11px;background:rgba(122,92,60,0.1);color:var(--primary);padding:1px 7px;border-radius:999px;font-weight:600;">Siz</span>' : '') + '</div>' +
+            '<div><div class="user-name"><a class="user-name-link" href="' + u.edit_url + '">' + esc(u.name) + '</a>' + (u.is_self ? ' <span style="font-size:11px;background:rgba(122,92,60,0.1);color:var(--primary);padding:1px 7px;border-radius:999px;font-weight:600;">Siz</span>' : '') + '</div>' +
             '<div class="user-email">' + esc(u.email) + '</div></div>' +
             '</div></td>' +
             '<td><span class="role-badge" style="' + roleBg + '">' + esc(u.role_label) + '</span></td>' +

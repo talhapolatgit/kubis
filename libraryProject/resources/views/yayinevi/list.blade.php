@@ -278,10 +278,8 @@
                     </div>
                     <div class="modal-footer">
                         <div class="modal-footer-audit" id="editYayineviAuditBlock" aria-label="Kayıt bilgisi">
-                            <div class="audit-row"><span class="audit-key">Kayıt tarihi:</span> <span id="editYayineviMetaKayitTarihi">—</span></div>
-                            <div class="audit-row"><span class="audit-key">Kaydeden:</span> <span id="editYayineviMetaKaydeden">—</span></div>
-                            <div class="audit-row"><span class="audit-key">Güncelleme tarihi:</span> <span id="editYayineviMetaGuncelleme">—</span></div>
-                            <div class="audit-row"><span class="audit-key">Güncelleyen:</span> <span id="editYayineviMetaGuncelleyen">—</span></div>
+                            <div class="audit-row"><span class="audit-key">Kayıt tarihi:</span> <span id="editYayineviMetaKayitSatiri">—</span></div>
+                            <div class="audit-row"><span class="audit-key">Güncelleme tarihi:</span> <span id="editYayineviMetaGuncellemeSatiri">—</span></div>
                         </div>
                         <div class="modal-footer-actions">
                             <button type="button" class="btn btn-outline" data-close-modal="#editYayineviModal">Vazgeç</button>
@@ -667,16 +665,22 @@
 
     function openModal(modal) { if (modal) modal.classList.add('open'); }
     function closeModal(modal) { if (modal) modal.classList.remove('open'); }
+    function formatAuditLine(dateValue, userValue) {
+        var dateText = dateValue || '—';
+        var userText = userValue || '';
+        return userText ? (dateText + ' (' + userText + ')') : dateText;
+    }
+
     function setEditYayineviAuditFromBtn(btn) {
         if (!btn) return;
-        var elK = document.getElementById('editYayineviMetaKayitTarihi');
-        var elKd = document.getElementById('editYayineviMetaKaydeden');
-        var elG = document.getElementById('editYayineviMetaGuncelleme');
-        var elGy = document.getElementById('editYayineviMetaGuncelleyen');
-        if (elK) elK.textContent = btn.getAttribute('data-kayit-tarihi') || '—';
-        if (elKd) elKd.textContent = btn.getAttribute('data-kaydeden') || '—';
-        if (elG) elG.textContent = btn.getAttribute('data-guncelleme-tarihi') || '—';
-        if (elGy) elGy.textContent = btn.getAttribute('data-guncelleyen') || '—';
+        var elK = document.getElementById('editYayineviMetaKayitSatiri');
+        var elG = document.getElementById('editYayineviMetaGuncellemeSatiri');
+        var kayitTarihi = btn.getAttribute('data-kayit-tarihi') || '—';
+        var kaydeden = btn.getAttribute('data-kaydeden') || '';
+        var guncellemeTarihi = btn.getAttribute('data-guncelleme-tarihi') || '—';
+        var guncelleyen = btn.getAttribute('data-guncelleyen') || '';
+        if (elK) elK.textContent = formatAuditLine(kayitTarihi, kaydeden);
+        if (elG) elG.textContent = formatAuditLine(guncellemeTarihi, guncelleyen);
     }
     function populateEditModalByRow(id) {
         var rowBtn = document.querySelector('.openEditYayineviModal[data-id="' + id + '"]');

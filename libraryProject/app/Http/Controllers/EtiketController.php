@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Katalog;
 use App\Models\Kutuphane;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class EtiketController extends Controller
@@ -26,7 +27,29 @@ class EtiketController extends Controller
             ->orderBy('title')
             ->get(['id', 'title']);
 
-        return view('book.etiket', compact('kutuphaneler'));
+        $createdUserIds = Katalog::query()
+            ->whereNull('deleted_at')
+            ->whereNotNull('created_user')
+            ->distinct()
+            ->pluck('created_user')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values();
+
+        $kaydedenler = User::query()
+            ->whereIn('id', $createdUserIds->isEmpty() ? [-1] : $createdUserIds->all())
+            ->orderByRaw("COALESCE(NULLIF(name, ''), CAST(id AS CHAR)) asc")
+            ->get(['id', 'name'])
+            ->map(function ($u) {
+                $displayName = trim((string) ($u->name ?: ('Kullanıcı #' . $u->id)));
+                return [
+                    'id' => (int) $u->id,
+                    'ad' => $displayName,
+                ];
+            })
+            ->values();
+
+        return view('book.etiket', compact('kutuphaneler', 'kaydedenler'));
     }
 
     // ─── AJAX Kitap Arama (Etiket filtreleriyle) ─────────────────────────────────
@@ -60,7 +83,16 @@ class EtiketController extends Controller
 
         // ── Özel Notlar ───────────────────────────────────────────────────────
         if ($request->filled('ozelNotlar')) {
-            $query->where('ozelNotlar', 'LIKE', '%' . $request->input('ozelNotlar') . '%');
+            $ozelNotlar = trim((string) $request->input('ozelNotlar'));
+            $matchType  = (string) $request->input('ozelNotlarMatch', 'contains');
+
+            if ($matchType === 'starts_with') {
+                $query->where('ozelNotlar', 'LIKE', $ozelNotlar . '%');
+            } elseif ($matchType === 'exact') {
+                $query->where('ozelNotlar', '=', $ozelNotlar);
+            } else {
+                $query->where('ozelNotlar', 'LIKE', '%' . $ozelNotlar . '%');
+            }
         }
 
         // ── Kütüphane (seçmeli) ───────────────────────────────────────────────
@@ -70,6 +102,11 @@ class EtiketController extends Controller
                 return response()->json(['rows' => []]);
             }
             $query->where('katalog.kutuphaneId', $kutuphaneId);
+        }
+
+        // ── Kaydeden (created_user) ───────────────────────────────────────────
+        if ($request->filled('createdUserId')) {
+            $query->where('katalog.created_user', (int) $request->input('createdUserId'));
         }
 
         // ── Kayıt Tarihi Aralığı (created_at) ────────────────────────────────

@@ -15,6 +15,9 @@
         th.sortable-th .sort-label{display:inline-flex;align-items:center;gap:6px}
         th.sortable-th .sort-caret{opacity:.35;font-size:10px;line-height:1}
         th.sortable-th.sort-active .sort-caret{opacity:1}
+        .kayit-tarih-inline{display:flex;gap:8px}
+        .kayit-tarih-inline .kayit-tarih-date{flex:1 1 auto;min-width:0}
+        .kayit-tarih-inline .kayit-tarih-time{flex:0 0 108px;max-width:108px}
     </style>
 @endsection
 
@@ -41,11 +44,23 @@
                 </div>
                 <div class="form-card-body">
 
-                    {{-- Satır 1: Eser Adı/ISBN + Yazar + Yayınevi + Kütüphane --}}
-                    <div class="form-grid cols-3 filter-row-primary" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                    {{-- Satır 1: Eser Adı/ISBN + Alt Başlık + Yazar + Yayınevi + Kütüphane --}}
+                    <div class="form-grid cols-3 filter-row-primary" style="margin-bottom:14px;grid-template-columns:repeat(5,1fr);">
                         <div class="form-field">
                             <label class="form-label">Eser Adı / Demirbaş / ISBN</label>
-                            <input type="text" id="filterSearch" class="form-input" placeholder="Eser adı veya ISBN..." autocomplete="off">
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterSearch" class="form-input text-filter-input" placeholder="Eser adı veya ISBN..." autocomplete="off">
+                                <input type="hidden" id="filterSearchMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterSearchMode">%%</button>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Alt Başlık</label>
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterAltBaslik" class="form-input text-filter-input" placeholder="Alt başlık ara..." autocomplete="off">
+                                <input type="hidden" id="filterAltBaslikMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterAltBaslikMode">%%</button>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Yazar</label>
@@ -102,8 +117,8 @@
                         <button type="button" class="more-filters-toggle" id="toggleMoreFilters" aria-expanded="false">Daha fazla filtre</button>
                     </div>
 
-                    {{-- Satır 2: Kategori + Tür + Sınıflama/Yer Kodu + Durum --}}
-                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                    {{-- Satır 2: Kategori + Tür + Alt Tür + Sınıflama/Yer Kodu + Durum + Dil --}}
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(6,1fr);">
                         {{-- Kategori — arama destekli combobox --}}
                         <div class="form-field">
                             <label class="form-label">Kategori</label>
@@ -138,9 +153,30 @@
                             <input type="hidden" id="filterTur" value="" />
                             <script id="filterTurData" type="application/json">@json($turler->map(fn($t) => ['id' => $t->id, 'ad' => $t->ad]))</script>
                         </div>
+                        {{-- Alt Tür — arama destekli combobox --}}
+                        <div class="form-field">
+                            <label class="form-label">Alt Tür</label>
+                            <div class="combobox-wrapper" id="filterAltTurCombobox">
+                                <div class="combobox-input-wrap">
+                                    <div class="combobox-face" id="filterAltTurFace">
+                                        <span class="combobox-face-text" id="filterAltTurFaceText">Alt tür seçin...</span>
+                                        <button type="button" class="combobox-clear-btn" id="filterAltTurClear" title="Seçimi kaldır" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                                    </div>
+                                    <input type="text" class="form-input" id="filterAltTurSearch" placeholder="Alt tür ara..." autocomplete="off" style="display:none;" />
+                                    <button type="button" class="combobox-toggle" tabindex="-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+                                </div>
+                                <div class="combobox-dropdown"></div>
+                            </div>
+                            <input type="hidden" id="filterAltTur" value="" />
+                            <script id="filterAltTurData" type="application/json">@json(($altturler ?? collect())->map(fn($t) => ['id' => $t->id, 'ad' => $t->ad]))</script>
+                        </div>
                         <div class="form-field">
                             <label class="form-label">Sınıflama / Yer Kodu</label>
-                            <input type="text" id="filterSiniflamaYer" class="form-input" placeholder="Ör: 914.3, FEN-001..." autocomplete="off">
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterSiniflamaYer" class="form-input text-filter-input" placeholder="Ör: 914.3, FEN-001..." autocomplete="off">
+                                <input type="hidden" id="filterSiniflamaYerMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterSiniflamaYerMode">%%</button>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Durum</label>
@@ -154,10 +190,6 @@
                                 <option value="Hurdaya Ayrıldı">Hurdaya Ayrıldı</option>
                             </select>
                         </div>
-                    </div>
-
-                    {{-- Satır 3: Dil + Konu Başlığı + Özel Notlar + Ödünç Verilebilir + Etiketlendi --}}
-                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(5,1fr);">
                         <div class="form-field">
                             <label class="form-label">Dil</label>
                             <select id="filterDil" class="form-select">
@@ -167,14 +199,66 @@
                                 @endforeach
                             </select>
                         </div>
+                    </div>
+
+                    {{-- Satır 3: Konu Başlığı + Özel Notlar + Açıklama + Cilt + Kopya + Koleksiyon --}}
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(6,1fr);">
                         <div class="form-field">
                             <label class="form-label">Konu Başlığı</label>
-                            <input type="text" id="filterKonuBasligi" class="form-input" placeholder="Konu başlığı..." autocomplete="off">
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterKonuBasligi" class="form-input text-filter-input" placeholder="Konu başlığı..." autocomplete="off">
+                                <input type="hidden" id="filterKonuBasligiMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterKonuBasligiMode">%%</button>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label class="form-label">Özel Notlar</label>
-                            <input type="text" id="filterOzelNotlar" class="form-input" placeholder="Not içeriği..." autocomplete="off">
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterOzelNotlar" class="form-input text-filter-input" placeholder="Not içeriği..." autocomplete="off">
+                                <input type="hidden" id="filterOzelNotlarMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterOzelNotlarMode">%%</button>
+                            </div>
                         </div>
+                        <div class="form-field">
+                            <label class="form-label">Açıklama</label>
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterAciklama" class="form-input text-filter-input" placeholder="Açıklama içeriği..." autocomplete="off">
+                                <input type="hidden" id="filterAciklamaMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterAciklamaMode">%%</button>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Cilt</label>
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterCilt" class="form-input text-filter-input" placeholder="Cilt bilgisi..." autocomplete="off">
+                                <input type="hidden" id="filterCiltMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterCiltMode">%%</button>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Kopya</label>
+                            <input type="number" id="filterKopya" class="form-input" placeholder="Kopya sayısı..." min="1" step="1" autocomplete="off">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Koleksiyon</label>
+                            <div class="combobox-wrapper" id="filterKoleksiyonCombobox">
+                                <div class="combobox-input-wrap">
+                                    <div class="combobox-face" id="filterKoleksiyonFace">
+                                        <span class="combobox-face-text" id="filterKoleksiyonFaceText">Koleksiyon seçin...</span>
+                                        <button type="button" class="combobox-clear-btn" id="filterKoleksiyonClear" title="Seçimi kaldır" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                                    </div>
+                                    <input type="text" class="form-input" id="filterKoleksiyonSearch" placeholder="Koleksiyon ara..." autocomplete="off" style="display:none;" />
+                                    <button type="button" class="combobox-toggle" tabindex="-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+                                </div>
+                                <div class="combobox-dropdown"></div>
+                            </div>
+                            <input type="hidden" id="filterKoleksiyon" value="" />
+                            <script id="filterKoleksiyonData" type="application/json">@json(($koleksiyonlar ?? collect())->map(fn($k) => ['id' => $k->id, 'ad' => $k->title]))</script>
+                        </div>
+                    </div>
+
+                    {{-- Satır 4: Ödünç Verilebilir + Etiketlendi + Kayıt Tarihi + Kaydeden + Güncelleme Başlangıç --}}
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(6,1fr);">
                         <div class="form-field">
                             <label class="form-label">Ödünç Verilebilir</label>
                             <select id="filterOduncVerilebilir" class="form-select">
@@ -191,10 +275,20 @@
                                 <option value="hayir">Hayır</option>
                             </select>
                         </div>
-                    </div>
-
-                    {{-- Satır 4: Kaydeden + Kayıt Tarihi --}}
-                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr);">
+                        <div class="form-field">
+                            <label class="form-label">Kayıt Tarihi (Başlangıç)</label>
+                            <div class="kayit-tarih-inline">
+                                <input type="date" id="filterKayitBaslangicDate" class="form-input kayit-tarih-date" autocomplete="off" min="1000-01-01" max="9999-12-31">
+                                <input type="time" id="filterKayitBaslangicTime" class="form-input kayit-tarih-time" autocomplete="off" step="60" placeholder="00:00">
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Kayıt Tarihi (Bitiş)</label>
+                            <div class="kayit-tarih-inline">
+                                <input type="date" id="filterKayitBitisDate" class="form-input kayit-tarih-date" autocomplete="off" min="1000-01-01" max="9999-12-31">
+                                <input type="time" id="filterKayitBitisTime" class="form-input kayit-tarih-time" autocomplete="off" step="60" placeholder="23:59">
+                            </div>
+                        </div>
                         <div class="form-field">
                             <label class="form-label">Kaydeden</label>
                             <div class="combobox-wrapper" id="filterCreatedUserCombobox">
@@ -212,12 +306,46 @@
                             <script id="filterCreatedUserData" type="application/json">@json($kaydedenler ?? [])</script>
                         </div>
                         <div class="form-field">
-                            <label class="form-label">Kayıt Tarihi (Başlangıç)</label>
-                            <input type="date" id="filterKayitBaslangic" class="form-input" autocomplete="off">
+                            <label class="form-label">Güncelleme Tarihi (Başlangıç)</label>
+                            <div class="kayit-tarih-inline">
+                                <input type="date" id="filterGuncellemeBaslangicDate" class="form-input kayit-tarih-date" autocomplete="off" min="1000-01-01" max="9999-12-31">
+                                <input type="time" id="filterGuncellemeBaslangicTime" class="form-input kayit-tarih-time" autocomplete="off" step="60" placeholder="00:00">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Satır 5: Güncelleme Bitiş + Güncelleyen + Dizi Kaydı --}}
+                    <div class="form-grid cols-3 filter-row-extra" style="margin-bottom:14px;grid-template-columns:repeat(6,1fr);">
+                        <div class="form-field">
+                            <label class="form-label">Güncelleme Tarihi (Bitiş)</label>
+                            <div class="kayit-tarih-inline">
+                                <input type="date" id="filterGuncellemeBitisDate" class="form-input kayit-tarih-date" autocomplete="off" min="1000-01-01" max="9999-12-31">
+                                <input type="time" id="filterGuncellemeBitisTime" class="form-input kayit-tarih-time" autocomplete="off" step="60" placeholder="23:59">
+                            </div>
                         </div>
                         <div class="form-field">
-                            <label class="form-label">Kayıt Tarihi (Bitiş)</label>
-                            <input type="date" id="filterKayitBitis" class="form-input" autocomplete="off">
+                            <label class="form-label">Güncelleyen</label>
+                            <div class="combobox-wrapper" id="filterUpdatedUserCombobox">
+                                <div class="combobox-input-wrap">
+                                    <div class="combobox-face" id="filterUpdatedUserFace">
+                                        <span class="combobox-face-text" id="filterUpdatedUserFaceText">Kullanıcı seçin...</span>
+                                        <button type="button" class="combobox-clear-btn" id="filterUpdatedUserClear" title="Seçimi kaldır" style="display:none;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                                    </div>
+                                    <input type="text" class="form-input" id="filterUpdatedUserSearch" placeholder="Kullanıcı ara..." autocomplete="off" style="display:none;" />
+                                    <button type="button" class="combobox-toggle" tabindex="-1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+                                </div>
+                                <div class="combobox-dropdown"></div>
+                            </div>
+                            <input type="hidden" id="filterUpdatedUser" value="" />
+                            <script id="filterUpdatedUserData" type="application/json">@json($guncelleyenler ?? [])</script>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Dizi Kaydı</label>
+                            <div class="text-filter-wrap">
+                                <input type="text" id="filterDiziKaydi" class="form-input text-filter-input" placeholder="Dizi kaydı..." autocomplete="off">
+                                <input type="hidden" id="filterDiziKaydiMode" value="contains">
+                                <button type="button" class="text-filter-mode-btn" data-target="filterDiziKaydiMode">%%</button>
+                            </div>
                         </div>
                     </div>
 
@@ -308,29 +436,363 @@
             var reqCounter  = 0; // race condition önlemi
             var sortBy      = '';
             var sortDir     = 'asc';
+            var initialPage = 1;
+            var allowedSortColumns = ['kunyeEserAdi', 'kunyeDemirbasKN', 'kutuphane'];
+            var textFilterModeOrder = ['contains', 'starts_with', 'exact'];
+
+            function textFilterModeSymbol(mode) {
+                if (mode === 'starts_with') return '%';
+                if (mode === 'exact') return '=';
+                return '%%';
+            }
+
+            function textFilterModeTooltip(mode) {
+                if (mode === 'starts_with') return 'İle başlayanları arar';
+                if (mode === 'exact') return 'Tam eşleşenleri arar';
+                return 'İçinde geçenleri arar';
+            }
+
+            function syncTextFilterModeButton(buttonEl) {
+                if (!buttonEl) return;
+                var target = buttonEl.getAttribute('data-target');
+                var hidden = target ? document.getElementById(target) : null;
+                if (!hidden) return;
+                var mode = hidden.value || 'contains';
+                buttonEl.textContent = textFilterModeSymbol(mode);
+                buttonEl.title = textFilterModeTooltip(mode);
+            }
+
+            function bindTextFilterModeButtons() {
+                document.querySelectorAll('.text-filter-mode-btn').forEach(function(btn) {
+                    syncTextFilterModeButton(btn);
+                    btn.addEventListener('click', function() {
+                        var target = this.getAttribute('data-target');
+                        var hidden = target ? document.getElementById(target) : null;
+                        if (!hidden) return;
+                        var currentIdx = textFilterModeOrder.indexOf(hidden.value);
+                        var nextIdx = (currentIdx + 1) % textFilterModeOrder.length;
+                        hidden.value = textFilterModeOrder[nextIdx];
+                        syncTextFilterModeButton(this);
+                    });
+                });
+            }
+
+            function getNonDefaultMatchMode(hiddenId) {
+                var el = document.getElementById(hiddenId);
+                var mode = el ? (el.value || 'contains') : 'contains';
+                return mode === 'contains' ? '' : mode;
+            }
+
+            function parseKayitTarihiValue(rawValue, isEnd) {
+                var value = String(rawValue || '').trim();
+                if (!value) return { date: '', time: '' };
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                    return { date: value, time: isEnd ? '23:59' : '00:00' };
+                }
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+                    return { date: value.substring(0, 10), time: value.substring(11, 16) };
+                }
+                if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) {
+                    return { date: value.substring(0, 10), time: value.substring(11, 16) };
+                }
+                if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}(?::\d{2})?$/.test(value)) {
+                    return { date: value.substring(0, 10), time: value.substring(11, 16) };
+                }
+                return { date: '', time: '' };
+            }
+
+            function composeKayitTarihiFilterValue(dateValue, timeValue, isEnd) {
+                var datePart = String(dateValue || '').trim();
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return '';
+                var timePart = String(timeValue || '').trim();
+                if (!/^\d{2}:\d{2}$/.test(timePart)) {
+                    timePart = isEnd ? '23:59' : '00:00';
+                }
+                return datePart + 'T' + timePart;
+            }
+
+            function normalizeDateToFourDigitYear(dateValue) {
+                var value = String(dateValue || '').trim();
+                if (value === '') return '';
+                var full = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (full) return value;
+                var longYear = value.match(/^(\d{4,})-(\d{2})-(\d{2})$/);
+                if (longYear) {
+                    return longYear[1].substring(0, 4) + '-' + longYear[2] + '-' + longYear[3];
+                }
+                return '';
+            }
+
+            function applyKayitTarihiDefaultsOnInput() {
+                var baslangicDateEl = document.getElementById('filterKayitBaslangicDate');
+                var baslangicTimeEl = document.getElementById('filterKayitBaslangicTime');
+                var bitisDateEl = document.getElementById('filterKayitBitisDate');
+                var bitisTimeEl = document.getElementById('filterKayitBitisTime');
+                var guncellemeBaslangicDateEl = document.getElementById('filterGuncellemeBaslangicDate');
+                var guncellemeBaslangicTimeEl = document.getElementById('filterGuncellemeBaslangicTime');
+                var guncellemeBitisDateEl = document.getElementById('filterGuncellemeBitisDate');
+                var guncellemeBitisTimeEl = document.getElementById('filterGuncellemeBitisTime');
+
+                if (baslangicDateEl && baslangicTimeEl) {
+                    var baslangicDate = normalizeDateToFourDigitYear(baslangicDateEl.value);
+                    if (baslangicDateEl.value !== baslangicDate) {
+                        baslangicDateEl.value = baslangicDate;
+                    }
+                    if (String(baslangicDateEl.value || '').trim() === '') {
+                        baslangicTimeEl.value = '';
+                    } else if (String(baslangicTimeEl.value || '').trim() === '') {
+                        baslangicTimeEl.value = '00:00';
+                    }
+                }
+                if (bitisDateEl && bitisTimeEl) {
+                    var bitisDate = normalizeDateToFourDigitYear(bitisDateEl.value);
+                    if (bitisDateEl.value !== bitisDate) {
+                        bitisDateEl.value = bitisDate;
+                    }
+                    if (String(bitisDateEl.value || '').trim() === '') {
+                        bitisTimeEl.value = '';
+                    } else if (String(bitisTimeEl.value || '').trim() === '') {
+                        bitisTimeEl.value = '23:59';
+                    }
+                }
+                if (guncellemeBaslangicDateEl && guncellemeBaslangicTimeEl) {
+                    var guncellemeBaslangicDate = normalizeDateToFourDigitYear(guncellemeBaslangicDateEl.value);
+                    if (guncellemeBaslangicDateEl.value !== guncellemeBaslangicDate) {
+                        guncellemeBaslangicDateEl.value = guncellemeBaslangicDate;
+                    }
+                    if (String(guncellemeBaslangicDateEl.value || '').trim() === '') {
+                        guncellemeBaslangicTimeEl.value = '';
+                    } else if (String(guncellemeBaslangicTimeEl.value || '').trim() === '') {
+                        guncellemeBaslangicTimeEl.value = '00:00';
+                    }
+                }
+                if (guncellemeBitisDateEl && guncellemeBitisTimeEl) {
+                    var guncellemeBitisDate = normalizeDateToFourDigitYear(guncellemeBitisDateEl.value);
+                    if (guncellemeBitisDateEl.value !== guncellemeBitisDate) {
+                        guncellemeBitisDateEl.value = guncellemeBitisDate;
+                    }
+                    if (String(guncellemeBitisDateEl.value || '').trim() === '') {
+                        guncellemeBitisTimeEl.value = '';
+                    } else if (String(guncellemeBitisTimeEl.value || '').trim() === '') {
+                        guncellemeBitisTimeEl.value = '23:59';
+                    }
+                }
+            }
+
+            function bindKayitTarihiAutoDefaults() {
+                var baslangicDateEl = document.getElementById('filterKayitBaslangicDate');
+                var baslangicTimeEl = document.getElementById('filterKayitBaslangicTime');
+                var bitisDateEl = document.getElementById('filterKayitBitisDate');
+                var bitisTimeEl = document.getElementById('filterKayitBitisTime');
+                var guncellemeBaslangicDateEl = document.getElementById('filterGuncellemeBaslangicDate');
+                var guncellemeBaslangicTimeEl = document.getElementById('filterGuncellemeBaslangicTime');
+                var guncellemeBitisDateEl = document.getElementById('filterGuncellemeBitisDate');
+                var guncellemeBitisTimeEl = document.getElementById('filterGuncellemeBitisTime');
+
+                if (baslangicDateEl && baslangicTimeEl) {
+                    ['input', 'change', 'blur'].forEach(function(evt) {
+                        baslangicDateEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                        baslangicTimeEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                    });
+                }
+                if (bitisDateEl && bitisTimeEl) {
+                    ['input', 'change', 'blur'].forEach(function(evt) {
+                        bitisDateEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                        bitisTimeEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                    });
+                }
+                if (guncellemeBaslangicDateEl && guncellemeBaslangicTimeEl) {
+                    ['input', 'change', 'blur'].forEach(function(evt) {
+                        guncellemeBaslangicDateEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                        guncellemeBaslangicTimeEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                    });
+                }
+                if (guncellemeBitisDateEl && guncellemeBitisTimeEl) {
+                    ['input', 'change', 'blur'].forEach(function(evt) {
+                        guncellemeBitisDateEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                        guncellemeBitisTimeEl.addEventListener(evt, applyKayitTarihiDefaultsOnInput);
+                    });
+                }
+            }
+
+            function applyFiltersFromQuery() {
+                var params = new URLSearchParams(window.location.search);
+                var perPage = params.get('per_page');
+                if (['10', '20', '50', '100', '500'].indexOf(String(perPage || '')) !== -1) {
+                    document.getElementById('perPageSelect').value = perPage;
+                }
+
+                function setInputValue(id, key) {
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    var val = params.get(key);
+                    if (val !== null) {
+                        el.value = val;
+                    }
+                }
+
+                setInputValue('filterSearch', 'search');
+                setInputValue('filterAltBaslik', 'altBaslik');
+                setInputValue('filterKategori', 'kategori');
+                setInputValue('filterSiniflamaYer', 'siniflamaYer');
+                setInputValue('filterYazar', 'yazarId');
+                setInputValue('filterYayinevi', 'yayineviId');
+                setInputValue('filterKutuphane', 'kutuphaneId');
+                setInputValue('filterTur', 'turId');
+                setInputValue('filterAltTur', 'altTurId');
+                setInputValue('filterDurum', 'durum');
+                setInputValue('filterDil', 'dil');
+                setInputValue('filterKonuBasligi', 'konuBasligi');
+                setInputValue('filterOzelNotlar', 'ozelNotlar');
+                setInputValue('filterAciklama', 'aciklama');
+                setInputValue('filterCilt', 'cilt');
+                setInputValue('filterSearchMode', 'searchMatch');
+                setInputValue('filterAltBaslikMode', 'altBaslikMatch');
+                setInputValue('filterSiniflamaYerMode', 'siniflamaYerMatch');
+                setInputValue('filterKonuBasligiMode', 'konuBasligiMatch');
+                setInputValue('filterOzelNotlarMode', 'ozelNotlarMatch');
+                setInputValue('filterAciklamaMode', 'aciklamaMatch');
+                setInputValue('filterCiltMode', 'ciltMatch');
+                setInputValue('filterKopya', 'kopya');
+                setInputValue('filterOduncVerilebilir', 'oduncVerilebilir');
+                setInputValue('filterEtiketlendi', 'etiketlendi');
+                setInputValue('filterKoleksiyon', 'koleksiyonId');
+                setInputValue('filterCreatedUser', 'createdUserId');
+                setInputValue('filterUpdatedUser', 'updatedUserId');
+                setInputValue('filterDiziKaydi', 'diziKaydi');
+                setInputValue('filterDiziKaydiMode', 'diziKaydiMatch');
+                var kayitBaslangicParsed = parseKayitTarihiValue(params.get('kayitBaslangic'), false);
+                var kayitBitisParsed = parseKayitTarihiValue(params.get('kayitBitis'), true);
+                var guncellemeBaslangicParsed = parseKayitTarihiValue(params.get('guncellemeBaslangic'), false);
+                var guncellemeBitisParsed = parseKayitTarihiValue(params.get('guncellemeBitis'), true);
+                var kayitBaslangicDateEl = document.getElementById('filterKayitBaslangicDate');
+                var kayitBaslangicTimeEl = document.getElementById('filterKayitBaslangicTime');
+                var kayitBitisDateEl = document.getElementById('filterKayitBitisDate');
+                var kayitBitisTimeEl = document.getElementById('filterKayitBitisTime');
+                var guncellemeBaslangicDateEl = document.getElementById('filterGuncellemeBaslangicDate');
+                var guncellemeBaslangicTimeEl = document.getElementById('filterGuncellemeBaslangicTime');
+                var guncellemeBitisDateEl = document.getElementById('filterGuncellemeBitisDate');
+                var guncellemeBitisTimeEl = document.getElementById('filterGuncellemeBitisTime');
+                if (kayitBaslangicDateEl) kayitBaslangicDateEl.value = kayitBaslangicParsed.date;
+                if (kayitBaslangicTimeEl) kayitBaslangicTimeEl.value = kayitBaslangicParsed.time;
+                if (kayitBitisDateEl) kayitBitisDateEl.value = kayitBitisParsed.date;
+                if (kayitBitisTimeEl) kayitBitisTimeEl.value = kayitBitisParsed.time;
+                if (guncellemeBaslangicDateEl) guncellemeBaslangicDateEl.value = guncellemeBaslangicParsed.date;
+                if (guncellemeBaslangicTimeEl) guncellemeBaslangicTimeEl.value = guncellemeBaslangicParsed.time;
+                if (guncellemeBitisDateEl) guncellemeBitisDateEl.value = guncellemeBitisParsed.date;
+                if (guncellemeBitisTimeEl) guncellemeBitisTimeEl.value = guncellemeBitisParsed.time;
+                applyKayitTarihiDefaultsOnInput();
+                document.querySelectorAll('.text-filter-mode-btn').forEach(syncTextFilterModeButton);
+
+                var sortByParam = params.get('sort_by');
+                if (allowedSortColumns.indexOf(String(sortByParam || '')) !== -1) {
+                    sortBy = sortByParam;
+                    sortDir = String(params.get('sort_dir') || 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+                }
+
+                var pageParam = parseInt(String(params.get('page') || '1'), 10);
+                if (!isNaN(pageParam) && pageParam > 0) {
+                    initialPage = pageParam;
+                }
+            }
+
+            function updateListUrlState(page) {
+                var f = getFilters();
+                var params = new URLSearchParams();
+                Object.keys(f).forEach(function (k) {
+                    var v = f[k];
+                    if (v === null || typeof v === 'undefined') return;
+                    var s = String(v).trim();
+                    if (s === '') return;
+                    params.set(k, s);
+                });
+                if (sortBy) {
+                    params.set('sort_by', sortBy);
+                    params.set('sort_dir', sortDir || 'asc');
+                }
+                var currentPage = parseInt(String(page || 1), 10);
+                if (!isNaN(currentPage) && currentPage > 1) {
+                    params.set('page', String(currentPage));
+                }
+                var nextSearch = params.toString();
+                var nextUrl = window.location.pathname + (nextSearch ? ('?' + nextSearch) : '');
+                window.history.replaceState({}, '', nextUrl);
+            }
+
+            applyFiltersFromQuery();
+            bindKayitTarihiAutoDefaults();
+            applyKayitTarihiDefaultsOnInput();
 
             // ============================
             // Filtre değerleri
             // ============================
             function getFilters() {
+                applyKayitTarihiDefaultsOnInput();
+                var kayitBaslangicDateEl = document.getElementById('filterKayitBaslangicDate');
+                var kayitBaslangicTimeEl = document.getElementById('filterKayitBaslangicTime');
+                var kayitBitisDateEl = document.getElementById('filterKayitBitisDate');
+                var kayitBitisTimeEl = document.getElementById('filterKayitBitisTime');
+                var guncellemeBaslangicDateEl = document.getElementById('filterGuncellemeBaslangicDate');
+                var guncellemeBaslangicTimeEl = document.getElementById('filterGuncellemeBaslangicTime');
+                var guncellemeBitisDateEl = document.getElementById('filterGuncellemeBitisDate');
+                var guncellemeBitisTimeEl = document.getElementById('filterGuncellemeBitisTime');
+                var kayitBaslangic = composeKayitTarihiFilterValue(
+                    kayitBaslangicDateEl ? kayitBaslangicDateEl.value : '',
+                    kayitBaslangicTimeEl ? kayitBaslangicTimeEl.value : '',
+                    false
+                );
+                var kayitBitis = composeKayitTarihiFilterValue(
+                    kayitBitisDateEl ? kayitBitisDateEl.value : '',
+                    kayitBitisTimeEl ? kayitBitisTimeEl.value : '',
+                    true
+                );
+                var guncellemeBaslangic = composeKayitTarihiFilterValue(
+                    guncellemeBaslangicDateEl ? guncellemeBaslangicDateEl.value : '',
+                    guncellemeBaslangicTimeEl ? guncellemeBaslangicTimeEl.value : '',
+                    false
+                );
+                var guncellemeBitis = composeKayitTarihiFilterValue(
+                    guncellemeBitisDateEl ? guncellemeBitisDateEl.value : '',
+                    guncellemeBitisTimeEl ? guncellemeBitisTimeEl.value : '',
+                    true
+                );
+
                 return {
                     search:            document.getElementById('filterSearch').value.trim(),
+                    searchMatch:       getNonDefaultMatchMode('filterSearchMode'),
+                    altBaslik:         document.getElementById('filterAltBaslik').value.trim(),
+                    altBaslikMatch:    getNonDefaultMatchMode('filterAltBaslikMode'),
                     kategori:          document.getElementById('filterKategori').value,
                     siniflamaYer:      document.getElementById('filterSiniflamaYer').value.trim(),
+                    siniflamaYerMatch: getNonDefaultMatchMode('filterSiniflamaYerMode'),
                     yazarId:           document.getElementById('filterYazar').value,
                     yayineviId:        document.getElementById('filterYayinevi').value,
                     per_page:          document.getElementById('perPageSelect').value,
                     kutuphaneId:       document.getElementById('filterKutuphane').value,
                     turId:             document.getElementById('filterTur').value,
+                    altTurId:          document.getElementById('filterAltTur').value,
                     durum:             document.getElementById('filterDurum').value,
                     dil:               document.getElementById('filterDil').value,
                     konuBasligi:       document.getElementById('filterKonuBasligi').value.trim(),
+                    konuBasligiMatch:  getNonDefaultMatchMode('filterKonuBasligiMode'),
                     ozelNotlar:        document.getElementById('filterOzelNotlar').value.trim(),
+                    ozelNotlarMatch:   getNonDefaultMatchMode('filterOzelNotlarMode'),
+                    aciklama:          document.getElementById('filterAciklama').value.trim(),
+                    aciklamaMatch:     getNonDefaultMatchMode('filterAciklamaMode'),
+                    cilt:              document.getElementById('filterCilt').value.trim(),
+                    ciltMatch:         getNonDefaultMatchMode('filterCiltMode'),
+                    kopya:             document.getElementById('filterKopya').value.trim(),
                     oduncVerilebilir:  document.getElementById('filterOduncVerilebilir').value,
                     etiketlendi:       document.getElementById('filterEtiketlendi').value,
-                    kayitBaslangic:    document.getElementById('filterKayitBaslangic').value,
-                    kayitBitis:        document.getElementById('filterKayitBitis').value,
+                    kayitBaslangic:    kayitBaslangic,
+                    kayitBitis:        kayitBitis,
+                    guncellemeBaslangic: guncellemeBaslangic,
+                    guncellemeBitis:   guncellemeBitis,
+                    koleksiyonId:      document.getElementById('filterKoleksiyon').value,
                     createdUserId:     document.getElementById('filterCreatedUser').value,
+                    updatedUserId:     document.getElementById('filterUpdatedUser').value,
+                    diziKaydi:         document.getElementById('filterDiziKaydi').value.trim(),
+                    diziKaydiMatch:    getNonDefaultMatchMode('filterDiziKaydiMode'),
                 };
             }
 
@@ -363,6 +825,21 @@
                     } else {
                         caret.textContent = '◇';
                     }
+                });
+            }
+
+            function hasExtraFiltersActive() {
+                var ids = [
+                    'filterKategori', 'filterTur', 'filterAltTur', 'filterSiniflamaYer', 'filterDurum',
+                    'filterDil', 'filterKonuBasligi', 'filterOzelNotlar', 'filterAciklama',
+                    'filterCilt', 'filterKopya', 'filterOduncVerilebilir', 'filterEtiketlendi',
+                    'filterKoleksiyon', 'filterCreatedUser', 'filterUpdatedUser', 'filterDiziKaydi',
+                    'filterKayitBaslangicDate', 'filterKayitBaslangicTime', 'filterKayitBitisDate', 'filterKayitBitisTime',
+                    'filterGuncellemeBaslangicDate', 'filterGuncellemeBaslangicTime', 'filterGuncellemeBitisDate', 'filterGuncellemeBitisTime'
+                ];
+                return ids.some(function (id) {
+                    var el = document.getElementById(id);
+                    return el && String(el.value || '').trim() !== '';
                 });
             }
 
@@ -419,11 +896,17 @@
                     var viewUrl = '/katalog/' + k.id + '/view';
                     var fq = getFilterQueryForView();
                     if (fq) viewUrl += '?' + fq;
+                    var titleText = k.kunyeEserAdi || '';
+                    var altBaslik = String(k.kunyeEserAdiAlt || '').trim();
+                    var titleHtml = titleText;
+                    if (altBaslik) {
+                        titleHtml += ' <span class="book-subtitle-part">&middot; ' + altBaslik + '</span>';
+                    }
                     return '<tr style="border-bottom:1px solid var(--border);transition:background 0.2s;" onmouseover="this.style.background=\'var(--card)\'" onmouseout="this.style.background=\'transparent\'">' +
                         '<td style="padding:12px 24px;"><a href="' + viewUrl + '" style="display:inline-block;width:45px;height:65px;background:#ddd;border-radius:4px;overflow:hidden;border:1px solid var(--border);">' +
                         '<img src="' + coverSrc + '" alt="Kapak" style="width:100%;height:100%;object-fit:cover;"></a></td>' +
-                        '<td style="padding:12px;"><a href="' + viewUrl + '" style="font-weight:600;color:var(--foreground);text-decoration:none;">' + (k.kunyeEserAdi || '') + '</a>' +
-                        '<div style="font-size:12px;color:var(--muted-foreground);">' + (k.kunyeYazar || '') + (k.kunyeYayinlayan ? ' &middot; ' + k.kunyeYayinlayan : '') + '</div></td>' +
+                        '<td class="book-title-cell" style="padding:12px;"><a href="' + viewUrl + '" class="book-title-link" style="font-weight:600;color:var(--foreground);text-decoration:none;">' + titleHtml + '</a>' +
+                        '<div class="book-author-line" style="font-size:12px;color:var(--muted-foreground);">' + (k.kunyeYazar || '') + (k.kunyeYayinlayan ? ' &middot; ' + k.kunyeYayinlayan : '') + '</div></td>' +
                         '<td style="padding:12px;color:var(--muted-foreground);">' + (k.kunyeDemirbasKN || '') + '</td>' +
                         '<td style="padding:12px;color:var(--muted-foreground);">' + (k.kunyeISBNISSN || '') + '</td>' +
                         '<td style="padding:12px;"><span style="padding:4px 8px;background:rgba(122,92,60,0.1);color:var(--primary);border-radius:4px;font-size:12px;">' + (k.kunyeSiniflamaYer || 'Genel') + '</span></td>' +
@@ -475,6 +958,7 @@
                             sortDir = 'asc';
                         }
                         updateSortHeaderDisplay();
+                        updateListUrlState(data.current_page || page || 1);
                         //document.getElementById('kitaplarCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
                     })
                     .catch(function() {
@@ -514,15 +998,23 @@
                 if (f.yayineviId)   params.set('yayineviId',   f.yayineviId);
                 if (f.kutuphaneId)       params.set('kutuphaneId',       f.kutuphaneId);
                 if (f.turId)             params.set('turId',             f.turId);
+                if (f.altTurId)          params.set('altTurId',          f.altTurId);
                 if (f.durum)             params.set('durum',             f.durum);
                 if (f.dil)               params.set('dil',               f.dil);
                 if (f.konuBasligi)       params.set('konuBasligi',       f.konuBasligi);
                 if (f.ozelNotlar)        params.set('ozelNotlar',        f.ozelNotlar);
+                if (f.aciklama)          params.set('aciklama',          f.aciklama);
+                if (f.cilt)              params.set('cilt',              f.cilt);
+                if (f.kopya)             params.set('kopya',             f.kopya);
                 if (f.oduncVerilebilir)  params.set('oduncVerilebilir',  f.oduncVerilebilir);
                 if (f.etiketlendi)       params.set('etiketlendi',       f.etiketlendi);
                 if (f.kayitBaslangic)    params.set('kayitBaslangic',    f.kayitBaslangic);
                 if (f.kayitBitis)        params.set('kayitBitis',        f.kayitBitis);
+                if (f.guncellemeBaslangic) params.set('guncellemeBaslangic', f.guncellemeBaslangic);
+                if (f.guncellemeBitis)   params.set('guncellemeBitis',   f.guncellemeBitis);
+                if (f.koleksiyonId)      params.set('koleksiyonId',      f.koleksiyonId);
                 if (f.createdUserId)     params.set('createdUserId',     f.createdUserId);
+                if (f.updatedUserId)     params.set('updatedUserId',     f.updatedUserId);
                 if (sortBy) {
                     params.set('sort_by', sortBy);
                     params.set('sort_dir', sortDir || 'asc');
@@ -552,6 +1044,7 @@
             document.getElementById('clearFilters').addEventListener('click', function() {
                 clearTimeout(searchTimer);
                 document.getElementById('filterSearch').value       = '';
+                document.getElementById('filterAltBaslik').value    = '';
                 document.getElementById('filterKategori').value     = '';
                 document.getElementById('filterSiniflamaYer').value = '';
                 // yazar combobox — face sıfırla
@@ -569,17 +1062,42 @@
                 // tür combobox — face sıfırla
                 document.getElementById('filterTur').value = '';
                 resetComboboxFace('filterTurFace', 'filterTurFaceText', 'filterTurClear', 'Tür seçin...');
+                document.getElementById('filterAltTur').value = '';
+                resetComboboxFace('filterAltTurFace', 'filterAltTurFaceText', 'filterAltTurClear', 'Alt tür seçin...');
                 // diğer yeni filtreler
                 document.getElementById('filterDurum').value            = '';
                 document.getElementById('filterDil').value              = '';
                 document.getElementById('filterKonuBasligi').value      = '';
                 document.getElementById('filterOzelNotlar').value       = '';
+                document.getElementById('filterAciklama').value         = '';
+                document.getElementById('filterCilt').value             = '';
+                document.getElementById('filterSearchMode').value       = 'contains';
+                document.getElementById('filterAltBaslikMode').value    = 'contains';
+                document.getElementById('filterSiniflamaYerMode').value = 'contains';
+                document.getElementById('filterKonuBasligiMode').value  = 'contains';
+                document.getElementById('filterOzelNotlarMode').value   = 'contains';
+                document.getElementById('filterAciklamaMode').value     = 'contains';
+                document.getElementById('filterCiltMode').value         = 'contains';
+                document.getElementById('filterDiziKaydi').value      = '';
+                document.getElementById('filterDiziKaydiMode').value    = 'contains';
+                document.querySelectorAll('.text-filter-mode-btn').forEach(syncTextFilterModeButton);
+                document.getElementById('filterKopya').value            = '';
                 document.getElementById('filterOduncVerilebilir').value = '';
                 document.getElementById('filterEtiketlendi').value      = '';
-                document.getElementById('filterKayitBaslangic').value   = '';
-                document.getElementById('filterKayitBitis').value       = '';
+                document.getElementById('filterKayitBaslangicDate').value = '';
+                document.getElementById('filterKayitBaslangicTime').value = '';
+                document.getElementById('filterKayitBitisDate').value     = '';
+                document.getElementById('filterKayitBitisTime').value     = '';
+                document.getElementById('filterGuncellemeBaslangicDate').value = '';
+                document.getElementById('filterGuncellemeBaslangicTime').value = '';
+                document.getElementById('filterGuncellemeBitisDate').value     = '';
+                document.getElementById('filterGuncellemeBitisTime').value     = '';
+                document.getElementById('filterKoleksiyon').value = '';
+                resetComboboxFace('filterKoleksiyonFace', 'filterKoleksiyonFaceText', 'filterKoleksiyonClear', 'Koleksiyon seçin...');
                 document.getElementById('filterCreatedUser').value = '';
                 resetComboboxFace('filterCreatedUserFace', 'filterCreatedUserFaceText', 'filterCreatedUserClear', 'Kullanıcı seçin...');
+                document.getElementById('filterUpdatedUser').value = '';
+                resetComboboxFace('filterUpdatedUserFace', 'filterUpdatedUserFaceText', 'filterUpdatedUserClear', 'Kullanıcı seçin...');
                 // per-page sıfırla
                 document.getElementById('perPageSelect').value = '20';
                 sortBy = '';
@@ -605,7 +1123,7 @@
             updateSortHeaderDisplay();
 
             // Enter tuşuyla arama (Filtrele butonuyla eşdeğer)
-            ['filterSearch', 'filterSiniflamaYer', 'filterKonuBasligi', 'filterOzelNotlar'].forEach(function(id) {
+            ['filterSearch', 'filterAltBaslik', 'filterSiniflamaYer', 'filterKonuBasligi', 'filterOzelNotlar', 'filterAciklama', 'filterCilt', 'filterKopya', 'filterDiziKaydi'].forEach(function(id) {
                 document.getElementById(id).addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') { clearTimeout(searchTimer); fetchPage(1); }
                 });
@@ -617,6 +1135,12 @@
                 if (!toggleMoreFilters || !formCardBody) return;
 
                 var expanded = false;
+                if (hasExtraFiltersActive()) {
+                    expanded = true;
+                    formCardBody.classList.add('filters-expanded');
+                    toggleMoreFilters.textContent = 'Daha az filtre';
+                    toggleMoreFilters.setAttribute('aria-expanded', 'true');
+                }
                 toggleMoreFilters.addEventListener('click', function() {
                     expanded = !expanded;
                     formCardBody.classList.toggle('filters-expanded', expanded);
@@ -665,9 +1189,13 @@
 
                     function esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
 
+                    function lowerTr(value) {
+                        return String(value || '').toLocaleLowerCase('tr-TR');
+                    }
+
                     function highlight(text, term) {
                         if (!term) return esc(text);
-                        var idx = text.toLowerCase().indexOf(term.toLowerCase());
+                        var idx = lowerTr(text).indexOf(lowerTr(term));
                         if (idx === -1) return esc(text);
                         return esc(text.substring(0, idx)) +
                             '<strong style="color:var(--primary)">' + esc(text.substring(idx, idx + term.length)) + '</strong>' +
@@ -694,9 +1222,9 @@
                     }
 
                     function render(filter) {
-                        var term = (filter || '').toLowerCase();
+                        var term = lowerTr(filter);
                         filtered = rawData.filter(function(r) {
-                            return r.ad.toLowerCase().indexOf(term) !== -1;
+                            return lowerTr(r.ad).indexOf(term) !== -1;
                         });
                         var html = '';
                         var allSel = hiddenId.value === '';
@@ -860,6 +1388,26 @@
                     placeholder:  'Tür seçin...',
                 });
                 initFilterCombobox({
+                    wrapperId:    'filterAltTurCombobox',
+                    searchInputId:'filterAltTurSearch',
+                    hiddenId:     'filterAltTur',
+                    faceId:       'filterAltTurFace',
+                    faceTextId:   'filterAltTurFaceText',
+                    clearBtnId:   'filterAltTurClear',
+                    dataScriptId: 'filterAltTurData',
+                    placeholder:  'Alt tür seçin...',
+                });
+                initFilterCombobox({
+                    wrapperId:    'filterKoleksiyonCombobox',
+                    searchInputId:'filterKoleksiyonSearch',
+                    hiddenId:     'filterKoleksiyon',
+                    faceId:       'filterKoleksiyonFace',
+                    faceTextId:   'filterKoleksiyonFaceText',
+                    clearBtnId:   'filterKoleksiyonClear',
+                    dataScriptId: 'filterKoleksiyonData',
+                    placeholder:  'Koleksiyon seçin...',
+                });
+                initFilterCombobox({
                     wrapperId:    'filterCreatedUserCombobox',
                     searchInputId:'filterCreatedUserSearch',
                     hiddenId:     'filterCreatedUser',
@@ -869,12 +1417,24 @@
                     dataScriptId: 'filterCreatedUserData',
                     placeholder:  'Kullanıcı seçin...',
                 });
+                initFilterCombobox({
+                    wrapperId:    'filterUpdatedUserCombobox',
+                    searchInputId:'filterUpdatedUserSearch',
+                    hiddenId:     'filterUpdatedUser',
+                    faceId:       'filterUpdatedUserFace',
+                    faceTextId:   'filterUpdatedUserFaceText',
+                    clearBtnId:   'filterUpdatedUserClear',
+                    dataScriptId: 'filterUpdatedUserData',
+                    placeholder:  'Kullanıcı seçin...',
+                });
             })();
+
+            bindTextFilterModeButtons();
 
             // ============================
             // İlk yüklemede veri çek
             // ============================
-            fetchPage(1);
+            fetchPage(initialPage);
         </script>
 
 <!-- Floating İşlemler Menüsü — script'ten önce DOM'a eklenir -->

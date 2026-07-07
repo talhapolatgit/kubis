@@ -1,0 +1,14 @@
+# Alt klasörde yayın için (ör. site.com/kubis/)
+# Bu dosyayı .htaccess olarak kopyalayın ve RewriteBase değerini güncelleyin.
+# vite.config.ts içinde base: '/kubis/' ayarlayıp yeniden build alın.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /kubis/
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^ index.html [L]
+</IfModule>

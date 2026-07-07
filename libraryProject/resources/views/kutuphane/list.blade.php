@@ -167,6 +167,9 @@
                                 <th class="sortable-th" data-sort="title" id="thSortTitle" title="Sıralamak için tıklayın">
                                     <span class="sort-label">Kütüphane Adı</span><span class="sort-caret" aria-hidden="true">◇</span>
                                 </th>
+                                <th class="sortable-th" data-sort="eser_sayisi" id="thSortEserSayisi" title="Sıralamak için tıklayın">
+                                    <span class="sort-label">Eser Sayısı</span><span class="sort-caret" aria-hidden="true">◇</span>
+                                </th>
                                 <th>Adres</th>
                                 <th>Telefon</th>
                                 <th>E-posta</th>
@@ -180,6 +183,7 @@
                             <tr>
                                 <td style="color:var(--muted-foreground);font-size:13px;">{{ $kutuphane->id }}</td>
                                 <td style="font-weight:600;">{{ $kutuphane->title }}</td>
+                                <td style="font-size:13px;">{{ (int) ($kutuphane->eser_sayisi ?? 0) }}</td>
                                 <td style="color:var(--muted-foreground);font-size:13px;">{{ $kutuphane->address ?? '—' }}</td>
                                 <td style="font-size:13px;">{{ $kutuphane->phone ?? '—' }}</td>
                                 <td style="font-size:13px;">{{ $kutuphane->email ?? '—' }}</td>
@@ -209,7 +213,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8">
+                                <td colspan="9">
                                     <div class="empty-state">
                                         <div class="empty-icon">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -260,7 +264,7 @@
     var kutuphaneEditBase = @json(url('/kutuphane'));
     var kutuphaneReqCounter = 0;
     var sortBy = @json(($activeSortBy ?? '') !== '' ? ($activeSortBy ?? '') : '');
-    var sortDir = @json(($activeSortBy ?? '') === 'title' ? (($activeSortDir ?? 'asc') === 'desc' ? 'desc' : 'asc') : 'asc');
+    var sortDir = @json((($activeSortBy ?? '') === 'title' || ($activeSortBy ?? '') === 'eser_sayisi') ? (($activeSortDir ?? 'asc') === 'desc' ? 'desc' : 'asc') : 'asc');
 
     // Toast
     function showToast(type, title, desc) {
@@ -284,7 +288,7 @@
 
     function buildKutuphaneRows(rows, canEdit) {
         if (!rows || rows.length === 0) {
-            var colSpan = canEdit ? 8 : 7;
+            var colSpan = canEdit ? 9 : 8;
             return '<tr><td colspan="' + colSpan + '"><div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><p class="empty-title">Kütüphane bulunamadı</p><p class="empty-desc">Aramanızı değiştirin veya yeni kütüphane ekleyin.</p></div></td></tr>';
         }
         return rows.map(function(k) {
@@ -299,6 +303,7 @@
             return '<tr>'
                 + '<td style="color:var(--muted-foreground);font-size:13px;">' + k.id + '</td>'
                 + '<td style="font-weight:600;">' + escapeHtml(k.title) + '</td>'
+                + '<td style="font-size:13px;">' + (k.eser_sayisi || 0) + '</td>'
                 + '<td style="color:var(--muted-foreground);font-size:13px;">' + (k.address ? escapeHtml(k.address) : '—') + '</td>'
                 + '<td style="font-size:13px;">' + (k.phone ? escapeHtml(k.phone) : '—') + '</td>'
                 + '<td style="font-size:13px;">' + (k.email ? escapeHtml(k.email) : '—') + '</td>'

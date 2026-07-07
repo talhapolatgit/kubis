@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\AltTur;
 use App\Models\Katalog;
 use App\Models\KatalogDil;
+use App\Models\Koleksiyon;
 use App\Models\Ortam;
 use App\Models\Sekil;
 use App\Models\Tur;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class KatalogParametreController extends Controller
@@ -24,7 +27,45 @@ class KatalogParametreController extends Controller
             'sekil' => ['title' => 'Şekil', 'model' => Sekil::class, 'table' => 'sekil', 'fk' => 'sekilId'],
             'ortam' => ['title' => 'Ortam', 'model' => Ortam::class, 'table' => 'ortam', 'fk' => 'ortamId'],
             'dil' => ['title' => 'Dil', 'model' => KatalogDil::class, 'table' => 'katalog_dil', 'fk' => null],
+            'koleksiyon' => ['title' => 'Koleksiyon', 'model' => Koleksiyon::class, 'table' => 'koleksiyon', 'fk' => 'koleksiyon_id'],
         ];
+    }
+
+    /**
+     * @param array{title:string, model:class-string, table:string, fk:?string} $cfg
+     */
+    private function adColumn(array $cfg): string
+    {
+        return $cfg['table'] === 'koleksiyon' ? 'title' : 'ad';
+    }
+
+    /**
+     * @param array{title:string, model:class-string, table:string, fk:?string} $cfg
+     */
+    private function hasSiraColumn(array $cfg): bool
+    {
+        return $cfg['table'] !== 'koleksiyon';
+    }
+
+    /**
+     * @param array{title:string, model:class-string, table:string, fk:?string} $cfg
+     */
+    private function createdAtColumn(array $cfg): string
+    {
+        return $cfg['table'] === 'koleksiyon' ? 'created_date' : 'created_at';
+    }
+
+    private function formatAuditDate(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        try {
+            return Carbon::parse($value)->format('d.m.Y H:i');
+        } catch (\Throwable $e) {
+            return '—';
+        }
     }
 
     private function ensureAuthorized(): void
@@ -94,23 +135,35 @@ class KatalogParametreController extends Controller
         $table = (new $model())->getTable();
         $query = $model::query();
         $this->applyEserSayisiSelect($query, $table, $cfg);
+        $adColumn = $this->adColumn($cfg);
 
         if ($request->filled('search')) {
             $s = trim((string) $request->input('search'));
-            $query->where('ad', 'like', '%' . $s . '%');
+            $query->where($adColumn, 'like', '%' . $s . '%');
         }
         $statu = (string) $request->input('statu', '');
         if ($statu === 'aktif' || $statu === 'pasif') {
-            $query->where('aktif', $statu === 'aktif' ? 1 : 0);
+            if ($cfg['table'] === 'koleksiyon') {
+                $query->where('statu', $statu);
+            } else {
+                $query->where('aktif', $statu === 'aktif' ? 1 : 0);
+            }
         }
 
         $sortBy = (string) $request->input('sort_by', '');
         $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        if ($sortBy === 'ad' || $sortBy === 'sira' || $sortBy === 'eser_sayisi') {
-            $query->orderBy($sortBy, $sortDir)->orderBy('id');
+        if ($sortBy === 'ad') {
+            $query->orderBy($adColumn, $sortDir)->orderBy('id');
+        } elseif ($sortBy === 'sira' && $this->hasSiraColumn($cfg)) {
+            $query->orderBy('sira', $sortDir)->orderBy('id');
+        } elseif ($sortBy === 'eser_sayisi') {
+            $query->orderBy('eser_sayisi', $sortDir)->orderBy('id');
         } else {
             $sortBy = '';
-            $query->orderBy('sira')->orderBy('ad')->orderBy('id');
+            if ($this->hasSiraColumn($cfg)) {
+                $query->orderBy('sira');
+            }
+            $query->orderBy($adColumn)->orderBy('id');
         }
 
         $perPage = (int) $request->input('per_page', 20);
@@ -119,15 +172,38 @@ class KatalogParametreController extends Controller
         }
 
         $rows = $query->paginate($perPage)->withQueryString();
+        $items = collect($rows->items());
+        $userIds = $items
+            ->flatMap(function ($r) {
+                return [
+                    (int) ($r->created_by ?? 0),
+                    (int) ($r->updated_by ?? 0),
+                ];
+            })
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $userNames = $userIds === []
+            ? collect()
+            : User::query()->whereIn('id', $userIds)->pluck('name', 'id');
+        $createdAtColumn = $this->createdAtColumn($cfg);
 
         return response()->json([
-            'rows' => collect($rows->items())->map(function ($r) {
+            'rows' => $items->map(function ($r) use ($userNames, $createdAtColumn) {
+                $createdById = (int) ($r->created_by ?? 0);
+                $updatedById = (int) ($r->updated_by ?? 0);
+
                 return [
                     'id' => (int) $r->id,
-                    'ad' => (string) $r->ad,
+                    'ad' => (string) ($r->title ?? $r->ad ?? ''),
                     'sira' => (int) ($r->sira ?? 0),
                     'eser_sayisi' => (int) ($r->eser_sayisi ?? 0),
-                    'aktif' => (int) ($r->aktif ?? 0) === 1 ? 'aktif' : 'pasif',
+                    'aktif' => (string) ($r->statu ?? '') === 'aktif' || (int) ($r->aktif ?? 0) === 1 ? 'aktif' : 'pasif',
+                    'kayit_tarihi' => $this->formatAuditDate($r->{$createdAtColumn} ?? null),
+                    'kaydeden' => (string) ($userNames->get($createdById) ?? '—'),
+                    'guncelleme_tarihi' => $this->formatAuditDate($r->updated_at ?? null),
+                    'guncelleyen' => (string) ($userNames->get($updatedById) ?? '—'),
                 ];
             })->values()->all(),
             'meta' => [
@@ -151,18 +227,26 @@ class KatalogParametreController extends Controller
         $cfg = $this->configFor($tab);
         /** @var \Illuminate\Database\Eloquent\Model $model */
         $model = $cfg['model'];
+        $adColumn = $this->adColumn($cfg);
+        $isKoleksiyon = $cfg['table'] === 'koleksiyon';
 
         $validated = $request->validate([
-            'ad' => ['required', 'string', 'max:100', Rule::unique($cfg['table'], 'ad')],
+            'ad' => ['required', 'string', 'max:100', Rule::unique($cfg['table'], $adColumn)],
             'sira' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'aktif' => ['required', Rule::in(['aktif', 'pasif'])],
         ]);
 
-        $model::create([
-            'ad' => trim((string) $validated['ad']),
-            'sira' => (int) ($validated['sira'] ?? 0),
-            'aktif' => $validated['aktif'] === 'aktif' ? 1 : 0,
-        ]);
+        $payload = [
+            $adColumn => trim((string) $validated['ad']),
+            'created_by' => auth()->id(),
+        ];
+        if ($isKoleksiyon) {
+            $payload['statu'] = $validated['aktif'];
+        } else {
+            $payload['sira'] = (int) ($validated['sira'] ?? 0);
+            $payload['aktif'] = $validated['aktif'] === 'aktif' ? 1 : 0;
+        }
+        $model::create($payload);
 
         return response()->json(['message' => $cfg['title'] . ' eklendi.']);
     }
@@ -174,18 +258,26 @@ class KatalogParametreController extends Controller
         /** @var \Illuminate\Database\Eloquent\Model $model */
         $model = $cfg['model'];
         $row = $model::query()->findOrFail($id);
+        $adColumn = $this->adColumn($cfg);
+        $isKoleksiyon = $cfg['table'] === 'koleksiyon';
 
         $validated = $request->validate([
-            'ad' => ['required', 'string', 'max:100', Rule::unique($cfg['table'], 'ad')->ignore($id)],
+            'ad' => ['required', 'string', 'max:100', Rule::unique($cfg['table'], $adColumn)->ignore($id)],
             'sira' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'aktif' => ['required', Rule::in(['aktif', 'pasif'])],
         ]);
 
-        $row->update([
-            'ad' => trim((string) $validated['ad']),
-            'sira' => (int) ($validated['sira'] ?? 0),
-            'aktif' => $validated['aktif'] === 'aktif' ? 1 : 0,
-        ]);
+        $payload = [
+            $adColumn => trim((string) $validated['ad']),
+            'updated_by' => auth()->id(),
+        ];
+        if ($isKoleksiyon) {
+            $payload['statu'] = $validated['aktif'];
+        } else {
+            $payload['sira'] = (int) ($validated['sira'] ?? 0);
+            $payload['aktif'] = $validated['aktif'] === 'aktif' ? 1 : 0;
+        }
+        $row->update($payload);
 
         return response()->json(['message' => $cfg['title'] . ' güncellendi.']);
     }
@@ -221,22 +313,34 @@ class KatalogParametreController extends Controller
         /** @var \Illuminate\Database\Eloquent\Model $model */
         $model = $cfg['model'];
         $query = $model::query();
+        $adColumn = $this->adColumn($cfg);
 
         if ($request->filled('search')) {
             $s = trim((string) $request->input('search'));
-            $query->where('ad', 'like', '%' . $s . '%');
+            $query->where($adColumn, 'like', '%' . $s . '%');
         }
         $statu = (string) $request->input('statu', '');
         if ($statu === 'aktif' || $statu === 'pasif') {
-            $query->where('aktif', $statu === 'aktif' ? 1 : 0);
+            if ($cfg['table'] === 'koleksiyon') {
+                $query->where('statu', $statu);
+            } else {
+                $query->where('aktif', $statu === 'aktif' ? 1 : 0);
+            }
         }
 
         $sortBy = (string) $request->input('sort_by', '');
         $sortDir = strtolower((string) $request->input('sort_dir', 'asc')) === 'desc' ? 'desc' : 'asc';
-        if ($sortBy === 'ad' || $sortBy === 'sira' || $sortBy === 'eser_sayisi') {
-            $query->orderBy($sortBy, $sortDir)->orderBy('id');
+        if ($sortBy === 'ad') {
+            $query->orderBy($adColumn, $sortDir)->orderBy('id');
+        } elseif ($sortBy === 'sira' && $this->hasSiraColumn($cfg)) {
+            $query->orderBy('sira', $sortDir)->orderBy('id');
+        } elseif ($sortBy === 'eser_sayisi') {
+            $query->orderBy('eser_sayisi', $sortDir)->orderBy('id');
         } else {
-            $query->orderBy('sira')->orderBy('ad')->orderBy('id');
+            if ($this->hasSiraColumn($cfg)) {
+                $query->orderBy('sira');
+            }
+            $query->orderBy($adColumn)->orderBy('id');
         }
 
         $table = (new $model())->getTable();
@@ -251,10 +355,10 @@ class KatalogParametreController extends Controller
 
             foreach ($rows as $row) {
                 fputcsv($out, [
-                    (string) $row->ad,
+                    (string) ($row->title ?? $row->ad ?? ''),
                     (string) ((int) ($row->sira ?? 0)),
                     (string) ((int) ($row->eser_sayisi ?? 0)),
-                    (int) ($row->aktif ?? 0) === 1 ? 'Aktif' : 'Pasif',
+                    ((string) ($row->statu ?? '') === 'aktif' || (int) ($row->aktif ?? 0) === 1) ? 'Aktif' : 'Pasif',
                 ], ';');
             }
             fclose($out);

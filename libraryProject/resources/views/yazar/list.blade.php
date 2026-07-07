@@ -337,10 +337,8 @@
                     </div>
                     <div class="modal-footer">
                         <div class="modal-footer-audit" id="editYazarAuditBlock" aria-label="Kayıt bilgisi">
-                            <div class="audit-row"><span class="audit-key">Kayıt tarihi:</span> <span id="editYazarMetaKayitTarihi">—</span></div>
-                            <div class="audit-row"><span class="audit-key">Kaydeden:</span> <span id="editYazarMetaKaydeden">—</span></div>
-                            <div class="audit-row"><span class="audit-key">Güncelleme tarihi:</span> <span id="editYazarMetaGuncelleme">—</span></div>
-                            <div class="audit-row"><span class="audit-key">Güncelleyen:</span> <span id="editYazarMetaGuncelleyen">—</span></div>
+                            <div class="audit-row"><span class="audit-key">Kayıt tarihi:</span> <span id="editYazarMetaKayitSatiri">—</span></div>
+                            <div class="audit-row"><span class="audit-key">Güncelleme tarihi:</span> <span id="editYazarMetaGuncellemeSatiri">—</span></div>
                         </div>
                         <div class="modal-footer-actions">
                             <button type="button" class="btn btn-outline" data-close-modal="#editYazarModal">Vazgeç</button>
@@ -760,16 +758,22 @@
             editYazarCurrentPhotoPlaceholder.style.display = 'flex';
         }
     }
+    function formatAuditLine(dateValue, userValue) {
+        var dateText = dateValue || '—';
+        var userText = userValue || '';
+        return userText ? (dateText + ' (' + userText + ')') : dateText;
+    }
+
     function setEditYazarAuditFromBtn(btn) {
         if (!btn) return;
-        var elK = document.getElementById('editYazarMetaKayitTarihi');
-        var elKd = document.getElementById('editYazarMetaKaydeden');
-        var elG = document.getElementById('editYazarMetaGuncelleme');
-        var elGy = document.getElementById('editYazarMetaGuncelleyen');
-        if (elK) elK.textContent = btn.getAttribute('data-kayit-tarihi') || '—';
-        if (elKd) elKd.textContent = btn.getAttribute('data-kaydeden') || '—';
-        if (elG) elG.textContent = btn.getAttribute('data-guncelleme-tarihi') || '—';
-        if (elGy) elGy.textContent = btn.getAttribute('data-guncelleyen') || '—';
+        var elK = document.getElementById('editYazarMetaKayitSatiri');
+        var elG = document.getElementById('editYazarMetaGuncellemeSatiri');
+        var kayitTarihi = btn.getAttribute('data-kayit-tarihi') || '—';
+        var kaydeden = btn.getAttribute('data-kaydeden') || '';
+        var guncellemeTarihi = btn.getAttribute('data-guncelleme-tarihi') || '—';
+        var guncelleyen = btn.getAttribute('data-guncelleyen') || '';
+        if (elK) elK.textContent = formatAuditLine(kayitTarihi, kaydeden);
+        if (elG) elG.textContent = formatAuditLine(guncellemeTarihi, guncelleyen);
     }
 
     function populateEditModalByRow(id) {

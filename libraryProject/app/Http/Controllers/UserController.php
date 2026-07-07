@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kutuphane;
+use App\Models\Permission;
 use App\Models\User;
+use App\Models\UserPermissionLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -310,63 +312,78 @@ class UserController extends Controller
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ─── Kullanıcı Yetkileri (25 maddelik izin seti) ────────────────────────────
+    // ─── Kullanıcı Yetkileri (26 maddelik izin seti) ────────────────────────────
     // ════════════════════════════════════════════════════════════════════════════
 
     public function yetkilerForm(User $user)
     {
         abort_unless(Auth::user()?->isAdmin(), 403);
 
-        $row = DB::table('user_yetkiler')->where('user_id', $user->id)->first();
+        $permissions = Permission::orderBy('sort_order')->get();
+        $permissionsByLegacyNo = $permissions->keyBy('legacy_no');
+        $permissionGroups = Permission::groupedForUi($permissionsByLegacyNo);
+        $assigned = $user->permissions()
+            ->withPivot(['granted_by', 'created_at'])
+            ->get()
+            ->keyBy('id');
 
-        $yetkiler = [
-            1  => 'Yetkili olduğu kütüphanelerin kitaplarını görebilir.',
-            2  => 'Yetkili olduğu kütüphanelerin kitaplarını görebilir ve güncelleyebilir.',
-            3  => 'Yetkili olduğu kütüphanelere yeni kitap kaydedebilir.',
-            4  => 'Tüm kütüphanelerin kitaplarını görebilir.',
-            5  => 'Tüm kütüphanelerin kitaplarını görebilir ve güncelleyebilir.',
-            6  => 'Tüm kütüphanelere yeni kitap kaydedebilir.',
-            7  => 'Yetkili olduğu kütüphanelerin ödünçlerini görebilir.',
-            8  => 'Yetkili olduğu kütüphanelerin ödünçlerini görebilir ve yeni ödünç verebilir.',
-            9  => 'Tüm kütüphanelerin ödünçlerini görebilir.',
-            10 => 'Tüm kütüphanelerin ödünçlerini görebilir ve yeni ödünç verebilir.',
-            11 => 'Üyeleri görebilir.',
-            12 => 'Yeni üye oluşturabilir.',
-            13 => 'Üye güncelleyebilir',
-            14 => 'Kullanıcıları görebilir.',
-            15 => 'Yeni kullanıcı oluşturabilir.',
-            16 => 'Kullanıcıları görebilir ve güncelleyebilir.',
-            17 => 'Kütüphaneleri görebilir.',
-            18 => 'Yeni kütüphane oluşturabilir.',
-            19 => 'Kütüphaneleri görebilir ve güncelleyebilir.',
-            20 => 'Etiket oluşturabilir.',
-            21 => 'Dashboard ekranı görme yetkisi.',
-            22 => 'Yazarlar ekranına erişebilir.',
-            23 => 'Yazar ekleyebilir, güncelleyebilir ve silebilir.',
-            24 => 'Yayınevleri ekranına erişebilir.',
-            25 => 'Yayınevi ekleyebilir, güncelleyebilir ve silebilir.',
-        ];
+        $granterIds = $assigned->pluck('pivot.granted_by')->filter()->unique()->values();
+        $granters = User::whereIn('id', $granterIds)->pluck('name', 'id');
 
-        return view('users.yetkiler', compact('user', 'row', 'yetkiler'));
+        $logs = UserPermissionLog::query()
+            ->where('user_id', $user->id)
+            ->with(['permission', 'performedBy'])
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        return view('users.yetkiler', compact('user', 'permissionGroups', 'assigned', 'granters', 'logs'));
     }
 
     public function yetkilerUpdate(Request $request, User $user)
     {
         abort_unless(Auth::user()?->isAdmin(), 403);
 
-        $data = ['user_id' => $user->id, 'updated_at' => now()];
-        for ($i = 1; $i <= 25; $i++) {
-            $col = 'y' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
-            $data[$col] = $request->has($col) ? 1 : 0;
-        }
+        $requested = collect($request->input('permissions', []))
+            ->map(fn ($v) => (int) $v)
+            ->unique()
+            ->values();
 
-        $exists = DB::table('user_yetkiler')->where('user_id', $user->id)->exists();
-        if ($exists) {
-            DB::table('user_yetkiler')->where('user_id', $user->id)->update($data);
-        } else {
-            $data['created_at'] = now();
-            DB::table('user_yetkiler')->insert($data);
-        }
+        $allPermissions = Permission::all()->keyBy('legacy_no');
+        $current = $user->permissions()->get()->keyBy('legacy_no');
+        $performedBy = Auth::id();
+        $now = now();
+
+        DB::transaction(function () use ($user, $allPermissions, $requested, $current, $performedBy, $now) {
+            foreach ($allPermissions as $legacyNo => $permission) {
+                $shouldHave = $requested->contains($legacyNo);
+                $has = $current->has($legacyNo);
+
+                if ($shouldHave && ! $has) {
+                    $user->permissions()->attach($permission->id, [
+                        'granted_by' => $performedBy,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+
+                    UserPermissionLog::record(
+                        $user->id,
+                        $permission->id,
+                        UserPermissionLog::ACTION_GRANTED,
+                        $performedBy
+                    );
+                } elseif (! $shouldHave && $has) {
+                    $user->permissions()->detach($permission->id);
+
+                    UserPermissionLog::record(
+                        $user->id,
+                        $permission->id,
+                        UserPermissionLog::ACTION_REVOKED,
+                        $performedBy
+                    );
+                }
+            }
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => '"' . $user->name . '" yetkileri güncellendi.']);
