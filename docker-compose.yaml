@@ -55,6 +55,8 @@ services:
   db:
     image: mysql:8
     restart: unless-stopped
+    ports:
+      - "3306:3306"
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
