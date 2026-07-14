@@ -10,7 +10,7 @@ use App\Models\OduncIslem;
 use App\Models\UyeFavori;
 use App\Models\UyeBekleme;
 use App\Models\UyeRezerve;
-use App\Services\BeyogluWebhookService;
+use App\Services\WebhookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 class CatalogApiController extends Controller
 {
     public function __construct(
-        private readonly BeyogluWebhookService $webhookService
+        private readonly WebhookService $webhookService
     ) {}
     /**
      * Katalog tablosundaki kitap listesini döndürür.

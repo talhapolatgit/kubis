@@ -6,14 +6,14 @@ use App\Models\Katalog;
 use App\Models\Uye;
 use App\Models\UyeBekleme;
 use App\Models\UyeRezerve;
-use App\Services\BeyogluWebhookService;
+use App\Services\WebhookService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class RezerveController extends Controller
 {
     public function __construct(
-        private readonly BeyogluWebhookService $webhookService
+        private readonly WebhookService $webhookService
     ) {}
 
     private function canView(): bool

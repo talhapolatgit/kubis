@@ -8,7 +8,7 @@ use App\Models\OduncIslem;
 use App\Models\UyeRezerve;
 use App\Models\ZiyaretKaydi;
 use App\Services\OtpService;
-use App\Services\BeyogluWebhookService;
+use App\Services\WebhookService;
 use App\Support\TurkishSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class UyeController extends Controller
 {
     public function __construct(
         private readonly OtpService $otp,
-        private readonly BeyogluWebhookService $webhookService
+        private readonly WebhookService $webhookService
     ) {}
 
     private function memberFilterValues(Request $request): array
@@ -478,10 +478,13 @@ class UyeController extends Controller
 
         $telefon = $request->input('telefon');
         $code    = $this->otp->generate($telefon);
-        $sent    = $this->otp->send($telefon, $code);
+        $sent    = $this->otp->send($telefon, $code, 'uye_otp');
 
-        if (!$sent) {
-            return response()->json(['success' => false, 'message' => 'SMS gönderilemedi. Lütfen tekrar deneyin.'], 500);
+        if (! ($sent['success'] ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => $sent['message'] ?? 'SMS gönderilemedi. Lütfen tekrar deneyin.',
+            ], 500);
         }
 
         return response()->json([

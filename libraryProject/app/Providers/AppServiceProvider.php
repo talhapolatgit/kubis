@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\SistemAyar;
 use App\Models\UyeRezerve;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -43,6 +44,12 @@ class AppServiceProvider extends ServiceProvider
                     ->count();
             }
             $view->with('sidebarAktifRezerveSayisi', $count);
+
+            $kurumAdi = trim((string) (SistemAyar::query()->value('kurum_adi') ?? ''));
+            if ($kurumAdi === '') {
+                $kurumAdi = 'Kütüphane Bilgi Sistemi';
+            }
+            $view->with('kurumAdi', $kurumAdi);
         });
     }
 }

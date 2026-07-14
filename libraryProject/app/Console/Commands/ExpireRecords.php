@@ -6,7 +6,7 @@ use App\Models\UyeRezerve;
 use App\Models\UyeBekleme;
 use App\Models\Katalog;
 use App\Models\Uye;
-use App\Services\BeyogluWebhookService;
+use App\Services\WebhookService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +18,7 @@ class ExpireRecords extends Command
 
     private $webhookService;
 
-    public function __construct(BeyogluWebhookService $webhookService)
+    public function __construct(WebhookService $webhookService)
     {
         parent::__construct();
         $this->webhookService = $webhookService;

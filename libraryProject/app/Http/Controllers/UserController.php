@@ -6,6 +6,7 @@ use App\Models\Kutuphane;
 use App\Models\Permission;
 use App\Models\User;
 use App\Models\UserPermissionLog;
+use App\Services\Ldap\LdapSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -565,8 +566,16 @@ class UserController extends Controller
             ], 500);
         }
 
-        $host = (string) config('services.ldap.host', 'ldap://dc16.beyoglu.bel.tr:389');
-        $baseDn = (string) config('services.ldap.base_dn', 'DC=beyoglu,DC=bel,DC=tr');
+        $settings = LdapSettings::current();
+        if (! $settings) {
+            return response()->json([
+                'success' => false,
+                'message' => 'LDAP entegrasyonu aktif değil veya tanımlı değil.',
+            ], 500);
+        }
+
+        $host = $settings['host'];
+        $baseDn = $settings['base_dn'];
         $conn = @ldap_connect($host);
         if (!$conn) {
             return response()->json([
@@ -575,8 +584,8 @@ class UserController extends Controller
             ], 500);
         }
 
-        @ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
-        @ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
+        @ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, $settings['protocol_version']);
+        @ldap_set_option($conn, LDAP_OPT_REFERRALS, $settings['referrals'] ? 1 : 0);
 
         $bindPrincipal = $this->ldapBindPrincipal((string) $data['bind_username'], $baseDn);
         $bindOk = @ldap_bind($conn, $bindPrincipal, (string) $data['bind_password']);

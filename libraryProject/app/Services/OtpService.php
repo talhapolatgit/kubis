@@ -36,17 +36,58 @@ class OtpService
     }
 
     // ─── SMS Gönder ───────────────────────────────────────────────────────────
-    // Bu metot gerçek bir SMS servisi entegrasyonu için düzenlenmelidir.
-    // Örnek: Mutlu Cell, iletimerkezi, Netgsm, Twilio vb.
-    public function send(string $telefon, string $code, ?string $source = null): bool
+    /**
+     * @return array{success: bool, message?: string}
+     */
+    public function send(string $telefon, string $code, ?string $source = null): array
     {
         $mesaj = "{$code} doğrulama kodu ile Kütüphane Bilgi Sistemine giriş yapabilirsiniz.";
 
-        MessageController::smsGonder($telefon, $mesaj, $source);
+        $result = MessageController::smsGonder($telefon, $mesaj, $source);
 
-        \Illuminate\Support\Facades\Log::info("OTP SMS [{$telefon}]: {$code}");
+        if ($this->isSmsSuccessful($result)) {
+            \Illuminate\Support\Facades\Log::info("OTP SMS [{$telefon}]: {$code}");
 
+            return ['success' => true];
+        }
+
+        // SMS gitmediyse üretilen OTP kullanılmasın
+        Cache::forget($this->cacheKey($telefon));
+
+        $error = $this->extractSmsError($result);
+        \Illuminate\Support\Facades\Log::warning("OTP SMS gönderilemedi [{$telefon}]: {$error}");
+
+        return [
+            'success' => false,
+            'message' => $error,
+        ];
+    }
+
+    private function isSmsSuccessful(mixed $result): bool
+    {
+        if (! is_array($result)) {
+            return false;
+        }
+
+        if (array_key_exists('success', $result)) {
+            return (bool) $result['success'];
+        }
+
+        // HTTP başarılı olup özel success alanı dönmeyen sağlayıcı yanıtları
         return true;
+    }
+
+    private function extractSmsError(mixed $result): string
+    {
+        if (is_array($result)) {
+            foreach (['message', 'Message', 'error', 'Error', 'msg'] as $key) {
+                if (! empty($result[$key]) && is_string($result[$key])) {
+                    return $result[$key];
+                }
+            }
+        }
+
+        return 'SMS gönderilemedi. Lütfen tekrar deneyin.';
     }
 
     // ─── Geçerliliği Kontrol ───────────────────────────────────────────────────

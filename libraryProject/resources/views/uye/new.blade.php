@@ -602,12 +602,19 @@
 
         fetch('{{ route('otp.gonder') }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
             body: JSON.stringify({ telefon: telefon })
         })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
+            .then(function (r) {
+                return r.json().then(function (data) {
+                    return { ok: r.ok, status: r.status, data: data || {} };
+                }).catch(function () {
+                    return { ok: false, status: r.status, data: { success: false, message: 'Sunucu yanıtı okunamadı.' } };
+                });
+            })
+            .then(function (result) {
+                var data = result.data;
+                if (result.ok && data.success) {
                     document.getElementById('otpSection').style.display = 'block';
                     document.getElementById('otpInputRow').style.display = 'flex';
                     document.getElementById('otpVerifiedRow').style.display = 'none';
@@ -616,15 +623,16 @@
                     showToast('info', 'Kod gönderildi', data.message);
                     startCountdown(data.ttl || 300);
                     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Tekrar Gönder';
-                    setTimeout(() => { btn.disabled = false; }, 30000);
+                    setTimeout(function () { btn.disabled = false; }, 30000);
                 } else {
-                    showToast('error', 'SMS gönderilemedi', data.message);
+                    var errMsg = data.message || (data.errors && data.errors.telefon && data.errors.telefon[0]) || 'SMS gönderilemedi. Lütfen tekrar deneyin.';
+                    showToast('error', 'SMS gönderilemedi', errMsg);
                     btn.disabled = false;
                     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Kod Gönder';
                 }
             })
-            .catch(() => {
-                showToast('error', 'Bağlantı hatası');
+            .catch(function () {
+                showToast('error', 'Bağlantı hatası', 'Sunucuya ulaşılamadı. Lütfen tekrar deneyin.');
                 btn.disabled = false;
                 btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Kod Gönder';
             });

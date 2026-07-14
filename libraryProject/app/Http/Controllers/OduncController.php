@@ -8,17 +8,18 @@ use App\Models\Katalog;
 use App\Models\Kutuphane;
 use App\Models\UyeBekleme;
 use App\Models\UyeRezerve;
-use App\Services\BeyogluWebhookService;
+use App\Services\WebhookService;
 use App\Support\TurkishSearch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class OduncController extends Controller
 {
 
     public function __construct(
-        private readonly BeyogluWebhookService $webhookService
+        private readonly WebhookService $webhookService
     ) {}
 
 

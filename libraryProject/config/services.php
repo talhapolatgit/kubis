@@ -45,14 +45,14 @@ return [
         'sifre'         => env('SOAP_SIFRE', 'secret'),
     ],
 
-    'beyoglu' => [
-    'webhook_url'    => env('BEYOGLU_WEBHOOK_URL', 'https://api.beyoglu.app/api/webhook/kutuphane/bildirim'),
-    'webhook_secret' => env('BEYOGLU_WEBHOOK_SECRET'),
-],
+    'webhook' => [
+        'url' => env('WEBHOOK_URL', env('BEYOGLU_WEBHOOK_URL')),
+        'secret' => env('WEBHOOK_SECRET', env('BEYOGLU_WEBHOOK_SECRET')),
+    ],
 
     'ldap' => [
         'host' => env('LDAP_HOST', 'ldap://128.0.0.4:389'),
-        'base_dn' => env('LDAP_BASE_DN', 'DC=beyoglu,DC=bel,DC=tr'),
+        'base_dn' => env('LDAP_BASE_DN', 'DC=xxx,DC=bel,DC=tr'),
     ],
 
 ];

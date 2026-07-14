@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SistemAyar;
 use App\Models\User;
+use App\Services\Ldap\LdapSettings;
 use App\Services\OtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +25,12 @@ class AuthController extends Controller
             return redirect()->route('katalog.index');
         }
 
-        return view('auth.login');
+        $kurumAdi = trim((string) (SistemAyar::query()->value('kurum_adi') ?? ''));
+        if ($kurumAdi === '') {
+            $kurumAdi = 'Kütüphane Bilgi Sistemi';
+        }
+
+        return view('auth.login', compact('kurumAdi'));
     }
 
     // ─── Giriş İşlemi ───────────────────────────────────────────────────────────
@@ -366,16 +373,21 @@ class AuthController extends Controller
             return ['ok' => false, 'connection_error' => true];
         }
 
-        $host = (string) config('services.ldap.host', 'ldap://dc16.beyoglu.bel.tr:389');
-        $baseDn = (string) config('services.ldap.base_dn', 'DC=beyoglu,DC=bel,DC=tr');
+        $settings = LdapSettings::current();
+        if (! $settings) {
+            return ['ok' => false, 'connection_error' => true];
+        }
+
+        $host = $settings['host'];
+        $baseDn = $settings['base_dn'];
 
         $conn = @ldap_connect($host);
         if (!$conn) {
             return ['ok' => false, 'connection_error' => true];
         }
 
-        @ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, 3);
-        @ldap_set_option($conn, LDAP_OPT_REFERRALS, 0);
+        @ldap_set_option($conn, LDAP_OPT_PROTOCOL_VERSION, $settings['protocol_version']);
+        @ldap_set_option($conn, LDAP_OPT_REFERRALS, $settings['referrals'] ? 1 : 0);
 
         $bindDn = $this->ldapBindPrincipal($ldapUsername, $baseDn);
         $ok = @ldap_bind($conn, $bindDn, $password);

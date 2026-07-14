@@ -14,6 +14,7 @@ use App\Http\Controllers\KatalogParametreController;
 use App\Http\Controllers\KatalogController;
 use App\Http\Controllers\KutuphaneController;
 use App\Http\Controllers\RaporSihirbaziController;
+use App\Http\Controllers\EntegrasyonController;
 use App\Http\Controllers\SistemAyarController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\YazarController;
@@ -49,6 +50,18 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/sistem-ayarlari',  [SistemAyarController::class, 'index'])->name('sistem_ayar.index');
     Route::put('/sistem-ayarlari',  [SistemAyarController::class, 'update'])->name('sistem_ayar.update');
+
+    Route::get('/entegrasyonlar',         [EntegrasyonController::class, 'index'])->name('entegrasyon.index');
+    Route::put('/entegrasyonlar/sms',     [EntegrasyonController::class, 'updateSms'])->name('entegrasyon.sms.update');
+    Route::post('/entegrasyonlar/sms/test', [EntegrasyonController::class, 'testSms'])->name('entegrasyon.sms.test');
+    Route::put('/entegrasyonlar/kimlik',  [EntegrasyonController::class, 'updateKimlik'])->name('entegrasyon.kimlik.update');
+    Route::post('/entegrasyonlar/kimlik/test', [EntegrasyonController::class, 'testKimlik'])->name('entegrasyon.kimlik.test');
+    Route::put('/entegrasyonlar/adres',   [EntegrasyonController::class, 'updateAdres'])->name('entegrasyon.adres.update');
+    Route::post('/entegrasyonlar/adres/test', [EntegrasyonController::class, 'testAdres'])->name('entegrasyon.adres.test');
+    Route::put('/entegrasyonlar/ldap',    [EntegrasyonController::class, 'updateLdap'])->name('entegrasyon.ldap.update');
+    Route::post('/entegrasyonlar/ldap/test', [EntegrasyonController::class, 'testLdap'])->name('entegrasyon.ldap.test');
+    Route::put('/entegrasyonlar/webhook', [EntegrasyonController::class, 'updateWebhook'])->name('entegrasyon.webhook.update');
+    Route::post('/entegrasyonlar/webhook/test', [EntegrasyonController::class, 'testWebhook'])->name('entegrasyon.webhook.test');
 
     Route::get('/etiket',     [EtiketController::class, 'index'])->name('etiket.index');
     Route::get('/etiket/ara', [EtiketController::class, 'ara'])->name('etiket.ara');

@@ -52,7 +52,7 @@ return [
         ],
         'yonetim' => [
             'title'       => 'Yönetim',
-            'description' => 'Sistem kullanıcıları, etiketler, raporlar ve sistem ayarları.',
+            'description' => 'Sistem kullanıcıları, etiketler, raporlar, sistem ayarları ve entegrasyonlar.',
             'sections'    => [
                 'kullanici' => [
                     'title'       => 'Sistem Kullanıcıları',
@@ -69,6 +69,10 @@ return [
                 'sistem_ayar' => [
                     'title'       => 'Sistem Ayarları',
                     'permissions' => [36],
+                ],
+                'entegrasyon' => [
+                    'title'       => 'Entegrasyonlar',
+                    'permissions' => [37],
                 ],
             ],
         ],
@@ -111,5 +115,6 @@ return [
         34 => ['slug' => 'ziyaret.all.delete',       'label' => 'Tüm kütüphanelerin ziyaret geçmişini silebilir.', 'group' => 'uyeler', 'section' => 'ziyaret'],
         35 => ['slug' => 'odunc.extend',             'label' => 'Ödünç süresini uzatabilir.', 'group' => 'odunc'],
         36 => ['slug' => 'sistem.ayar.manage',       'label' => 'Sistem ayarlarını görüntüleyebilir ve güncelleyebilir.', 'group' => 'yonetim', 'section' => 'sistem_ayar'],
+        37 => ['slug' => 'entegrasyon.manage',       'label' => 'Entegrasyonları görüntüleyebilir ve güncelleyebilir.', 'group' => 'yonetim', 'section' => 'entegrasyon'],
     ],
 ];

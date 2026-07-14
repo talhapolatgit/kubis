@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#7a5c3c" />
-    <title>Kütüphane Bilgi Sistemi</title>
+    <title>{{ $kurumAdi }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -265,7 +265,7 @@
                 </div>
                 <div>
                     <div class="panel-brand-name">{{ config('app.name') }}</div>
-                    <div class="panel-brand-sub">Kütüphane Bilgi Sistemi</div>
+                    <div class="panel-brand-sub">{{ $kurumAdi }}</div>
                 </div>
             </div>
         </div>
@@ -286,7 +286,7 @@
             </div>--}}
         </div>
 
-        <div class="panel-bottom">© {{ date('Y') }} Beyoğlu Belediyesi — Bilgi İşlem Müdürlüğü</div>
+        <div class="panel-bottom">KÜBİS © {{ date('Y') }}</div>
     </div>
 
     <!-- Sağ form paneli -->
@@ -299,7 +299,7 @@
                     </div>
                     <div>
                         <div class="panel-brand-name">{{ config('app.name') }}</div>
-                        <div class="panel-brand-sub">Kütüphane Bilgi Sistemi</div>
+                        <div class="panel-brand-sub">{{ $kurumAdi }}</div>
                     </div>
                 </div>
             </div>
@@ -375,7 +375,7 @@
                 </button>
             </form>
 
-            <div class="form-footer">Kütüphane Bilgi Sistemi &nbsp;·&nbsp; © {{ date('Y') }}</div>
+            <div class="form-footer">Kütüphane Bilgi Sistemi</div>
         </div>
     </div>
 </div>
