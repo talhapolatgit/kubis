@@ -6,7 +6,7 @@ import type { RegisterPayload } from '../api/types'
 import { KubisLogo } from '../components/KubisLogo'
 import { APP_NAME } from '../constants/branding'
 import { useAuth } from '../context/AuthContext'
-import { isMinor } from '../utils/formatters'
+import { formatBirthDateInput, isMinor, parseBirthDate } from '../utils/formatters'
 
 const TURKIYE_ILLER = [
   'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin',
@@ -44,9 +44,18 @@ export function RegisterPage() {
     veli_telefon: '',
   })
 
-  const needsGuardian = useMemo(
-    () => form.dogum_tarihi !== '' && isMinor(form.dogum_tarihi),
+  const normalizedBirthDate = useMemo(
+    () => parseBirthDate(form.dogum_tarihi),
     [form.dogum_tarihi],
+  )
+  const normalizedVeliBirthDate = useMemo(
+    () => parseBirthDate(form.veli_dogum_tarihi),
+    [form.veli_dogum_tarihi],
+  )
+
+  const needsGuardian = useMemo(
+    () => normalizedBirthDate !== null && isMinor(normalizedBirthDate),
+    [normalizedBirthDate],
   )
 
   const update = (field: string, value: string) => {
@@ -56,12 +65,23 @@ export function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!normalizedBirthDate) {
+      setError('Doğum tarihinizi GG.AA.YYYY formatında girin.')
+      return
+    }
+
+    if (needsGuardian && !normalizedVeliBirthDate) {
+      setError('Veli doğum tarihini GG.AA.YYYY formatında girin.')
+      return
+    }
+
     setLoading(true)
 
     try {
       const payload: RegisterPayload = {
         tc_kimlik: form.tc_kimlik,
-        dogum_tarihi: form.dogum_tarihi,
+        dogum_tarihi: normalizedBirthDate,
         email: form.email,
         telefon: form.telefon,
         il: form.il,
@@ -74,7 +94,7 @@ export function RegisterPage() {
         payload.veli_ad = form.veli_ad
         payload.veli_soyad = form.veli_soyad
         payload.veli_tc_kimlik = form.veli_tc_kimlik
-        payload.veli_dogum_tarihi = form.veli_dogum_tarihi
+        payload.veli_dogum_tarihi = normalizedVeliBirthDate!
         payload.veli_telefon = form.veli_telefon
       }
 
@@ -88,7 +108,7 @@ export function RegisterPage() {
   }
 
   const canProceedStep1 =
-    form.tc_kimlik.length === 11 && form.dogum_tarihi && form.email && form.telefon
+    form.tc_kimlik.length === 11 && normalizedBirthDate && form.email && form.telefon
 
   const canProceedStep2 = form.il && form.ilce
 
@@ -99,7 +119,7 @@ export function RegisterPage() {
       (form.veli_ad &&
         form.veli_soyad &&
         form.veli_tc_kimlik.length === 11 &&
-        form.veli_dogum_tarihi &&
+        normalizedVeliBirthDate &&
         form.veli_telefon))
 
   return (
@@ -150,11 +170,13 @@ export function RegisterPage() {
 
               <Field label="Doğum Tarihi" required>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
                   value={form.dogum_tarihi}
-                  onChange={(e) => update('dogum_tarihi', e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => update('dogum_tarihi', formatBirthDateInput(e.target.value))}
                   className={inputClass}
+                  placeholder="GG.AA.YYYY"
+                  autoComplete="bday"
                 />
               </Field>
 
@@ -294,11 +316,14 @@ export function RegisterPage() {
 
               <Field label="Veli Doğum Tarihi" required>
                 <input
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
                   value={form.veli_dogum_tarihi}
-                  onChange={(e) => update('veli_dogum_tarihi', e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) =>
+                    update('veli_dogum_tarihi', formatBirthDateInput(e.target.value))
+                  }
                   className={inputClass}
+                  placeholder="GG.AA.YYYY"
                 />
               </Field>
 

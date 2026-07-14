@@ -241,7 +241,7 @@ export function BookDetailSheet() {
                       onClick={() => handleAction('reserve')}
                       className="flex flex-1 items-center justify-center rounded-full bg-emerald-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-50"
                     >
-                      {actionLoading === 'reserve' ? 'Rezerve ediliyor...' : 'Rezerv Et'}
+                      {actionLoading === 'reserve' ? 'Rezerve ediliyor...' : 'Rezerve Et'}
                     </button>
                   )}
 

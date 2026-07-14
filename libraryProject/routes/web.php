@@ -14,6 +14,7 @@ use App\Http\Controllers\KatalogParametreController;
 use App\Http\Controllers\KatalogController;
 use App\Http\Controllers\KutuphaneController;
 use App\Http\Controllers\RaporSihirbaziController;
+use App\Http\Controllers\SistemAyarController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\YazarController;
 use App\Http\Controllers\YayineviController;
@@ -45,6 +46,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/sifre-degistir', [AuthController::class, 'passwordUpdate'])->name('auth.password.update');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+
+    Route::get('/sistem-ayarlari',  [SistemAyarController::class, 'index'])->name('sistem_ayar.index');
+    Route::put('/sistem-ayarlari',  [SistemAyarController::class, 'update'])->name('sistem_ayar.update');
 
     Route::get('/etiket',     [EtiketController::class, 'index'])->name('etiket.index');
     Route::get('/etiket/ara', [EtiketController::class, 'ara'])->name('etiket.ara');
@@ -187,6 +191,18 @@ Route::get('/storage/yazarlar/{file}', function (string $file) {
         abort(404);
     }
     $relative = 'yazarlar/' . $file;
+    if (!Storage::disk('public')->exists($relative)) {
+        abort(404);
+    }
+
+    return Storage::disk('public')->response($relative);
+})->where('file', '[A-Za-z0-9._-]+');
+
+Route::get('/storage/sistem/{file}', function (string $file) {
+    if (!preg_match('/^[A-Za-z0-9._-]+$/', $file)) {
+        abort(404);
+    }
+    $relative = 'sistem/' . $file;
     if (!Storage::disk('public')->exists($relative)) {
         abort(404);
     }

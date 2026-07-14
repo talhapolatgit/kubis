@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { KubisBrand } from '../components/KubisLogo'
 import { useAuth } from '../context/AuthContext'
+import { formatBirthDateInput, parseBirthDate } from '../utils/formatters'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -13,14 +14,21 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showHint, setShowHint] = useState(false)
+  const normalizedBirthDate = parseBirthDate(dogumTarihi)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!normalizedBirthDate) {
+      setError('Doğum tarihinizi GG.AA.YYYY formatında girin.')
+      return
+    }
+
     setLoading(true)
 
     try {
-      await login({ tc_kimlik: tcKimlik, dogum_tarihi: dogumTarihi })
+      await login({ tc_kimlik: tcKimlik, dogum_tarihi: normalizedBirthDate })
       navigate('/')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Giriş başarısız.')
@@ -69,12 +77,14 @@ export function LoginPage() {
               </label>
               <input
                 id="dogum"
-                type="date"
+                type="text"
+                inputMode="numeric"
                 value={dogumTarihi}
-                onChange={(e) => setDogumTarihi(e.target.value)}
+                onChange={(e) => setDogumTarihi(formatBirthDateInput(e.target.value))}
                 required
-                max={new Date().toISOString().split('T')[0]}
                 className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-100 focus:outline-none"
+                placeholder="GG.AA.YYYY"
+                autoComplete="bday"
               />
             </div>
 
@@ -86,7 +96,7 @@ export function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || tcKimlik.length !== 11 || !dogumTarihi}
+              disabled={loading || tcKimlik.length !== 11 || !normalizedBirthDate}
               className="w-full rounded-xl bg-brand-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition-all hover:bg-brand-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
