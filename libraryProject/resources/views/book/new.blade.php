@@ -2025,16 +2025,20 @@
 
             function esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
 
+            function lowerTr(value) {
+                return String(value || '').toLocaleLowerCase('tr-TR');
+            }
+
             function highlight(text, term) {
                 if (!term) return esc(text);
-                var idx = text.toLowerCase().indexOf(term.toLowerCase());
+                var idx = lowerTr(text).indexOf(lowerTr(term));
                 if (idx === -1) return esc(text);
                 return esc(text.substring(0, idx)) + '<strong style="color:var(--primary)">' + esc(text.substring(idx, idx + term.length)) + '</strong>' + esc(text.substring(idx + term.length));
             }
 
             function render(filter) {
-                var term = (filter || '').toLowerCase();
-                filtered = rawData.filter(function(r) { return r[cfg.labelKey].toLowerCase().indexOf(term) !== -1; });
+                var term = lowerTr(filter || '');
+                filtered = rawData.filter(function(r) { return lowerTr(r[cfg.labelKey]).indexOf(term) !== -1; });
                 var html = '';
                 if (filtered.length === 0) {
                     html = '<div class="combobox-no-result">Bulunamadı</div>';
@@ -2047,7 +2051,7 @@
                         var sel  = curVal !== '' && (
                             idKey
                                 ? String(r[idKey]) === String(curVal)
-                                : r[cfg.labelKey].toLowerCase() === curVal.toLowerCase()
+                                : lowerTr(r[cfg.labelKey]) === lowerTr(curVal)
                         );
                         var high = (i === highlightedIndex);
                         html += '<div class="combobox-option' + (sel?' selected':'') + (high?' highlighted':'') + '" data-val="' + esc(r[cfg.labelKey]) + '" data-id="' + esc(String(r[idKey] !== undefined ? r[idKey] : r[cfg.labelKey])) + '">';
@@ -2075,9 +2079,9 @@
             // Strict: blur'da seçili değer listede yoksa temizle
             function validateOnBlur() {
                 if (!strict) return;
-                var typed = searchInput.value.trim().toLowerCase();
+                var typed = lowerTr(searchInput.value.trim());
                 if (!typed) { hiddenInput.value = ''; return; }
-                var match = rawData.find(function(r) { return r[cfg.labelKey].toLowerCase() === typed; });
+                var match = rawData.find(function(r) { return lowerTr(r[cfg.labelKey]) === typed; });
                 if (!match) {
                     searchInput.value = '';
                     hiddenInput.value = '';
@@ -2094,7 +2098,7 @@
                     return;
                 }
                 var found = rawData.find(function(r) {
-                    return idKey ? String(r[idKey]) === String(curVal) : r[cfg.labelKey].toLowerCase() === String(curVal).toLowerCase();
+                    return idKey ? String(r[idKey]) === String(curVal) : lowerTr(r[cfg.labelKey]) === lowerTr(curVal);
                 });
                 searchInput.value = found ? found[cfg.labelKey] : (strict ? '' : curVal);
                 updateClearButton();
@@ -2122,7 +2126,7 @@
                 var curVal = hiddenInput.value;
                 if (curVal) {
                     var found = rawData.find(function(r) {
-                        return idKey ? String(r[idKey]) === String(curVal) : r[cfg.labelKey].toLowerCase() === curVal.toLowerCase();
+                        return idKey ? String(r[idKey]) === String(curVal) : lowerTr(r[cfg.labelKey]) === lowerTr(curVal);
                     });
                     searchInput.value = found ? found[cfg.labelKey] : (strict ? '' : curVal);
                 } else {
